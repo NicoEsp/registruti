@@ -5,9 +5,10 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import FlameLogo from "@/components/FlameLogo";
 
 const NAV_ITEMS = [
-  { href: "/", label: "Tracker", icon: "⏱" },
+  { href: "/tracker", label: "Tracker", icon: "⏱" },
   { href: "/clients", label: "Clientes", icon: "👥" },
   { href: "/reports", label: "Reportes", icon: "📊" },
   { href: "/invoices", label: "Facturas", icon: "🧾" },
@@ -45,16 +46,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen">
       <aside className="no-print fixed inset-y-0 left-0 z-20 flex w-56 flex-col border-r border-slate-200 bg-white">
-        <div className="flex items-center gap-2 px-5 py-5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 font-bold text-white">
-            D
-          </span>
-          <span className="text-lg font-semibold tracking-tight">Diamble</span>
-        </div>
+        <Link href="/" className="flex items-center gap-2 px-5 py-5">
+          <FlameLogo size={30} />
+          <span className="text-lg font-semibold tracking-tight">Diamble Jambe</span>
+        </Link>
         <nav className="flex-1 space-y-1 px-3">
           {NAV_ITEMS.map((item) => {
-            const active =
-              item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+            const active = pathname.startsWith(item.href);
             return (
               <Link
                 key={item.href}

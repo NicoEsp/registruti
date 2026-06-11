@@ -1,468 +1,498 @@
-"use client";
+import type { Metadata } from "next";
+import Link from "next/link";
+import FlameLogo from "@/components/FlameLogo";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import AppShell from "@/components/AppShell";
-import Modal from "@/components/Modal";
-import { supabase } from "@/lib/supabase";
-import type { Client, TimeEntry } from "@/lib/types";
-import {
-  DAY_ABBREV,
-  DURATION_OPTIONS,
-  addDays,
-  formatDayLabel,
-  formatDuration,
-  formatShortDate,
-  parseISODate,
-  startOfWeek,
-  toISODate,
-} from "@/lib/format";
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
-export default function TrackerPage() {
+const FEATURES = [
+  {
+    icon: "⏱️",
+    title: "Tu semana, en bloques de 15",
+    description:
+      "Cargá entradas de 15 minutos a 8 horas por día, con descripción y cliente. Una vista semanal donde se ve todo de un vistazo.",
+  },
+  {
+    icon: "💱",
+    title: "Cada cliente, su tarifa y su moneda",
+    description:
+      "Clientes ilimitados, cada uno con su tarifa por hora, su color y su moneda: ARS, USD, EUR, UYU, BRL, CLP, COP, MXN o GBP. Cobrale en pesos a uno y en dólares a otro sin hacer cuentas aparte.",
+  },
+  {
+    icon: "📊",
+    title: "Reportes que responden “¿cuánto facturo?”",
+    description:
+      "Horas y monto facturable por cliente, gráfico de barras apiladas y matriz cliente × día con subtotales semanales. Filtrá por semana, mes o el rango que quieras.",
+  },
+  {
+    icon: "🧾",
+    title: "Facturas que se arman solas",
+    description:
+      "Elegí cliente y período, y la factura se genera desde tus horas trackeadas: numeración automática, estados (borrador, enviada, pagada) y exportación a PDF lista para imprimir o mandar.",
+  },
+  {
+    icon: "🔗",
+    title: "Un link y tu cliente ve todo",
+    description:
+      "Cada factura tiene un link público con el detalle de horas y montos. Tu cliente lo abre sin crear cuenta: trazabilidad total, cero idas y vueltas por mail.",
+  },
+  {
+    icon: "🇦🇷",
+    title: "100% en español, cero curva de aprendizaje",
+    description:
+      "Hecha para freelancers hispanohablantes, no para equipos enterprise. Sin menús traducidos a medias ni configuración de media hora: entrás y trackeás.",
+  },
+];
+
+const COMPARISON: { criterio: string; diamble: string; toggl: string; wins: boolean }[] = [
+  {
+    criterio: "Precio para facturar con tarifas",
+    diamble: "Gratis hoy",
+    toggl: "~USD 10/usuario/mes (plan Starter)",
+    wins: true,
+  },
+  { criterio: "Idioma", diamble: "100% en español", toggl: "Solo en inglés", wins: true },
+  {
+    criterio: "Facturación incluida",
+    diamble: "Sí: generada desde tus horas, con PDF y estados",
+    toggl: "Tarifas en planes pagos; facturación limitada",
+    wins: true,
+  },
+  {
+    criterio: "Link público para tu cliente",
+    diamble: "Sí: detalle de horas y montos sin crear cuenta",
+    toggl: "No tiene equivalente directo",
+    wins: true,
+  },
+  {
+    criterio: "Multi-moneda con foco LatAm",
+    diamble: "9 monedas, incluidas ARS, UYU, CLP, COP, MXN y BRL",
+    toggl: "Multi-moneda en planes pagos",
+    wins: true,
+  },
+  {
+    criterio: "Pensada para",
+    diamble: "Freelancers y consultores independientes",
+    toggl: "Equipos y empresas",
+    wins: true,
+  },
+  {
+    criterio: "Apps móviles",
+    diamble: "No (web, usable desde el celular)",
+    toggl: "Sí, iOS y Android",
+    wins: false,
+  },
+  {
+    criterio: "Timer automático en tiempo real",
+    diamble: "No: cargás bloques de 15 min a 8 hs",
+    toggl: "Sí, con cronómetro y detección de actividad",
+    wins: false,
+  },
+];
+
+const STEPS = [
+  {
+    title: "Creá tus clientes",
+    description:
+      "Cargá cada cliente con su tarifa por hora, su moneda y un color para identificarlo de un vistazo.",
+  },
+  {
+    title: "Trackeá tu semana",
+    description:
+      "Registrá tus horas por día en bloques de 15 minutos, con descripción y cliente, desde la vista semanal.",
+  },
+  {
+    title: "Facturá en un clic",
+    description:
+      "Generá la factura del período con numeración automática, exportala a PDF y compartile a tu cliente el link público con todo el detalle.",
+  },
+];
+
+const FAQS = [
+  {
+    q: "¿Hay una alternativa gratis a Toggl Track?",
+    a: "Sí. Diamble Jambe es una alternativa gratuita y en español a Toggl Track, pensada para freelancers. Incluye desde el inicio lo que en Toggl requiere el plan Starter (~USD 10/usuario/mes): tarifas por cliente, montos facturables y generación de facturas. Empezá gratis hoy, sin tarjeta.",
+  },
+  {
+    q: "¿Cómo llevo el control de horas como freelancer?",
+    a: "La clave es registrar las horas el mismo día, asociadas a un cliente y con una descripción corta de la tarea. En Diamble Jambe lo hacés en una vista semanal con bloques de 15 minutos a 8 horas, y los reportes te muestran automáticamente cuántas horas y cuánta plata acumulaste por cliente en la semana, el mes o el rango que elijas.",
+  },
+  {
+    q: "¿Puedo facturar en pesos y en dólares a la vez?",
+    a: "Sí. Cada cliente tiene su propia tarifa y su propia moneda: podés cobrarle en ARS a un cliente local y en USD a uno del exterior, sin conversiones manuales. Hay 9 monedas disponibles: ARS, USD, EUR, UYU, BRL, CLP, COP, MXN y GBP.",
+  },
+  {
+    q: "¿Mi cliente puede ver las horas que le facturo?",
+    a: "Sí, y sin crear cuenta. Cada factura genera un link público con el detalle completo de horas, descripciones y montos. Se lo mandás y tu cliente verifica todo por su cuenta: menos discusiones, más confianza, trazabilidad total.",
+  },
+  {
+    q: "¿Cómo genero la factura desde mis horas trackeadas?",
+    a: "Elegís el cliente y el período, y Diamble Jambe arma la factura automáticamente con todas las horas registradas, la tarifa del cliente y la numeración correlativa. Después la gestionás por estados (borrador, enviada, pagada) y la exportás a PDF para imprimir o enviar.",
+  },
+  {
+    q: "¿Diamble Jambe sirve para equipos o empresas?",
+    a: "No es el foco. Diamble Jambe está diseñada para freelancers y consultores independientes que facturan por hora a varios clientes. Si necesitás gestión de equipos, permisos y nómina, una herramienta enterprise te va a servir mejor; si trabajás por tu cuenta, acá no pagás por funciones que no usás.",
+  },
+];
+
+const JSON_LD = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      name: SITE_NAME,
+      url: SITE_URL,
+      description: SITE_DESCRIPTION,
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      inLanguage: "es",
+      offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+      audience: { "@type": "Audience", audienceType: "Freelancers y consultores independientes" },
+    },
+    {
+      "@type": "FAQPage",
+      mainEntity: FAQS.map((faq) => ({
+        "@type": "Question",
+        name: faq.q,
+        acceptedAnswer: { "@type": "Answer", text: faq.a },
+      })),
+    },
+  ],
+};
+
+export default function LandingPage() {
   return (
-    <AppShell>
-      <Tracker />
-    </AppShell>
-  );
-}
+    <div className="bg-white text-slate-900">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
+      />
 
-function Tracker() {
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
-  const [clients, setClients] = useState<Client[]>([]);
-  const [entries, setEntries] = useState<TimeEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState<TimeEntry | null>(null);
-
-  // New entry form
-  const [description, setDescription] = useState("");
-  const [clientId, setClientId] = useState("");
-  const [date, setDate] = useState(toISODate(new Date()));
-  const [duration, setDuration] = useState(60);
-  const [saving, setSaving] = useState(false);
-
-  const weekDays = useMemo(
-    () => Array.from({ length: 7 }, (_, i) => toISODate(addDays(weekStart, i))),
-    [weekStart]
-  );
-
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    const from = toISODate(weekStart);
-    const to = toISODate(addDays(weekStart, 6));
-    const [clientsRes, entriesRes] = await Promise.all([
-      supabase.from("clients").select("*").order("name"),
-      supabase
-        .from("time_entries")
-        .select("*")
-        .gte("entry_date", from)
-        .lte("entry_date", to)
-        .order("created_at", { ascending: false }),
-    ]);
-    if (clientsRes.error || entriesRes.error) {
-      setError(clientsRes.error?.message ?? entriesRes.error?.message ?? null);
-    } else {
-      setClients(clientsRes.data);
-      setEntries(entriesRes.data);
-      setError(null);
-    }
-    setLoading(false);
-  }, [weekStart]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  const activeClients = clients.filter((c) => !c.archived);
-  const clientById = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
-  const weekTotal = entries.reduce((sum, e) => sum + e.duration_minutes, 0);
-
-  async function handleAdd(e: React.FormEvent) {
-    e.preventDefault();
-    if (!clientId) return;
-    setSaving(true);
-    const { error: err } = await supabase.from("time_entries").insert({
-      client_id: clientId,
-      entry_date: date,
-      duration_minutes: duration,
-      description,
-    });
-    setSaving(false);
-    if (err) {
-      setError(err.message);
-      return;
-    }
-    setDescription("");
-    loadData();
-  }
-
-  async function handleDelete(entry: TimeEntry) {
-    if (entry.invoice_id) {
-      alert("Esta entrada ya está facturada y no puede eliminarse.");
-      return;
-    }
-    if (!confirm("¿Eliminar esta entrada?")) return;
-    const { error: err } = await supabase.from("time_entries").delete().eq("id", entry.id);
-    if (err) setError(err.message);
-    else loadData();
-  }
-
-  const today = toISODate(new Date());
-  const isViewingToday = date === today && weekDays.includes(today);
-
-  function goToToday() {
-    setWeekStart(startOfWeek(new Date()));
-    setDate(today);
-  }
-
-  function shiftWeek(delta: number) {
-    setWeekStart(addDays(weekStart, delta * 7));
-    setDate(toISODate(addDays(parseISODate(date), delta * 7)));
-  }
-
-  return (
-    <div className="mx-auto max-w-4xl">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Tracker</h1>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => shiftWeek(-1)}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-100"
-            title="Semana anterior"
-          >
-            ‹
-          </button>
-          <span className="min-w-44 text-center text-sm font-medium text-slate-700">
-            {formatShortDate(weekDays[0])} – {formatShortDate(weekDays[6])}
-          </span>
-          <button
-            onClick={() => shiftWeek(1)}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-100"
-            title="Semana siguiente"
-          >
-            ›
-          </button>
-          <button
-            onClick={goToToday}
-            disabled={isViewingToday}
-            className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-100 disabled:opacity-40"
-            title="Ir a hoy"
-          >
-            Ir a hoy
-          </button>
-          <span className="ml-3 text-sm text-slate-500">
-            Total semana: <strong className="text-slate-900">{formatDuration(weekTotal)}</strong>
-          </span>
-        </div>
-      </div>
-
-      <div className="mb-6 grid grid-cols-7 gap-2">
-        {weekDays.map((day) => {
-          const d = parseISODate(day);
-          const dayTotal = entries
-            .filter((e) => e.entry_date === day)
-            .reduce((s, e) => s + e.duration_minutes, 0);
-          const selected = date === day;
-          const isToday = day === today;
-          return (
-            <button
-              key={day}
-              onClick={() => setDate(day)}
-              className={`flex flex-col items-center rounded-xl border px-2 py-2 transition ${
-                selected
-                  ? "border-indigo-600 bg-indigo-600 text-white shadow-sm"
-                  : "border-slate-200 bg-white hover:border-indigo-300"
-              }`}
-              title={`Seleccionar ${formatDayLabel(day)} para cargar horas`}
+      {/* Navbar */}
+      <header className="sticky top-0 z-40 border-b border-slate-100 bg-white/80 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+          <Link href="/" className="flex items-center gap-2">
+            <FlameLogo size={30} />
+            <span className="text-lg font-semibold tracking-tight">Diamble Jambe</span>
+          </Link>
+          <nav className="hidden items-center gap-6 text-sm text-slate-600 md:flex">
+            <a href="#funcionalidades" className="hover:text-slate-900">
+              Funcionalidades
+            </a>
+            <a href="#vs-toggl" className="hover:text-slate-900">
+              vs Toggl Track
+            </a>
+            <a href="#faq" className="hover:text-slate-900">
+              Preguntas
+            </a>
+          </nav>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/login"
+              className="hidden text-sm font-medium text-slate-600 hover:text-slate-900 sm:block"
             >
-              <span
-                className={`text-[11px] font-medium uppercase ${
-                  selected ? "text-indigo-100" : isToday ? "text-indigo-600" : "text-slate-400"
-                }`}
-              >
-                {DAY_ABBREV[d.getDay()]}
-                {isToday ? " · hoy" : ""}
-              </span>
-              <span className="text-base font-semibold">{d.getDate()}</span>
-              <span
-                className={`font-mono text-[11px] ${
-                  selected ? "text-indigo-100" : "text-slate-500"
-                }`}
-              >
-                {dayTotal > 0 ? formatDuration(dayTotal) : "—"}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      {error && (
-        <p className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>
-      )}
-
-      <form
-        onSubmit={handleAdd}
-        className="mb-8 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-      >
-        <div className="min-w-48 flex-1">
-          <label className="mb-1 block text-xs font-medium text-slate-500">
-            ¿En qué trabajaste?
-          </label>
-          <input
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Descripción de la tarea"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-          />
+              Iniciar sesión
+            </Link>
+            <Link
+              href="/login"
+              className="rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:from-amber-600 hover:to-orange-700"
+            >
+              Empezá gratis
+            </Link>
+          </div>
         </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-500">Cliente</label>
-          <select
-            required
-            value={clientId}
-            onChange={(e) => setClientId(e.target.value)}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-          >
-            <option value="">Elegir…</option>
-            {activeClients.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-500">Fecha</label>
-          <input
-            type="date"
-            required
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-500">Duración</label>
-          <select
-            value={duration}
-            onChange={(e) => setDuration(Number(e.target.value))}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-          >
-            {DURATION_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <button
-          type="submit"
-          disabled={saving || !clientId}
-          className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-        >
-          Agregar
-        </button>
-      </form>
+      </header>
 
-      {activeClients.length === 0 && !loading && (
-        <p className="mb-6 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Todavía no tenés clientes. Creá uno en la sección{" "}
-          <a href="/clients" className="font-medium underline">
-            Clientes
-          </a>{" "}
-          para empezar a trackear.
-        </p>
-      )}
-
-      {loading ? (
-        <p className="text-sm text-slate-400">Cargando…</p>
-      ) : (
-        <div className="space-y-6">
-          {weekDays.map((day) => {
-            const dayEntries = entries.filter((e) => e.entry_date === day);
-            if (dayEntries.length === 0) return null;
-            const dayTotal = dayEntries.reduce((s, e) => s + e.duration_minutes, 0);
-            return (
-              <section key={day}>
-                <div className="mb-2 flex items-center justify-between px-1">
-                  <h2 className="text-sm font-semibold text-slate-700">{formatDayLabel(day)}</h2>
-                  <span className="text-sm text-slate-500">{formatDuration(dayTotal)}</span>
-                </div>
-                <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white shadow-sm">
-                  {dayEntries.map((entry) => {
-                    const client = clientById.get(entry.client_id);
-                    return (
-                      <div key={entry.id} className="flex items-center gap-3 px-4 py-3">
-                        <span
-                          className="h-2.5 w-2.5 shrink-0 rounded-full"
-                          style={{ backgroundColor: client?.color ?? "#94a3b8" }}
-                        />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm">
-                            {entry.description || (
-                              <span className="italic text-slate-400">Sin descripción</span>
-                            )}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            {client?.name ?? "Cliente eliminado"}
-                            {entry.invoice_id && (
-                              <span className="ml-2 rounded bg-emerald-50 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700">
-                                Facturada
-                              </span>
-                            )}
-                          </p>
-                        </div>
-                        <span className="font-mono text-sm font-medium">
-                          {formatDuration(entry.duration_minutes)}
-                        </span>
-                        <button
-                          onClick={() => setEditing(entry)}
-                          disabled={!!entry.invoice_id}
-                          className="text-sm text-slate-400 hover:text-indigo-600 disabled:opacity-30"
-                          title={entry.invoice_id ? "Entrada facturada" : "Editar"}
-                        >
-                          ✎
-                        </button>
-                        <button
-                          onClick={() => handleDelete(entry)}
-                          disabled={!!entry.invoice_id}
-                          className="text-sm text-slate-400 hover:text-red-600 disabled:opacity-30"
-                          title={entry.invoice_id ? "Entrada facturada" : "Eliminar"}
-                        >
-                          🗑
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-            );
-          })}
-          {entries.length === 0 && (
-            <p className="py-12 text-center text-sm text-slate-400">
-              No hay entradas esta semana.
-            </p>
-          )}
-        </div>
-      )}
-
-      {editing && (
-        <EditEntryModal
-          entry={editing}
-          clients={activeClients}
-          onClose={() => setEditing(null)}
-          onSaved={() => {
-            setEditing(null);
-            loadData();
-          }}
+      {/* Hero */}
+      <section className="relative overflow-hidden">
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-96 bg-gradient-to-b from-amber-50 via-orange-50/40 to-transparent"
+          aria-hidden
         />
-      )}
-    </div>
-  );
-}
+        <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 pb-20 pt-16 lg:grid-cols-2">
+          <div>
+            <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-medium text-orange-700">
+              <span aria-hidden>🔥</span> Hecha para freelancers de Latinoamérica
+            </p>
+            <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
+              Control de horas y facturación para freelancers,{" "}
+              <span className="bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent">
+                en español
+              </span>
+            </h1>
+            <p className="mt-5 max-w-xl text-lg text-slate-600">
+              Trackeá tu semana en bloques de 15 minutos, asignale a cada cliente su tarifa en su
+              moneda (ARS, USD, EUR y 6 más) y generá la factura en PDF en un clic. Lo que Toggl
+              Track cobra USD 10 por mes, acá lo empezás gratis.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-4">
+              <Link
+                href="/login"
+                className="rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-6 py-3 text-base font-semibold text-white shadow-md hover:from-amber-600 hover:to-orange-700"
+              >
+                Empezá gratis hoy
+              </Link>
+              <a
+                href="#como-funciona"
+                className="rounded-xl border border-slate-300 px-6 py-3 text-base font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Ver cómo funciona
+              </a>
+            </div>
+            <p className="mt-4 text-sm text-slate-500">Sin tarjeta de crédito. Sin instalación.</p>
+          </div>
 
-function EditEntryModal({
-  entry,
-  clients,
-  onClose,
-  onSaved,
-}: {
-  entry: TimeEntry;
-  clients: Client[];
-  onClose: () => void;
-  onSaved: () => void;
-}) {
-  const [description, setDescription] = useState(entry.description);
-  const [clientId, setClientId] = useState(entry.client_id);
-  const [date, setDate] = useState(entry.entry_date);
-  const [duration, setDuration] = useState(entry.duration_minutes);
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    const { error: err } = await supabase
-      .from("time_entries")
-      .update({
-        description,
-        client_id: clientId,
-        entry_date: date,
-        duration_minutes: duration,
-      })
-      .eq("id", entry.id);
-    setSaving(false);
-    if (err) setError(err.message);
-    else onSaved();
-  }
-
-  return (
-    <Modal title="Editar entrada" onClose={onClose}>
-      <form onSubmit={handleSave} className="space-y-3">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-500">Descripción</label>
-          <input
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-500">Cliente</label>
-          <select
-            value={clientId}
-            onChange={(e) => setClientId(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-          >
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex gap-3">
-          <div className="flex-1">
-            <label className="mb-1 block text-xs font-medium text-slate-500">Fecha</label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+          {/* Mock del producto */}
+          <div className="relative" aria-hidden>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
+              <div className="mb-4 flex items-center justify-between">
+                <span className="text-sm font-semibold">Tracker</span>
+                <span className="text-xs text-slate-500">
+                  Total semana: <strong className="text-slate-900">23:45</strong>
+                </span>
+              </div>
+              <div className="mb-4 grid grid-cols-7 gap-1.5">
+                {[
+                  ["Lun", "6:15", false],
+                  ["Mar", "4:30", false],
+                  ["Mié", "5:00", true],
+                  ["Jue", "3:45", false],
+                  ["Vie", "4:15", false],
+                  ["Sáb", "—", false],
+                  ["Dom", "—", false],
+                ].map(([day, total, selected]) => (
+                  <div
+                    key={day as string}
+                    className={`flex flex-col items-center rounded-lg border px-1 py-1.5 text-[10px] ${
+                      selected
+                        ? "border-orange-500 bg-gradient-to-b from-amber-500 to-orange-600 text-white"
+                        : "border-slate-200 text-slate-500"
+                    }`}
+                  >
+                    <span className="font-medium uppercase">{day}</span>
+                    <span className="font-mono">{total}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-2">
+                {[
+                  ["#f59e0b", "Auditoría de producto", "Estudio Galley", "2:30"],
+                  ["#6366f1", "Discovery + roadmap Q3", "Baratie Labs", "1:45"],
+                  ["#10b981", "Sesión de mentoría", "All Blue Ventures", "0:45"],
+                ].map(([color, task, client, duration]) => (
+                  <div
+                    key={task as string}
+                    className="flex items-center gap-2.5 rounded-lg border border-slate-100 px-3 py-2"
+                  >
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: color as string }}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-medium">{task}</p>
+                      <p className="text-[10px] text-slate-500">{client}</p>
+                    </div>
+                    <span className="font-mono text-xs font-semibold">{duration}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 flex items-center justify-between rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 px-3 py-2.5">
+                <span className="text-xs font-medium text-orange-800">
+                  Factura INV-0007 · Estudio Galley
+                </span>
+                <span className="rounded bg-white px-2 py-0.5 text-[10px] font-semibold text-orange-700 shadow-sm">
+                  PDF + link público
+                </span>
+              </div>
+            </div>
+            <div
+              className="absolute -bottom-6 -right-6 -z-10 h-40 w-40 rounded-full bg-gradient-to-br from-amber-300/40 to-orange-400/40 blur-2xl"
+              aria-hidden
             />
           </div>
-          <div className="flex-1">
-            <label className="mb-1 block text-xs font-medium text-slate-500">Duración</label>
-            <select
-              value={duration}
-              onChange={(e) => setDuration(Number(e.target.value))}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+        </div>
+      </section>
+
+      {/* Propuesta de valor */}
+      <section className="border-y border-slate-100 bg-slate-50">
+        <div className="mx-auto max-w-4xl px-4 py-16 text-center">
+          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            De las horas trabajadas a la factura enviada, sin pasos intermedios.
+          </h2>
+          <p className="mx-auto mt-4 max-w-3xl text-slate-600">
+            Diamble Jambe convierte tu semana de trabajo en facturas listas para enviar: trackeás
+            tus horas por cliente, cada uno con su tarifa y su moneda, y la factura se genera sola
+            con el detalle completo. Tu cliente la ve desde un link público, sin crear cuenta ni
+            pedirte explicaciones. En español, gratis, y sin las funciones enterprise que nunca vas
+            a usar.
+          </p>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section id="funcionalidades" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-20">
+        <h2 className="text-center text-2xl font-bold tracking-tight sm:text-3xl">
+          Todo lo que necesitás para cobrar tus horas
+        </h2>
+        <p className="mx-auto mt-3 max-w-2xl text-center text-slate-600">
+          Ni más, ni menos: las funcionalidades que un freelancer usa todos los días.
+        </p>
+        <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {FEATURES.map((feature) => (
+            <div
+              key={feature.title}
+              className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:shadow-md"
             >
-              {DURATION_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+              <span className="text-3xl" aria-hidden>
+                {feature.icon}
+              </span>
+              <h3 className="mt-3 text-base font-semibold">{feature.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">{feature.description}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Cómo funciona */}
+      <section id="como-funciona" className="scroll-mt-20 border-y border-slate-100 bg-slate-50">
+        <div className="mx-auto max-w-6xl px-4 py-20">
+          <h2 className="text-center text-2xl font-bold tracking-tight sm:text-3xl">
+            Cómo funciona
+          </h2>
+          <div className="mt-12 grid gap-8 md:grid-cols-3">
+            {STEPS.map((step, i) => (
+              <div key={step.title} className="relative">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-orange-600 text-base font-bold text-white">
+                  {i + 1}
+                </span>
+                <h3 className="mt-4 text-lg font-semibold">{step.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">{step.description}</p>
+              </div>
+            ))}
           </div>
         </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <div className="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-          >
-            Guardar
-          </button>
+      </section>
+
+      {/* vs Toggl Track */}
+      <section id="vs-toggl" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-20">
+        <h2 className="text-center text-2xl font-bold tracking-tight sm:text-3xl">
+          Diamble Jambe vs. Toggl Track
+        </h2>
+        <p className="mx-auto mt-3 max-w-3xl text-center text-slate-600">
+          Toggl Track es una gran herramienta, pero está pensada (y cobrada) para equipos. Si sos
+          freelancer y lo que necesitás es trackear, reportar y facturar, esta es la comparación
+          honesta:
+        </p>
+        <div className="mt-10 overflow-x-auto rounded-2xl border border-slate-200 shadow-sm">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                <th className="px-5 py-4">Criterio</th>
+                <th className="px-5 py-4">
+                  <span className="flex items-center gap-1.5 text-orange-600">
+                    <FlameLogo size={16} /> Diamble Jambe
+                  </span>
+                </th>
+                <th className="px-5 py-4">Toggl Track</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 bg-white">
+              {COMPARISON.map((row) => (
+                <tr key={row.criterio}>
+                  <td className="px-5 py-4 font-medium">{row.criterio}</td>
+                  <td className={`px-5 py-4 ${row.wins ? "font-medium text-emerald-700" : "text-slate-500"}`}>
+                    {row.diamble}
+                  </td>
+                  <td className="px-5 py-4 text-slate-500">{row.toggl}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </form>
-    </Modal>
+        <p className="mx-auto mt-6 max-w-3xl text-center text-sm italic text-slate-500">
+          Resumen honesto: si necesitás cronómetro corriendo en segundo plano y app nativa, Toggl
+          gana. Si necesitás pasar de horas a factura cobrable, en tu idioma y sin pagar USD 120 al
+          año, Diamble Jambe es para vos.
+        </p>
+      </section>
+
+      {/* FAQ */}
+      <section id="faq" className="scroll-mt-20 border-y border-slate-100 bg-slate-50">
+        <div className="mx-auto max-w-3xl px-4 py-20">
+          <h2 className="text-center text-2xl font-bold tracking-tight sm:text-3xl">
+            Preguntas frecuentes
+          </h2>
+          <div className="mt-10 space-y-3">
+            {FAQS.map((faq) => (
+              <details
+                key={faq.q}
+                className="group rounded-xl border border-slate-200 bg-white px-5 py-4"
+              >
+                <summary className="cursor-pointer list-none text-sm font-semibold [&::-webkit-details-marker]:hidden">
+                  <span className="flex items-center justify-between gap-3">
+                    {faq.q}
+                    <span className="text-slate-400 transition group-open:rotate-45" aria-hidden>
+                      +
+                    </span>
+                  </span>
+                </summary>
+                <p className="mt-3 text-sm leading-relaxed text-slate-600">{faq.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA final */}
+      <section className="mx-auto max-w-4xl px-4 py-20 text-center">
+        <FlameLogo size={48} />
+        <h2 className="mt-5 text-2xl font-bold tracking-tight sm:text-3xl">
+          Tu próxima factura empieza con la próxima hora trackeada
+        </h2>
+        <p className="mx-auto mt-3 max-w-xl text-slate-600">
+          Creá tu cuenta, cargá tu primer cliente y empezá a trackear en menos de dos minutos.
+        </p>
+        <Link
+          href="/login"
+          className="mt-8 inline-block rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-8 py-3.5 text-base font-semibold text-white shadow-md hover:from-amber-600 hover:to-orange-700"
+        >
+          Empezá gratis hoy
+        </Link>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-slate-100">
+        <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-4 py-10 text-center">
+          <div className="flex items-center gap-2">
+            <FlameLogo size={22} />
+            <span className="font-semibold">Diamble Jambe</span>
+          </div>
+          <p className="text-sm text-slate-500">
+            Inspirada en la pierna en llamas de cierto cocinero pirata: que cada hora tuya pegue
+            fuerte. 🔥
+          </p>
+          <nav className="flex gap-5 text-sm text-slate-500">
+            <a href="#funcionalidades" className="hover:text-slate-900">
+              Funcionalidades
+            </a>
+            <a href="#vs-toggl" className="hover:text-slate-900">
+              vs Toggl Track
+            </a>
+            <a href="#faq" className="hover:text-slate-900">
+              Preguntas
+            </a>
+            <Link href="/login" className="hover:text-slate-900">
+              Iniciar sesión
+            </Link>
+          </nav>
+          <p className="text-xs text-slate-400">
+            © {new Date().getFullYear()} Diamble Jambe — Control de horas y facturación para
+            freelancers.
+          </p>
+        </div>
+      </footer>
+    </div>
   );
 }
