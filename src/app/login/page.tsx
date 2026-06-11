@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import FlameLogo from "@/components/FlameLogo";
 
 export default function LoginPage() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
@@ -22,12 +24,12 @@ export default function LoginPage() {
       if (mode === "signin") {
         const { error: err } = await supabase.auth.signInWithPassword({ email, password });
         if (err) throw err;
-        router.replace("/");
+        router.replace("/tracker");
       } else {
         const { data, error: err } = await supabase.auth.signUp({ email, password });
         if (err) throw err;
         if (data.session) {
-          router.replace("/");
+          router.replace("/tracker");
         } else {
           setInfo("Revisá tu email para confirmar la cuenta y luego iniciá sesión.");
         }
@@ -42,12 +44,10 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
       <div className="w-full max-w-sm">
-        <div className="mb-8 flex items-center justify-center gap-2">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-xl font-bold text-white">
-            D
-          </span>
-          <span className="text-2xl font-semibold tracking-tight">Diamble</span>
-        </div>
+        <Link href="/" className="mb-8 flex items-center justify-center gap-2">
+          <FlameLogo size={40} />
+          <span className="text-2xl font-semibold tracking-tight">Diamble Jambe</span>
+        </Link>
         <form onSubmit={handleSubmit} className="rounded-xl bg-white p-6 shadow-sm">
           <h1 className="mb-4 text-lg font-semibold">
             {mode === "signin" ? "Iniciar sesión" : "Crear cuenta"}
