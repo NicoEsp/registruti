@@ -30,6 +30,7 @@ export function parseISODate(s: string): Date {
 }
 
 const DAY_NAMES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+export const DAY_ABBREV = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 const MONTH_NAMES = [
   "enero",
   "febrero",

@@ -6,10 +6,13 @@ import Modal from "@/components/Modal";
 import { supabase } from "@/lib/supabase";
 import type { Client, TimeEntry } from "@/lib/types";
 import {
+  DAY_ABBREV,
   DURATION_OPTIONS,
   addDays,
   formatDayLabel,
   formatDuration,
+  formatShortDate,
+  parseISODate,
   startOfWeek,
   toISODate,
 } from "@/lib/format";
@@ -103,36 +106,93 @@ function Tracker() {
     else loadData();
   }
 
-  const isCurrentWeek = toISODate(startOfWeek(new Date())) === toISODate(weekStart);
+  const today = toISODate(new Date());
+  const isViewingToday = date === today && weekDays.includes(today);
+
+  function goToToday() {
+    setWeekStart(startOfWeek(new Date()));
+    setDate(today);
+  }
+
+  function shiftWeek(delta: number) {
+    setWeekStart(addDays(weekStart, delta * 7));
+    setDate(toISODate(addDays(parseISODate(date), delta * 7)));
+  }
 
   return (
     <div className="mx-auto max-w-4xl">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">Tracker</h1>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setWeekStart(addDays(weekStart, -7))}
+            onClick={() => shiftWeek(-1)}
             className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-100"
+            title="Semana anterior"
           >
             ‹
           </button>
+          <span className="min-w-44 text-center text-sm font-medium text-slate-700">
+            {formatShortDate(weekDays[0])} – {formatShortDate(weekDays[6])}
+          </span>
           <button
-            onClick={() => setWeekStart(startOfWeek(new Date()))}
-            disabled={isCurrentWeek}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-100 disabled:opacity-40"
-          >
-            Hoy
-          </button>
-          <button
-            onClick={() => setWeekStart(addDays(weekStart, 7))}
+            onClick={() => shiftWeek(1)}
             className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-100"
+            title="Semana siguiente"
           >
             ›
+          </button>
+          <button
+            onClick={goToToday}
+            disabled={isViewingToday}
+            className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-100 disabled:opacity-40"
+            title="Ir a hoy"
+          >
+            Ir a hoy
           </button>
           <span className="ml-3 text-sm text-slate-500">
             Total semana: <strong className="text-slate-900">{formatDuration(weekTotal)}</strong>
           </span>
         </div>
+      </div>
+
+      <div className="mb-6 grid grid-cols-7 gap-2">
+        {weekDays.map((day) => {
+          const d = parseISODate(day);
+          const dayTotal = entries
+            .filter((e) => e.entry_date === day)
+            .reduce((s, e) => s + e.duration_minutes, 0);
+          const selected = date === day;
+          const isToday = day === today;
+          return (
+            <button
+              key={day}
+              onClick={() => setDate(day)}
+              className={`flex flex-col items-center rounded-xl border px-2 py-2 transition ${
+                selected
+                  ? "border-indigo-600 bg-indigo-600 text-white shadow-sm"
+                  : "border-slate-200 bg-white hover:border-indigo-300"
+              }`}
+              title={`Seleccionar ${formatDayLabel(day)} para cargar horas`}
+            >
+              <span
+                className={`text-[11px] font-medium uppercase ${
+                  selected ? "text-indigo-100" : isToday ? "text-indigo-600" : "text-slate-400"
+                }`}
+              >
+                {DAY_ABBREV[d.getDay()]}
+                {isToday ? " · hoy" : ""}
+              </span>
+              <span className="text-base font-semibold">{d.getDate()}</span>
+              <span
+                className={`font-mono text-[11px] ${
+                  selected ? "text-indigo-100" : "text-slate-500"
+                }`}
+              >
+                {dayTotal > 0 ? formatDuration(dayTotal) : "—"}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {error && (

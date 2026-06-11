@@ -5,6 +5,7 @@ import AppShell from "@/components/AppShell";
 import { supabase } from "@/lib/supabase";
 import type { Client, TimeEntry } from "@/lib/types";
 import {
+  DAY_ABBREV,
   addDays,
   formatDuration,
   formatMoney,
@@ -94,14 +95,20 @@ function Reports() {
       map.set(e.client_id, agg);
     }
     return [...map.entries()]
-      .map(([clientId, agg]) => ({ client: clientById.get(clientId), ...agg }))
+      .map(([clientId, agg]) => ({ clientId, client: clientById.get(clientId), ...agg }))
       .sort((a, b) => b.minutes - a.minutes);
   }, [entries, clientById]);
 
-  const byDay = useMemo(() => {
-    const map = new Map<string, number>();
+  // clientId -> day -> minutes
+  const byClientDay = useMemo(() => {
+    const map = new Map<string, Map<string, number>>();
     for (const e of entries) {
-      map.set(e.entry_date, (map.get(e.entry_date) ?? 0) + e.duration_minutes);
+      let inner = map.get(e.client_id);
+      if (!inner) {
+        inner = new Map();
+        map.set(e.client_id, inner);
+      }
+      inner.set(e.entry_date, (inner.get(e.entry_date) ?? 0) + e.duration_minutes);
     }
     return map;
   }, [entries]);
@@ -119,11 +126,34 @@ function Reports() {
     return result;
   }, [range]);
 
+  // Days grouped by calendar week (Monday-based), preserving order.
+  const weeks = useMemo(() => {
+    const result: { weekStart: string; days: string[] }[] = [];
+    for (const day of days) {
+      const ws = toISODate(startOfWeek(parseISODate(day)));
+      const last = result[result.length - 1];
+      if (last && last.weekStart === ws) last.days.push(day);
+      else result.push({ weekStart: ws, days: [day] });
+    }
+    return result;
+  }, [days]);
+
+  const dayTotals = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const e of entries) {
+      map.set(e.entry_date, (map.get(e.entry_date) ?? 0) + e.duration_minutes);
+    }
+    return map;
+  }, [entries]);
+
   const totalMinutes = entries.reduce((s, e) => s + e.duration_minutes, 0);
-  const maxDay = Math.max(1, ...days.map((d) => byDay.get(d) ?? 0));
+  const maxDay = Math.max(1, ...days.map((d) => dayTotals.get(d) ?? 0));
+
+  const clientWeekTotal = (clientId: string, weekDays: string[]) =>
+    weekDays.reduce((s, d) => s + (byClientDay.get(clientId)?.get(d) ?? 0), 0);
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-5xl">
       <h1 className="mb-6 text-2xl font-semibold tracking-tight">Reportes</h1>
 
       <div className="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -216,20 +246,130 @@ function Reports() {
               </p>
               <div className="flex h-32 items-end gap-px">
                 {days.map((day) => {
-                  const minutes = byDay.get(day) ?? 0;
+                  const dayMinutes = dayTotals.get(day) ?? 0;
                   return (
                     <div
                       key={day}
-                      className="group relative flex-1 rounded-t bg-indigo-500/80 transition hover:bg-indigo-600"
-                      style={{ height: `${(minutes / maxDay) * 100}%`, minHeight: minutes > 0 ? 3 : 0 }}
-                      title={`${formatShortDate(day)}: ${formatDuration(minutes)}`}
-                    />
+                      className="flex h-full flex-1 flex-col-reverse"
+                      title={`${formatShortDate(day)}: ${formatDuration(dayMinutes)}`}
+                    >
+                      {byClient.map(({ clientId, client }) => {
+                        const minutes = byClientDay.get(clientId)?.get(day) ?? 0;
+                        if (minutes === 0) return null;
+                        return (
+                          <div
+                            key={clientId}
+                            className="w-full transition hover:opacity-80"
+                            style={{
+                              height: `${(minutes / maxDay) * 100}%`,
+                              minHeight: 3,
+                              backgroundColor: client?.color ?? "#94a3b8",
+                            }}
+                            title={`${client?.name ?? "Cliente eliminado"} · ${formatShortDate(
+                              day
+                            )}: ${formatDuration(minutes)}`}
+                          />
+                        );
+                      })}
+                    </div>
                   );
                 })}
               </div>
               <div className="mt-1 flex justify-between text-[11px] text-slate-400">
                 <span>{formatShortDate(range.from)}</span>
                 <span>{formatShortDate(range.to)}</span>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+                {byClient.map(({ clientId, client }) => (
+                  <span key={clientId} className="flex items-center gap-1.5 text-xs text-slate-600">
+                    <span
+                      className="h-2.5 w-2.5 rounded-full"
+                      style={{ backgroundColor: client?.color ?? "#94a3b8" }}
+                    />
+                    {client?.name ?? "Cliente eliminado"}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {byClient.length > 0 && days.length <= 70 && (
+            <div className="mb-6 rounded-xl border border-slate-200 bg-white shadow-sm">
+              <p className="px-4 pt-4 text-xs font-medium uppercase tracking-wide text-slate-500">
+                Detalle por cliente, día y semana
+              </p>
+              <div className="overflow-x-auto p-4">
+                <table className="w-full border-collapse text-xs">
+                  <thead>
+                    <tr>
+                      <th className="sticky left-0 z-10 bg-white px-2 py-1.5 text-left font-medium text-slate-500">
+                        Cliente
+                      </th>
+                      {weeks.map((week) => (
+                        <th
+                          key={week.weekStart}
+                          colSpan={week.days.length + 1}
+                          className="border-l border-slate-200 px-2 py-1.5 text-left font-medium text-slate-500"
+                        >
+                          Semana del {formatShortDate(week.days[0]).slice(0, 5)}
+                        </th>
+                      ))}
+                      <th className="border-l border-slate-200 px-2 py-1.5 text-right font-semibold text-slate-700">
+                        Total
+                      </th>
+                    </tr>
+                    <tr className="border-b border-slate-200">
+                      <th className="sticky left-0 z-10 bg-white" />
+                      {weeks.map((week) => (
+                        <WeekDayHeaders key={week.weekStart} days={week.days} />
+                      ))}
+                      <th className="border-l border-slate-200" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {byClient.map(({ clientId, client, minutes }) => (
+                      <tr key={clientId}>
+                        <td className="sticky left-0 z-10 whitespace-nowrap bg-white px-2 py-1.5 font-medium">
+                          <span className="flex items-center gap-1.5">
+                            <span
+                              className="h-2 w-2 shrink-0 rounded-full"
+                              style={{ backgroundColor: client?.color ?? "#94a3b8" }}
+                            />
+                            {client?.name ?? "Cliente eliminado"}
+                          </span>
+                        </td>
+                        {weeks.map((week) => (
+                          <WeekCells
+                            key={week.weekStart}
+                            days={week.days}
+                            minutesForDay={(d) => byClientDay.get(clientId)?.get(d) ?? 0}
+                            weekTotal={clientWeekTotal(clientId, week.days)}
+                          />
+                        ))}
+                        <td className="border-l border-slate-200 px-2 py-1.5 text-right font-mono font-semibold">
+                          {formatDuration(minutes)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t border-slate-200 font-semibold">
+                      <td className="sticky left-0 z-10 bg-white px-2 py-1.5">Total</td>
+                      {weeks.map((week) => (
+                        <WeekCells
+                          key={week.weekStart}
+                          days={week.days}
+                          minutesForDay={(d) => dayTotals.get(d) ?? 0}
+                          weekTotal={week.days.reduce((s, d) => s + (dayTotals.get(d) ?? 0), 0)}
+                          bold
+                        />
+                      ))}
+                      <td className="border-l border-slate-200 px-2 py-1.5 text-right font-mono">
+                        {formatDuration(totalMinutes)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
             </div>
           )}
@@ -245,8 +385,8 @@ function Reports() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {byClient.map(({ client, minutes, billableMinutes }) => (
-                  <tr key={client?.id ?? "unknown"}>
+                {byClient.map(({ clientId, client, minutes, billableMinutes }) => (
+                  <tr key={clientId}>
                     <td className="px-4 py-3">
                       <span className="flex items-center gap-2 font-medium">
                         <span
@@ -278,5 +418,64 @@ function Reports() {
         </>
       )}
     </div>
+  );
+}
+
+function WeekDayHeaders({ days }: { days: string[] }) {
+  return (
+    <>
+      {days.map((day, i) => {
+        const d = parseISODate(day);
+        const weekend = d.getDay() === 0 || d.getDay() === 6;
+        return (
+          <th
+            key={day}
+            className={`px-2 py-1.5 text-right font-normal ${
+              i === 0 ? "border-l border-slate-200" : ""
+            } ${weekend ? "text-slate-300" : "text-slate-400"}`}
+          >
+            {DAY_ABBREV[d.getDay()][0]} {d.getDate()}
+          </th>
+        );
+      })}
+      <th className="px-2 py-1.5 text-right font-medium text-slate-500">Sem.</th>
+    </>
+  );
+}
+
+function WeekCells({
+  days,
+  minutesForDay,
+  weekTotal,
+  bold,
+}: {
+  days: string[];
+  minutesForDay: (day: string) => number;
+  weekTotal: number;
+  bold?: boolean;
+}) {
+  return (
+    <>
+      {days.map((day, i) => {
+        const minutes = minutesForDay(day);
+        return (
+          <td
+            key={day}
+            className={`px-2 py-1.5 text-right font-mono ${
+              i === 0 ? "border-l border-slate-200" : ""
+            } ${minutes === 0 ? "text-slate-300" : ""}`}
+          >
+            {minutes > 0 ? formatDuration(minutes) : "·"}
+          </td>
+        );
+      })}
+      <td
+        className={`bg-slate-50 px-2 py-1.5 text-right font-mono ${
+          bold ? "" : "font-medium"
+        } ${weekTotal === 0 ? "text-slate-300" : ""}`}
+      >
+        {weekTotal > 0 ? formatDuration(weekTotal) : "·"}
+      </td>
+    </>
   );
 }
