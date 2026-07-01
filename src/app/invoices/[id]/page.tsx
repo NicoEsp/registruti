@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import InvoiceDocument from "@/components/InvoiceDocument";
+import { downloadInvoicePdf } from "@/lib/invoicePdf";
 import { supabase } from "@/lib/supabase";
 import type { Client, Invoice, InvoiceStatus, TimeEntry } from "@/lib/types";
 import { STATUS_LABELS, STATUS_STYLES } from "@/lib/invoiceStatus";
@@ -131,10 +132,24 @@ function InvoiceDetail() {
             {copied ? "¡Copiado!" : "Copiar link público"}
           </button>
           <button
-            onClick={() => window.print()}
+            onClick={() =>
+              downloadInvoicePdf({
+                invoice,
+                clientName: client.name,
+                clientContact: client.contact_name,
+                clientEmail: client.email,
+                entries,
+              })
+            }
             className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
           >
-            Imprimir / PDF
+            Descargar PDF
+          </button>
+          <button
+            onClick={() => window.print()}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50"
+          >
+            Imprimir
           </button>
           <button
             onClick={handleDelete}

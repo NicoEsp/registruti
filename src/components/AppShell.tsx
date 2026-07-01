@@ -48,7 +48,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <aside className="no-print fixed inset-y-0 left-0 z-20 flex w-56 flex-col border-r border-slate-200 bg-white">
         <Link href="/" className="flex items-center gap-2 px-5 py-5">
           <FlameLogo size={30} />
-          <span className="text-lg font-semibold tracking-tight">Diamble Jambe</span>
+          <span className="text-lg font-semibold tracking-tight">Registruti</span>
         </Link>
         <nav className="flex-1 space-y-1 px-3">
           {NAV_ITEMS.map((item) => {

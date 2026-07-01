@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "Diamble Jambe — Control de horas y facturación para freelancers";
+export const alt = "Registruti — Control de horas y facturación para freelancers";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -31,7 +31,7 @@ export default function OpengraphImage() {
               fill="#fbbf24"
             />
           </svg>
-          <div style={{ fontSize: 84, fontWeight: 700, letterSpacing: -2 }}>Diamble Jambe</div>
+          <div style={{ fontSize: 84, fontWeight: 700, letterSpacing: -2 }}>Registruti</div>
         </div>
         <div
           style={{
@@ -55,7 +55,7 @@ export default function OpengraphImage() {
             fontWeight: 600,
           }}
         >
-          Empezá gratis hoy → diamble-jamble.vercel.app
+          Empezá gratis hoy → registruti.app
         </div>
       </div>
     ),

@@ -46,7 +46,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <Link href="/" className="mb-8 flex items-center justify-center gap-2">
           <FlameLogo size={40} />
-          <span className="text-2xl font-semibold tracking-tight">Diamble Jambe</span>
+          <span className="text-2xl font-semibold tracking-tight">Registruti</span>
         </Link>
         <form onSubmit={handleSubmit} className="rounded-xl bg-white p-6 shadow-sm">
           <h1 className="mb-4 text-lg font-semibold">
