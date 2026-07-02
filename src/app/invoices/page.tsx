@@ -5,6 +5,7 @@ import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import Modal from "@/components/Modal";
 import { supabase } from "@/lib/supabase";
+import { downloadInvoicePdf } from "@/lib/invoicePdf";
 import type { Client, Invoice, TimeEntry } from "@/lib/types";
 import { formatDuration, formatMoney, formatShortDate, toISODate } from "@/lib/format";
 import { STATUS_LABELS, STATUS_STYLES } from "@/lib/invoiceStatus";
@@ -23,6 +24,7 @@ function Invoices() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
+  const [pdfBusyId, setPdfBusyId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -45,6 +47,39 @@ function Invoices() {
   }, [loadData]);
 
   const clientById = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
+
+  async function handleDownloadPdf(inv: Invoice) {
+    const client = clientById.get(inv.client_id);
+    if (!client) {
+      setError("No se encontró el cliente de la factura.");
+      return;
+    }
+    setPdfBusyId(inv.id);
+    try {
+      const { data: entries, error: err } = await supabase
+        .from("time_entries")
+        .select("*")
+        .eq("invoice_id", inv.id)
+        .order("entry_date");
+      if (err) {
+        setError(err.message);
+        return;
+      }
+      downloadInvoicePdf({
+        invoice: inv,
+        clientName: client.name,
+        clientContact: client.contact_name,
+        clientEmail: client.email,
+        entries: entries ?? [],
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo generar el PDF.");
+    } finally {
+      // Solo limpiamos si sigue siendo esta fila: si el usuario disparó otra
+      // descarga mientras tanto, no le pisamos su estado de carga.
+      setPdfBusyId((cur) => (cur === inv.id ? null : cur));
+    }
+  }
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -79,6 +114,7 @@ function Invoices() {
                 <th className="px-4 py-3">Horas</th>
                 <th className="px-4 py-3 text-right">Total</th>
                 <th className="px-4 py-3">Estado</th>
+                <th className="px-4 py-3 text-right">PDF</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -106,6 +142,15 @@ function Invoices() {
                     >
                       {STATUS_LABELS[inv.status]}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={() => handleDownloadPdf(inv)}
+                      disabled={pdfBusyId === inv.id}
+                      className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium hover:bg-slate-50 disabled:opacity-50"
+                    >
+                      {pdfBusyId === inv.id ? "…" : "Descargar"}
+                    </button>
                   </td>
                 </tr>
               ))}
