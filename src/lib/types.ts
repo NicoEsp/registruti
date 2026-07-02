@@ -23,6 +23,16 @@ export interface TimeEntry {
   created_at: string;
 }
 
+export interface Profile {
+  user_id: string;
+  business_name: string | null;
+  tax_id: string | null;
+  email: string | null;
+  address: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export type InvoiceStatus = "draft" | "sent" | "paid";
 
 export interface Invoice {

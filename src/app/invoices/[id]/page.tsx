@@ -7,6 +7,8 @@ import AppShell from "@/components/AppShell";
 import InvoiceDocument from "@/components/InvoiceDocument";
 import InvoiceActions from "@/components/InvoiceActions";
 import { supabase } from "@/lib/supabase";
+import { fetchIssuer } from "@/lib/profile";
+import type { InvoiceIssuer } from "@/lib/invoicePdf";
 import type { Client, Invoice, InvoiceStatus, TimeEntry } from "@/lib/types";
 import { STATUS_LABELS, STATUS_STYLES } from "@/lib/invoiceStatus";
 
@@ -27,6 +29,7 @@ function InvoiceDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [issuer, setIssuer] = useState<InvoiceIssuer | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -40,13 +43,15 @@ function InvoiceDetail() {
       setLoading(false);
       return;
     }
-    const [clientRes, entriesRes] = await Promise.all([
+    const [clientRes, entriesRes, issuerData] = await Promise.all([
       supabase.from("clients").select("*").eq("id", inv.client_id).single(),
       supabase.from("time_entries").select("*").eq("invoice_id", inv.id).order("entry_date"),
+      fetchIssuer(),
     ]);
     setInvoice(inv);
     setClient(clientRes.data);
     setEntries(entriesRes.data ?? []);
+    setIssuer(issuerData);
     setError(null);
     setLoading(false);
   }, [id]);
@@ -137,6 +142,7 @@ function InvoiceDetail() {
             clientContact={client.contact_name}
             clientEmail={client.email}
             entries={entries}
+            issuer={issuer}
           />
           <button
             onClick={handleDelete}

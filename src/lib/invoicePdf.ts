@@ -14,12 +14,24 @@ declare module "jspdf" {
 
 type EntryRow = Pick<TimeEntry, "entry_date" | "duration_minutes" | "description">;
 
+export interface InvoiceIssuer {
+  businessName?: string | null;
+  taxId?: string | null;
+  email?: string | null;
+  address?: string | null;
+}
+
 export interface InvoicePdfData {
   invoice: Omit<Invoice, "user_id"> | Invoice;
   clientName: string;
   clientContact?: string | null;
   clientEmail?: string | null;
   entries: EntryRow[];
+  issuer?: InvoiceIssuer | null;
+}
+
+function hasIssuerData(issuer?: InvoiceIssuer | null): issuer is InvoiceIssuer {
+  return !!issuer && !!(issuer.businessName || issuer.taxId || issuer.email || issuer.address);
 }
 
 // Paleta inspirada en la factura de referencia: azul oscuro para títulos/total,
@@ -61,6 +73,7 @@ export function buildInvoicePdf({
   clientContact,
   clientEmail,
   entries,
+  issuer,
 }: InvoicePdfData): jsPDF {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -103,30 +116,65 @@ export function buildInvoicePdf({
   }
 
   y += 8;
+  const startY = y;
+  const rightColX = marginX + 95;
 
-  // Facturado a
+  // Columna izquierda: Facturado a (cliente)
+  let leftY = startY;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
   doc.setTextColor(...NAVY);
-  doc.text("Facturado a:", marginX, y);
-  y += 6;
+  doc.text("Facturado a:", marginX, leftY);
+  leftY += 6;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.setTextColor(...INK);
-  doc.text(clientName, marginX, y);
-  y += 5;
+  doc.text(clientName, marginX, leftY);
+  leftY += 5;
   doc.setFontSize(9);
   doc.setTextColor(...MUTED);
   if (clientContact) {
-    doc.text(clientContact, marginX, y);
-    y += 5;
+    doc.text(clientContact, marginX, leftY);
+    leftY += 5;
   }
   if (clientEmail) {
-    doc.text(clientEmail, marginX, y);
-    y += 5;
+    doc.text(clientEmail, marginX, leftY);
+    leftY += 5;
   }
 
-  y += 6;
+  // Columna derecha: De (emisor), si hay datos cargados
+  let rightY = startY;
+  if (hasIssuerData(issuer)) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(...NAVY);
+    doc.text("De:", rightColX, rightY);
+    rightY += 6;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(...INK);
+    if (issuer.businessName) {
+      doc.text(issuer.businessName, rightColX, rightY);
+      rightY += 5;
+    }
+    doc.setFontSize(9);
+    doc.setTextColor(...MUTED);
+    if (issuer.taxId) {
+      doc.text(`CUIT/ID: ${issuer.taxId}`, rightColX, rightY);
+      rightY += 5;
+    }
+    if (issuer.email) {
+      doc.text(issuer.email, rightColX, rightY);
+      rightY += 5;
+    }
+    if (issuer.address) {
+      const addrLines = doc.splitTextToSize(issuer.address, rightX - rightColX);
+      doc.text(addrLines, rightColX, rightY);
+      rightY += addrLines.length * 5;
+    }
+  }
+
+  y = Math.max(leftY, rightY) + 6;
 
   // Tabla: DESCRIPCIÓN · CANTIDAD · IMPORTE
   autoTable(doc, {
