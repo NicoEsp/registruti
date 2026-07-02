@@ -119,7 +119,7 @@ function Invoices() {
                 <th className="px-4 py-3">Horas</th>
                 <th className="px-4 py-3 text-right">Total</th>
                 <th className="px-4 py-3">Estado</th>
-                <th className="px-4 py-3 text-right">PDF</th>
+                <th className="px-4 py-3 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -148,14 +148,22 @@ function Invoices() {
                       {STATUS_LABELS[inv.status]}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => handleDownloadPdf(inv)}
-                      disabled={pdfBusyId === inv.id}
-                      className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium hover:bg-slate-50 disabled:opacity-50"
-                    >
-                      {pdfBusyId === inv.id ? "…" : "Descargar"}
-                    </button>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end gap-2">
+                      <Link
+                        href={`/invoices/${inv.id}`}
+                        className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium hover:bg-slate-50"
+                      >
+                        Ver
+                      </Link>
+                      <button
+                        onClick={() => handleDownloadPdf(inv)}
+                        disabled={pdfBusyId === inv.id}
+                        className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium hover:bg-slate-50 disabled:opacity-50"
+                      >
+                        {pdfBusyId === inv.id ? "…" : "Descargar"}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

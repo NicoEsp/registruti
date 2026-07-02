@@ -180,9 +180,10 @@ export function buildInvoicePdf({
   autoTable(doc, {
     startY: y,
     theme: "plain",
-    head: [["DESCRIPCIÓN", "CANTIDAD", "IMPORTE"]],
+    head: [["DESCRIPCIÓN", "FECHA", "HORAS", "IMPORTE"]],
     body: entries.map((e) => [
       e.description || "Trabajo de consultoría",
+      formatDashDate(e.entry_date),
       formatQty(e.duration_minutes),
       formatAmount((e.duration_minutes / 60) * invoice.hourly_rate),
     ]),
@@ -204,8 +205,15 @@ export function buildInvoicePdf({
     },
     columnStyles: {
       0: { cellWidth: "auto" },
-      1: { halign: "right", cellWidth: 30 },
-      2: { halign: "right", cellWidth: 34 },
+      1: { cellWidth: 26 },
+      2: { halign: "right", cellWidth: 20 },
+      3: { halign: "right", cellWidth: 30 },
+    },
+    // Aire a la derecha de la descripción para que no toque la columna Fecha.
+    didParseCell: (data) => {
+      if (data.section === "body" && data.column.index === 0) {
+        data.cell.styles.cellPadding = { top: 4.5, bottom: 4.5, left: 0, right: 6 };
+      }
     },
   });
 
