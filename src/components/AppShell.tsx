@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import FlameLogo from "@/components/FlameLogo";
+import Onboarding from "@/components/Onboarding";
 
 const NAV_ITEMS = [
   { href: "/tracker", label: "Tracker", icon: "⏱" },
@@ -46,7 +47,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
-      <aside className="no-print fixed inset-y-0 left-0 z-20 flex w-56 flex-col border-r border-slate-200 bg-white">
+      {/* Sidebar (desktop) */}
+      <aside className="no-print fixed inset-y-0 left-0 z-20 hidden w-56 flex-col border-r border-slate-200 bg-white md:flex">
         <Link href="/" className="flex items-center gap-2 px-5 py-5">
           <FlameLogo size={30} />
           <span className="text-lg font-semibold tracking-tight">Registruti</span>
@@ -73,17 +75,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="border-t border-slate-200 p-4">
           <p className="mb-2 truncate text-xs text-slate-500">{session.user.email}</p>
           <button
-            onClick={async () => {
-              const password = prompt("Nueva contraseña (mínimo 6 caracteres):");
-              if (!password) return;
-              const { error } = await supabase.auth.updateUser({ password });
-              alert(error ? `Error: ${error.message}` : "Contraseña actualizada.");
-            }}
-            className="mb-1 block text-sm font-medium text-slate-600 hover:text-indigo-600"
-          >
-            Cambiar contraseña
-          </button>
-          <button
             onClick={() => supabase.auth.signOut()}
             className="text-sm font-medium text-slate-600 hover:text-red-600"
           >
@@ -91,9 +82,48 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       </aside>
-      <main className="ml-56 flex-1 px-8 py-8 print:ml-0 print:px-0 print:py-0">
+
+      {/* Top bar (mobile) */}
+      <header className="no-print fixed inset-x-0 top-0 z-20 flex items-center justify-between border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur md:hidden">
+        <Link href="/" className="flex items-center gap-2">
+          <FlameLogo size={26} />
+          <span className="text-base font-semibold tracking-tight">Registruti</span>
+        </Link>
+        <button
+          onClick={() => supabase.auth.signOut()}
+          className="text-sm font-medium text-slate-500 hover:text-red-600"
+        >
+          Salir
+        </button>
+      </header>
+
+      {/* Contenido */}
+      <main className="flex-1 px-4 pb-24 pt-20 md:ml-56 md:px-8 md:py-8 md:pb-8 print:ml-0 print:px-0 print:py-0 print:pb-0 print:pt-0">
         {children}
       </main>
+
+      {/* Bottom nav (mobile) */}
+      <nav className="no-print fixed inset-x-0 bottom-0 z-20 flex border-t border-slate-200 bg-white/95 backdrop-blur md:hidden">
+        {NAV_ITEMS.map((item) => {
+          const active = pathname.startsWith(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition ${
+                active ? "text-indigo-600" : "text-slate-500"
+              }`}
+            >
+              <span className="text-lg" aria-hidden>
+                {item.icon}
+              </span>
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <Onboarding />
     </div>
   );
 }

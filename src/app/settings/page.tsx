@@ -144,6 +144,46 @@ function Settings() {
           </div>
         </form>
       )}
+
+      <AccountSection />
     </div>
+  );
+}
+
+function AccountSection() {
+  const [email, setEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
+  }, []);
+
+  async function changePassword() {
+    const password = prompt("Nueva contraseña (mínimo 6 caracteres):");
+    if (!password) return;
+    const { error } = await supabase.auth.updateUser({ password });
+    alert(error ? `Error: ${error.message}` : "Contraseña actualizada.");
+  }
+
+  return (
+    <section className="mt-8">
+      <h2 className="mb-3 text-sm font-semibold text-slate-700">Cuenta</h2>
+      <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        {email && <p className="truncate text-sm text-slate-500">{email}</p>}
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={changePassword}
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50"
+          >
+            Cambiar contraseña
+          </button>
+          <button
+            onClick={() => supabase.auth.signOut()}
+            className="rounded-lg border border-red-200 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+          >
+            Cerrar sesión
+          </button>
+        </div>
+      </div>
+    </section>
   );
 }
