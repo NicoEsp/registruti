@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import AppShell from "@/components/AppShell";
 import Modal from "@/components/Modal";
 import { supabase } from "@/lib/supabase";
+import { NEW_CLIENT_EVENT } from "@/lib/appEvents";
 import { CLIENT_COLORS, CURRENCIES, type Client } from "@/lib/types";
 import { formatDuration, formatMoney } from "@/lib/format";
 
@@ -47,6 +48,21 @@ function Clients() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Apertura del alta desde la command palette, vía evento o ?nuevo=1.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("nuevo") === "1") {
+      setEditing(null);
+      setShowForm(true);
+      window.history.replaceState(null, "", "/clients");
+    }
+    const onNew = () => {
+      setEditing(null);
+      setShowForm(true);
+    };
+    window.addEventListener(NEW_CLIENT_EVENT, onNew);
+    return () => window.removeEventListener(NEW_CLIENT_EVENT, onNew);
+  }, []);
 
   async function toggleArchived(client: Client) {
     const { error: err } = await supabase

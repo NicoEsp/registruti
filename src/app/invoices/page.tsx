@@ -5,6 +5,7 @@ import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import Modal from "@/components/Modal";
 import { supabase } from "@/lib/supabase";
+import { NEW_INVOICE_EVENT } from "@/lib/appEvents";
 import { downloadInvoicePdf, type InvoiceIssuer } from "@/lib/invoicePdf";
 import { fetchIssuer } from "@/lib/profile";
 import type { Client, Invoice, TimeEntry } from "@/lib/types";
@@ -49,6 +50,17 @@ function Invoices() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Apertura del modal desde el atajo global (F / ⌘K), vía evento o ?nueva=1.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("nueva") === "1") {
+      setShowNew(true);
+      window.history.replaceState(null, "", "/invoices");
+    }
+    const onNew = () => setShowNew(true);
+    window.addEventListener(NEW_INVOICE_EVENT, onNew);
+    return () => window.removeEventListener(NEW_INVOICE_EVENT, onNew);
+  }, []);
 
   const clientById = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
 
