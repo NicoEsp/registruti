@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import FlameLogo from "@/components/FlameLogo";
+import MadeByBadge from "@/components/MadeByBadge";
 import Onboarding from "@/components/Onboarding";
 
 const NAV_ITEMS = [
@@ -73,7 +74,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
         <div className="border-t border-slate-200 p-4">
-          <p className="mb-2 truncate text-xs text-slate-500">{session.user.email}</p>
+          <MadeByBadge variant="sidebar" />
+          <p className="mb-2 mt-3 truncate text-xs text-slate-500">{session.user.email}</p>
           <button
             onClick={() => supabase.auth.signOut()}
             className="text-sm font-medium text-slate-600 hover:text-red-600"
@@ -103,7 +105,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </main>
 
       {/* Bottom nav (mobile) */}
-      <nav className="no-print fixed inset-x-0 bottom-0 z-20 flex border-t border-slate-200 bg-white/95 backdrop-blur md:hidden">
+      <nav className="no-print fixed inset-x-0 bottom-0 z-20 flex border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
         {NAV_ITEMS.map((item) => {
           const active = pathname.startsWith(item.href);
           return (

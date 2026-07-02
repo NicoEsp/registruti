@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import FlameLogo from "@/components/FlameLogo";
+import MadeByBadge from "@/components/MadeByBadge";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -492,6 +493,7 @@ export default function LandingPage() {
               Privacidad
             </Link>
           </nav>
+          <MadeByBadge />
           <p className="text-xs text-slate-400">
             © {new Date().getFullYear()} Registruti — Control de horas y facturación para
             freelancers.
