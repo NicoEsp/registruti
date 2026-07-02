@@ -50,8 +50,8 @@ export default function InvoiceDocument({
       <table className="mb-6 w-full text-sm">
         <thead>
           <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
-            <th className="py-2 pr-3">Fecha</th>
             <th className="py-2 pr-3">Descripción</th>
+            <th className="py-2 pr-3">Fecha</th>
             <th className="py-2 pr-3 text-right">Horas</th>
             <th className="py-2 text-right">Importe</th>
           </tr>
@@ -59,11 +59,11 @@ export default function InvoiceDocument({
         <tbody className="divide-y divide-slate-100">
           {entries.map((entry, i) => (
             <tr key={i}>
-              <td className="py-2 pr-3 whitespace-nowrap text-slate-500">
-                {formatShortDate(entry.entry_date)}
-              </td>
               <td className="py-2 pr-3">
                 {entry.description || <span className="italic text-slate-400">Trabajo de consultoría</span>}
+              </td>
+              <td className="py-2 pr-3 whitespace-nowrap text-slate-500">
+                {formatShortDate(entry.entry_date)}
               </td>
               <td className="py-2 pr-3 text-right font-mono">
                 {formatDuration(entry.duration_minutes)}
