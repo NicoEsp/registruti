@@ -55,23 +55,28 @@ function Invoices() {
       return;
     }
     setPdfBusyId(inv.id);
-    const { data: entries, error: err } = await supabase
-      .from("time_entries")
-      .select("*")
-      .eq("invoice_id", inv.id)
-      .order("entry_date");
-    setPdfBusyId(null);
-    if (err) {
-      setError(err.message);
-      return;
+    try {
+      const { data: entries, error: err } = await supabase
+        .from("time_entries")
+        .select("*")
+        .eq("invoice_id", inv.id)
+        .order("entry_date");
+      if (err) {
+        setError(err.message);
+        return;
+      }
+      downloadInvoicePdf({
+        invoice: inv,
+        clientName: client.name,
+        clientContact: client.contact_name,
+        clientEmail: client.email,
+        entries: entries ?? [],
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo generar el PDF.");
+    } finally {
+      setPdfBusyId(null);
     }
-    downloadInvoicePdf({
-      invoice: inv,
-      clientName: client.name,
-      clientContact: client.contact_name,
-      clientEmail: client.email,
-      entries: entries ?? [],
-    });
   }
 
   return (
