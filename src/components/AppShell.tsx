@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { href: "/clients", label: "Clientes", icon: "👥" },
   { href: "/reports", label: "Reportes", icon: "📊" },
   { href: "/invoices", label: "Facturas", icon: "🧾" },
+  { href: "/settings", label: "Ajustes", icon: "⚙️" },
 ];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {

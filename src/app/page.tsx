@@ -485,6 +485,12 @@ export default function LandingPage() {
             <Link href="/login" className="hover:text-slate-900">
               Iniciar sesión
             </Link>
+            <Link href="/terms" className="hover:text-slate-900">
+              Términos
+            </Link>
+            <Link href="/privacy" className="hover:text-slate-900">
+              Privacidad
+            </Link>
           </nav>
           <p className="text-xs text-slate-400">
             © {new Date().getFullYear()} Registruti — Control de horas y facturación para

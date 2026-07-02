@@ -5,7 +5,8 @@ import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import Modal from "@/components/Modal";
 import { supabase } from "@/lib/supabase";
-import { downloadInvoicePdf } from "@/lib/invoicePdf";
+import { downloadInvoicePdf, type InvoiceIssuer } from "@/lib/invoicePdf";
+import { fetchIssuer } from "@/lib/profile";
 import type { Client, Invoice, TimeEntry } from "@/lib/types";
 import { formatDuration, formatMoney, formatShortDate, toISODate } from "@/lib/format";
 import { STATUS_LABELS, STATUS_STYLES } from "@/lib/invoiceStatus";
@@ -25,18 +26,21 @@ function Invoices() {
   const [error, setError] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [pdfBusyId, setPdfBusyId] = useState<string | null>(null);
+  const [issuer, setIssuer] = useState<InvoiceIssuer | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [invoicesRes, clientsRes] = await Promise.all([
+    const [invoicesRes, clientsRes, issuerData] = await Promise.all([
       supabase.from("invoices").select("*").order("created_at", { ascending: false }),
       supabase.from("clients").select("*").order("name"),
+      fetchIssuer(),
     ]);
     if (invoicesRes.error || clientsRes.error) {
       setError(invoicesRes.error?.message ?? clientsRes.error?.message ?? null);
     } else {
       setInvoices(invoicesRes.data);
       setClients(clientsRes.data);
+      setIssuer(issuerData);
       setError(null);
     }
     setLoading(false);
@@ -71,6 +75,7 @@ function Invoices() {
         clientContact: client.contact_name,
         clientEmail: client.email,
         entries: entries ?? [],
+        issuer,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo generar el PDF.");
@@ -230,7 +235,13 @@ function NewInvoiceModal({
     if (!client || !preview || preview.length === 0) return;
     setBusy(true);
     setError(null);
-    const invoiceNumber = `INV-${(invoiceCount + 1).toString().padStart(4, "0")}`;
+    // Numeración atómica por usuario (evita duplicados). Si la RPC todavía no
+    // fue creada (migración sin aplicar), caemos al conteo local como respaldo.
+    const { data: rpcNumber } = await supabase.rpc("next_invoice_number");
+    const invoiceNumber =
+      typeof rpcNumber === "string"
+        ? rpcNumber
+        : `INV-${(invoiceCount + 1).toString().padStart(4, "0")}`;
     const { data: invoice, error: invErr } = await supabase
       .from("invoices")
       .insert({
