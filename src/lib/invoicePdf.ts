@@ -1,8 +1,8 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { Invoice, TimeEntry } from "@/lib/types";
-import { formatDuration, formatMoney, formatShortDate } from "@/lib/format";
 import { SITE_NAME } from "@/lib/site";
+import { parseISODate } from "@/lib/format";
 
 type EntryRow = Pick<TimeEntry, "entry_date" | "duration_minutes" | "description">;
 
@@ -14,11 +14,38 @@ export interface InvoicePdfData {
   entries: EntryRow[];
 }
 
-const INK = { slate900: [15, 23, 42] as const, slate500: [100, 116, 139] as const, slate200: [226, 232, 240] as const, indigo: [79, 70, 229] as const };
+// Paleta inspirada en la factura de referencia: azul oscuro para títulos/total,
+// gris para labels y líneas suaves.
+const NAVY: [number, number, number] = [43, 42, 77];
+const INK: [number, number, number] = [51, 55, 69];
+const MUTED: [number, number, number] = [128, 133, 148];
+const LINE: [number, number, number] = [228, 230, 236];
+
+/** DD-MM-YYYY, como el invoice de referencia. */
+function formatDashDate(iso: string): string {
+  const d = parseISODate(iso);
+  const p = (n: number) => n.toString().padStart(2, "0");
+  return `${p(d.getDate())}-${p(d.getMonth() + 1)}-${d.getFullYear()}`;
+}
+
+/** Horas en decimal: 1, 1.5, 0.75 (sin ceros de más). */
+function formatQty(minutes: number): string {
+  const hours = minutes / 60;
+  return hours % 1 === 0 ? hours.toString() : hours.toFixed(2).replace(/0$/, "");
+}
+
+/** Monto numérico sin símbolo (ej. 1.234,56). */
+function formatAmount(amount: number): string {
+  return new Intl.NumberFormat("es-AR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
 
 /**
- * Construye un PDF con el detalle de la factura (fechas, tareas, horas y montos)
- * replicando el documento en pantalla. Devuelve la instancia jsPDF.
+ * Construye el PDF de la factura replicando el layout de la factura de referencia:
+ * título "Factura", metadatos, "Facturado a", tabla DESCRIPCIÓN/CANTIDAD/IMPORTE
+ * con el detalle de lo trabajado, y SUBTOTAL + TOTAL.
  */
 export function buildInvoicePdf({
   invoice,
@@ -29,122 +56,139 @@ export function buildInvoicePdf({
 }: InvoicePdfData): jsPDF {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
-  const marginX = 16;
+  const marginX = 18;
   const rightX = pageWidth - marginX;
-  let y = 20;
+  let y = 24;
 
-  // Marca
+  // Marca (discreta, arriba a la derecha) + título
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(...MUTED);
+  doc.text(SITE_NAME, rightX, y - 6, { align: "right" });
+
+  doc.setFontSize(30);
+  doc.setTextColor(...NAVY);
+  doc.text("Factura", marginX, y + 4);
+  y += 16;
+
+  // Metadatos (labels en negrita + valores)
+  const meta: [string, string][] = [
+    ["N° de factura:", invoice.invoice_number],
+    ["Fecha de emisión:", formatDashDate(invoice.issue_date)],
+  ];
+  if (invoice.due_date) meta.push(["Vencimiento:", formatDashDate(invoice.due_date)]);
+  meta.push([
+    "Período:",
+    `${formatDashDate(invoice.period_start)} – ${formatDashDate(invoice.period_end)}`,
+  ]);
+
+  doc.setFontSize(9.5);
+  const valueX = marginX + 34;
+  for (const [label, value] of meta) {
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...NAVY);
+    doc.text(label, marginX, y);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...INK);
+    doc.text(value, valueX, y);
+    y += 6;
+  }
+
+  y += 8;
+
+  // Facturado a
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
-  doc.setTextColor(...INK.indigo);
-  doc.text(SITE_NAME, marginX, y);
-
-  // Título "Factura" + número
-  doc.setTextColor(...INK.slate900);
-  doc.setFontSize(22);
-  doc.text("Factura", marginX, y + 12);
+  doc.setTextColor(...NAVY);
+  doc.text("Facturado a:", marginX, y);
+  y += 6;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
-  doc.setTextColor(...INK.slate500);
-  doc.text(invoice.invoice_number, marginX, y + 18);
-
-  // Metadatos a la derecha
+  doc.setTextColor(...INK);
+  doc.text(clientName, marginX, y);
+  y += 5;
   doc.setFontSize(9);
-  const metaLines = [
-    `Emitida: ${formatShortDate(invoice.issue_date)}`,
-    `Período: ${formatShortDate(invoice.period_start)} – ${formatShortDate(invoice.period_end)}`,
-  ];
-  doc.text(metaLines, rightX, y + 12, { align: "right" });
-
-  y += 30;
-
-  // Facturar a
-  doc.setFontSize(8);
-  doc.setTextColor(...INK.slate500);
-  doc.text("FACTURAR A", marginX, y);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.setTextColor(...INK.slate900);
-  doc.text(clientName, marginX, y + 6);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(...INK.slate500);
-  let billY = y + 11;
+  doc.setTextColor(...MUTED);
   if (clientContact) {
-    doc.text(clientContact, marginX, billY);
-    billY += 5;
+    doc.text(clientContact, marginX, y);
+    y += 5;
   }
   if (clientEmail) {
-    doc.text(clientEmail, marginX, billY);
-    billY += 5;
+    doc.text(clientEmail, marginX, y);
+    y += 5;
   }
 
-  y = billY + 4;
+  y += 6;
 
-  // Tabla de entradas
+  // Tabla: DESCRIPCIÓN · CANTIDAD · IMPORTE
   autoTable(doc, {
     startY: y,
-    head: [["Fecha", "Descripción", "Horas", "Importe"]],
+    theme: "plain",
+    head: [["DESCRIPCIÓN", "CANTIDAD", "IMPORTE"]],
     body: entries.map((e) => [
-      formatShortDate(e.entry_date),
       e.description || "Trabajo de consultoría",
-      formatDuration(e.duration_minutes),
-      formatMoney((e.duration_minutes / 60) * invoice.hourly_rate, invoice.currency),
+      formatQty(e.duration_minutes),
+      formatAmount((e.duration_minutes / 60) * invoice.hourly_rate),
     ]),
     margin: { left: marginX, right: marginX },
-    styles: { fontSize: 9, cellPadding: 2.5, textColor: [30, 41, 59] },
-    headStyles: {
-      fillColor: [248, 250, 252],
-      textColor: [100, 116, 139],
-      fontStyle: "bold",
-      lineWidth: { bottom: 0.3 },
-      lineColor: [...INK.slate200],
+    styles: {
+      fontSize: 9.5,
+      cellPadding: { top: 4.5, bottom: 4.5, left: 0, right: 0 },
+      textColor: INK,
+      lineColor: LINE,
+      lineWidth: { bottom: 0.1 },
     },
-    bodyStyles: { lineWidth: { bottom: 0.1 }, lineColor: [241, 245, 249] },
+    headStyles: {
+      fontStyle: "bold",
+      fontSize: 8.5,
+      textColor: MUTED,
+      lineColor: LINE,
+      lineWidth: { bottom: 0.3 },
+      cellPadding: { top: 2, bottom: 4, left: 0, right: 0 },
+    },
     columnStyles: {
-      0: { cellWidth: 26 },
-      2: { halign: "right", cellWidth: 22 },
-      3: { halign: "right", cellWidth: 34 },
+      0: { cellWidth: "auto" },
+      1: { halign: "right", cellWidth: 30 },
+      2: { halign: "right", cellWidth: 34 },
     },
   });
 
-  // Totales
   const afterTable = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
-  let ty = afterTable + 10;
-  const labelX = rightX - 60;
+  const code = invoice.currency;
 
-  const totalRow = (label: string, value: string, bold = false) => {
-    doc.setFont("helvetica", bold ? "bold" : "normal");
-    doc.setFontSize(bold ? 11 : 9);
-    const [lr, lg, lb] = bold ? INK.slate900 : INK.slate500;
-    doc.setTextColor(lr, lg, lb);
-    doc.text(label, labelX, ty);
-    doc.setTextColor(...INK.slate900);
-    doc.text(value, rightX, ty, { align: "right" });
-    ty += bold ? 8 : 6;
-  };
+  // SUBTOTAL
+  let ty = afterTable + 9;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
+  doc.setTextColor(...MUTED);
+  doc.text("SUBTOTAL", marginX, ty);
+  doc.setTextColor(...INK);
+  doc.text(`${formatAmount(invoice.total_amount)} ${code}`, rightX, ty, { align: "right" });
 
-  totalRow("Horas totales", formatDuration(invoice.total_minutes));
-  totalRow("Tarifa por hora", formatMoney(invoice.hourly_rate, invoice.currency));
-  doc.setDrawColor(...INK.slate200);
-  doc.line(labelX, ty - 2, rightX, ty - 2);
-  ty += 2;
-  totalRow("Total", formatMoney(invoice.total_amount, invoice.currency), true);
+  // TOTAL (destacado, abajo a la derecha)
+  ty += 16;
+  doc.setFontSize(9);
+  doc.setTextColor(...MUTED);
+  doc.text("TOTAL", rightX, ty - 7, { align: "right" });
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.setTextColor(...NAVY);
+  doc.text(`${formatAmount(invoice.total_amount)} ${code}`, rightX, ty, { align: "right" });
 
   // Notas
   if (invoice.notes) {
-    ty += 6;
+    ty += 14;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    doc.setTextColor(...INK.slate500);
-    const noteLines = doc.splitTextToSize(invoice.notes, rightX - marginX);
-    doc.text(noteLines, marginX, ty);
+    doc.setTextColor(...MUTED);
+    doc.text(doc.splitTextToSize(invoice.notes, rightX - marginX), marginX, ty);
   }
 
   // Pie
   const footerY = doc.internal.pageSize.getHeight() - 12;
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
-  doc.setTextColor(...INK.slate500);
+  doc.setTextColor(...MUTED);
   doc.text(`Generado con ${SITE_NAME} · registruti.app`, marginX, footerY);
 
   return doc;
