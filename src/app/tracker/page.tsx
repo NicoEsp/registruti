@@ -121,22 +121,27 @@ function Tracker() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Tracker</h1>
+      <div className="mb-4">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h1 className="text-2xl font-semibold tracking-tight">Tracker</h1>
+          <span className="shrink-0 text-sm text-slate-500">
+            Semana <strong className="text-slate-900">{formatDuration(weekTotal)}</strong>
+          </span>
+        </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => shiftWeek(-1)}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-100"
+            className="shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-100"
             title="Semana anterior"
           >
             ‹
           </button>
-          <span className="min-w-44 text-center text-sm font-medium text-slate-700">
+          <span className="min-w-0 flex-1 truncate text-center text-sm font-medium text-slate-700">
             {formatShortDate(weekDays[0])} – {formatShortDate(weekDays[6])}
           </span>
           <button
             onClick={() => shiftWeek(1)}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-100"
+            className="shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-100"
             title="Semana siguiente"
           >
             ›
@@ -144,18 +149,15 @@ function Tracker() {
           <button
             onClick={goToToday}
             disabled={isViewingToday}
-            className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-100 disabled:opacity-40"
+            className="shrink-0 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-100 disabled:opacity-40"
             title="Ir a hoy"
           >
-            Ir a hoy
+            Hoy
           </button>
-          <span className="ml-3 text-sm text-slate-500">
-            Total semana: <strong className="text-slate-900">{formatDuration(weekTotal)}</strong>
-          </span>
         </div>
       </div>
 
-      <div className="mb-6 grid grid-cols-7 gap-2">
+      <div className="mb-6 grid grid-cols-7 gap-1 sm:gap-2">
         {weekDays.map((day) => {
           const d = parseISODate(day);
           const dayTotal = entries
@@ -167,24 +169,25 @@ function Tracker() {
             <button
               key={day}
               onClick={() => setDate(day)}
-              className={`flex flex-col items-center rounded-xl border px-2 py-2 transition ${
+              className={`flex min-w-0 flex-col items-center rounded-lg border px-0.5 py-2 transition sm:rounded-xl sm:px-2 ${
                 selected
                   ? "border-indigo-600 bg-indigo-600 text-white shadow-sm"
-                  : "border-slate-200 bg-white hover:border-indigo-300"
+                  : isToday
+                    ? "border-indigo-300 bg-white"
+                    : "border-slate-200 bg-white hover:border-indigo-300"
               }`}
               title={`Seleccionar ${formatDayLabel(day)} para cargar horas`}
             >
               <span
-                className={`text-[11px] font-medium uppercase ${
+                className={`text-[10px] font-medium uppercase ${
                   selected ? "text-indigo-100" : isToday ? "text-indigo-600" : "text-slate-400"
                 }`}
               >
                 {DAY_ABBREV[d.getDay()]}
-                {isToday ? " · hoy" : ""}
               </span>
-              <span className="text-base font-semibold">{d.getDate()}</span>
+              <span className="text-sm font-semibold sm:text-base">{d.getDate()}</span>
               <span
-                className={`font-mono text-[11px] ${
+                className={`font-mono text-[10px] ${
                   selected ? "text-indigo-100" : "text-slate-500"
                 }`}
               >
