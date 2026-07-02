@@ -75,7 +75,9 @@ function Invoices() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo generar el PDF.");
     } finally {
-      setPdfBusyId(null);
+      // Solo limpiamos si sigue siendo esta fila: si el usuario disparó otra
+      // descarga mientras tanto, no le pisamos su estado de carga.
+      setPdfBusyId((cur) => (cur === inv.id ? null : cur));
     }
   }
 
