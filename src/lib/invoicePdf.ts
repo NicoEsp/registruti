@@ -1,8 +1,16 @@
 import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
+import { autoTable } from "jspdf-autotable";
 import type { Invoice, TimeEntry } from "@/lib/types";
 import { SITE_NAME } from "@/lib/site";
 import { parseISODate } from "@/lib/format";
+
+// jspdf-autotable adjunta `lastAutoTable` a la instancia de jsPDF pero no la
+// declara en sus tipos; la exponemos de forma tipada para evitar casts frágiles.
+declare module "jspdf" {
+  interface jsPDF {
+    lastAutoTable: { finalY: number };
+  }
+}
 
 type EntryRow = Pick<TimeEntry, "entry_date" | "duration_minutes" | "description">;
 
@@ -153,11 +161,22 @@ export function buildInvoicePdf({
     },
   });
 
-  const afterTable = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
+  const afterTable = doc.lastAutoTable.finalY;
   const code = invoice.currency;
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  // Si el bloque de totales/notas no entra en lo que queda de página
+  // (facturas con muchas entradas), lo pasamos a una hoja nueva para que no
+  // se dibuje fuera del área imprimible.
+  const noteLines = invoice.notes ? doc.splitTextToSize(invoice.notes, rightX - marginX) : [];
+  const totalsBlockHeight = 25 + (invoice.notes ? 14 + noteLines.length * 4 : 0);
+  let ty = afterTable + 9;
+  if (ty + totalsBlockHeight > pageHeight - 20) {
+    doc.addPage();
+    ty = 24;
+  }
 
   // SUBTOTAL
-  let ty = afterTable + 9;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9.5);
   doc.setTextColor(...MUTED);
@@ -181,11 +200,11 @@ export function buildInvoicePdf({
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.setTextColor(...MUTED);
-    doc.text(doc.splitTextToSize(invoice.notes, rightX - marginX), marginX, ty);
+    doc.text(noteLines, marginX, ty);
   }
 
   // Pie
-  const footerY = doc.internal.pageSize.getHeight() - 12;
+  const footerY = pageHeight - 12;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(...MUTED);

@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import InvoiceDocument from "@/components/InvoiceDocument";
-import { downloadInvoicePdf } from "@/lib/invoicePdf";
+import InvoiceActions from "@/components/InvoiceActions";
 import { supabase } from "@/lib/supabase";
 import type { Client, Invoice, InvoiceStatus, TimeEntry } from "@/lib/types";
 import { STATUS_LABELS, STATUS_STYLES } from "@/lib/invoiceStatus";
@@ -131,26 +131,13 @@ function InvoiceDetail() {
           >
             {copied ? "¡Copiado!" : "Copiar link público"}
           </button>
-          <button
-            onClick={() =>
-              downloadInvoicePdf({
-                invoice,
-                clientName: client.name,
-                clientContact: client.contact_name,
-                clientEmail: client.email,
-                entries,
-              })
-            }
-            className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
-          >
-            Descargar PDF
-          </button>
-          <button
-            onClick={() => window.print()}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50"
-          >
-            Imprimir
-          </button>
+          <InvoiceActions
+            invoice={invoice}
+            clientName={client.name}
+            clientContact={client.contact_name}
+            clientEmail={client.email}
+            entries={entries}
+          />
           <button
             onClick={handleDelete}
             className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm text-red-600 hover:bg-red-50"
