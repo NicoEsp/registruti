@@ -261,9 +261,12 @@ export function buildInvoicePdf({
 
   // Pie
   const footerY = pageHeight - 12;
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(9);
+  doc.setTextColor(...MUTED);
+  doc.text("Gracias por confiar en mi laburo.", marginX, footerY - 6);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
-  doc.setTextColor(...MUTED);
   doc.text(`Generado con ${SITE_NAME} · registruti.app`, marginX, footerY);
 
   return doc;

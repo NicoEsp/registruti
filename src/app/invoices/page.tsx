@@ -26,15 +26,22 @@ function Invoices() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
+  const [newClientId, setNewClientId] = useState<string | null>(null);
   const [pdfBusyId, setPdfBusyId] = useState<string | null>(null);
   const [issuer, setIssuer] = useState<InvoiceIssuer | null>(null);
+  const [unbilled, setUnbilled] = useState<Map<string, number>>(new Map());
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [invoicesRes, clientsRes, issuerData] = await Promise.all([
+    const [invoicesRes, clientsRes, issuerData, unbilledRes] = await Promise.all([
       supabase.from("invoices").select("*").order("created_at", { ascending: false }),
       supabase.from("clients").select("*").order("name"),
       fetchIssuer(),
+      supabase
+        .from("time_entries")
+        .select("client_id, duration_minutes")
+        .is("invoice_id", null)
+        .eq("billable", true),
     ]);
     if (invoicesRes.error || clientsRes.error) {
       setError(invoicesRes.error?.message ?? clientsRes.error?.message ?? null);
@@ -42,6 +49,11 @@ function Invoices() {
       setInvoices(invoicesRes.data);
       setClients(clientsRes.data);
       setIssuer(issuerData);
+      const map = new Map<string, number>();
+      for (const e of unbilledRes.data ?? []) {
+        map.set(e.client_id, (map.get(e.client_id) ?? 0) + e.duration_minutes);
+      }
+      setUnbilled(map);
       setError(null);
     }
     setLoading(false);
@@ -63,6 +75,17 @@ function Invoices() {
   }, []);
 
   const clientById = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
+
+  // Cliente activo con más horas facturables pendientes, para sugerir la factura.
+  const topUnbilled = useMemo(() => {
+    let best: { clientId: string; minutes: number } | null = null;
+    for (const [clientId, minutes] of unbilled) {
+      const client = clientById.get(clientId);
+      if (!client || client.archived) continue;
+      if (!best || minutes > best.minutes) best = { clientId, minutes };
+    }
+    return best;
+  }, [unbilled, clientById]);
 
   async function handleDownloadPdf(inv: Invoice) {
     const client = clientById.get(inv.client_id);
@@ -112,6 +135,29 @@ function Invoices() {
 
       {error && (
         <p className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>
+      )}
+
+      {!loading && topUnbilled && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3">
+          <p className="text-sm text-indigo-900">
+            Tenés{" "}
+            <strong className="font-semibold">{formatDuration(topUnbilled.minutes)}</strong> sin
+            facturar de{" "}
+            <strong className="font-semibold">
+              {clientById.get(topUnbilled.clientId)?.name}
+            </strong>
+            . ¿Armamos el PDF?
+          </p>
+          <button
+            onClick={() => {
+              setNewClientId(topUnbilled.clientId);
+              setShowNew(true);
+            }}
+            className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
+          >
+            Armar factura
+          </button>
+        </div>
       )}
 
       {loading ? (
@@ -188,9 +234,14 @@ function Invoices() {
         <NewInvoiceModal
           clients={clients.filter((c) => !c.archived)}
           invoiceCount={invoices.length}
-          onClose={() => setShowNew(false)}
+          initialClientId={newClientId}
+          onClose={() => {
+            setShowNew(false);
+            setNewClientId(null);
+          }}
           onCreated={() => {
             setShowNew(false);
+            setNewClientId(null);
             loadData();
           }}
         />
@@ -202,16 +253,18 @@ function Invoices() {
 function NewInvoiceModal({
   clients,
   invoiceCount,
+  initialClientId,
   onClose,
   onCreated,
 }: {
   clients: Client[];
   invoiceCount: number;
+  initialClientId?: string | null;
   onClose: () => void;
   onCreated: () => void;
 }) {
   const now = new Date();
-  const [clientId, setClientId] = useState("");
+  const [clientId, setClientId] = useState(initialClientId ?? "");
   const [from, setFrom] = useState(toISODate(new Date(now.getFullYear(), now.getMonth(), 1)));
   const [to, setTo] = useState(toISODate(new Date(now.getFullYear(), now.getMonth() + 1, 0)));
   const [preview, setPreview] = useState<TimeEntry[] | null>(null);

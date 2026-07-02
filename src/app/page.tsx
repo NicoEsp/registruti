@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import FlameLogo from "@/components/FlameLogo";
+import Logo from "@/components/Logo";
+import Wordmark from "@/components/Wordmark";
 import MadeByBadge from "@/components/MadeByBadge";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 
@@ -175,8 +176,8 @@ export default function LandingPage() {
       <header className="sticky top-0 z-40 border-b border-slate-100 bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <Link href="/" className="flex items-center gap-2">
-            <FlameLogo size={30} />
-            <span className="text-lg font-semibold tracking-tight">Registruti</span>
+            <Logo size={30} />
+            <Wordmark className="text-lg" />
           </Link>
           <nav className="hidden items-center gap-6 text-sm text-slate-600 md:flex">
             <a href="#funcionalidades" className="hover:text-slate-900">
@@ -198,7 +199,7 @@ export default function LandingPage() {
             </Link>
             <Link
               href="/login"
-              className="rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:from-amber-600 hover:to-orange-700"
+              className="rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:from-indigo-700 hover:to-indigo-600"
             >
               Empezá gratis
             </Link>
@@ -209,17 +210,17 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="relative overflow-hidden">
         <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-96 bg-gradient-to-b from-amber-50 via-orange-50/40 to-transparent"
+          className="pointer-events-none absolute inset-x-0 top-0 h-96 bg-gradient-to-b from-indigo-50 via-indigo-50/40 to-transparent"
           aria-hidden
         />
         <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 pb-20 pt-16 lg:grid-cols-2">
           <div>
-            <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-medium text-orange-700">
-              <span aria-hidden>🔥</span> Hecha para freelancers de Latinoamérica
+            <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
+              <span aria-hidden>⏱️</span> Hecha para freelancers de Latinoamérica
             </p>
             <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
               Control de horas y facturación para freelancers,{" "}
-              <span className="bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-indigo-600 to-indigo-500 bg-clip-text text-transparent">
                 en español
               </span>
             </h1>
@@ -231,7 +232,7 @@ export default function LandingPage() {
             <div className="mt-8 flex flex-wrap items-center gap-4">
               <Link
                 href="/login"
-                className="rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-6 py-3 text-base font-semibold text-white shadow-md hover:from-amber-600 hover:to-orange-700"
+                className="rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-6 py-3 text-base font-semibold text-white shadow-md hover:from-indigo-700 hover:to-indigo-600"
               >
                 Empezá gratis hoy
               </Link>
@@ -268,7 +269,7 @@ export default function LandingPage() {
                     key={day as string}
                     className={`flex flex-col items-center rounded-lg border px-1 py-1.5 text-[10px] ${
                       selected
-                        ? "border-orange-500 bg-gradient-to-b from-amber-500 to-orange-600 text-white"
+                        ? "border-indigo-600 bg-gradient-to-b from-indigo-600 to-indigo-500 text-white"
                         : "border-slate-200 text-slate-500"
                     }`}
                   >
@@ -299,17 +300,17 @@ export default function LandingPage() {
                   </div>
                 ))}
               </div>
-              <div className="mt-4 flex items-center justify-between rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 px-3 py-2.5">
-                <span className="text-xs font-medium text-orange-800">
+              <div className="mt-4 flex items-center justify-between rounded-lg bg-gradient-to-r from-indigo-50 to-violet-50 px-3 py-2.5">
+                <span className="text-xs font-medium text-indigo-800">
                   Factura INV-0007 · Estudio Galley
                 </span>
-                <span className="rounded bg-white px-2 py-0.5 text-[10px] font-semibold text-orange-700 shadow-sm">
+                <span className="rounded bg-white px-2 py-0.5 text-[10px] font-semibold text-indigo-700 shadow-sm">
                   PDF + link público
                 </span>
               </div>
             </div>
             <div
-              className="absolute -bottom-6 -right-6 -z-10 h-40 w-40 rounded-full bg-gradient-to-br from-amber-300/40 to-orange-400/40 blur-2xl"
+              className="absolute -bottom-6 -right-6 -z-10 h-40 w-40 rounded-full bg-gradient-to-br from-indigo-300/40 to-violet-400/40 blur-2xl"
               aria-hidden
             />
           </div>
@@ -365,7 +366,7 @@ export default function LandingPage() {
           <div className="mt-12 grid gap-8 md:grid-cols-3">
             {STEPS.map((step, i) => (
               <div key={step.title} className="relative">
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-orange-600 text-base font-bold text-white">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-600 to-indigo-500 text-base font-bold text-white">
                   {i + 1}
                 </span>
                 <h3 className="mt-4 text-lg font-semibold">{step.title}</h3>
@@ -392,8 +393,8 @@ export default function LandingPage() {
               <tr className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                 <th className="px-5 py-4">Criterio</th>
                 <th className="px-5 py-4">
-                  <span className="flex items-center gap-1.5 text-orange-600">
-                    <FlameLogo size={16} /> Registruti
+                  <span className="flex items-center gap-1.5 text-indigo-600">
+                    <Logo size={16} /> <Wordmark className="text-sm" />
                   </span>
                 </th>
                 <th className="px-5 py-4">Toggl Track</th>
@@ -448,7 +449,7 @@ export default function LandingPage() {
 
       {/* CTA final */}
       <section className="mx-auto max-w-4xl px-4 py-20 text-center">
-        <FlameLogo size={48} />
+        <Logo size={48} />
         <h2 className="mt-5 text-2xl font-bold tracking-tight sm:text-3xl">
           Tu próxima factura empieza con la próxima hora trackeada
         </h2>
@@ -457,7 +458,7 @@ export default function LandingPage() {
         </p>
         <Link
           href="/login"
-          className="mt-8 inline-block rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-8 py-3.5 text-base font-semibold text-white shadow-md hover:from-amber-600 hover:to-orange-700"
+          className="mt-8 inline-block rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-8 py-3.5 text-base font-semibold text-white shadow-md hover:from-indigo-700 hover:to-indigo-600"
         >
           Empezá gratis hoy
         </Link>
@@ -467,13 +468,13 @@ export default function LandingPage() {
       <footer className="border-t border-slate-100">
         <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-4 py-10 text-center">
           <div className="flex items-center gap-2">
-            <FlameLogo size={22} />
-            <span className="font-semibold">Registruti</span>
+            <Logo size={22} />
+            <Wordmark />
           </div>
           <p className="text-sm text-slate-500">
             Registrá cada hora que trabajás y convertila en factura. Sin vueltas.
           </p>
-          <nav className="flex gap-5 text-sm text-slate-500">
+          <nav className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-slate-500">
             <a href="#funcionalidades" className="hover:text-slate-900">
               Funcionalidades
             </a>

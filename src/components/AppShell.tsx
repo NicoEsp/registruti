@@ -6,7 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { TOAST_EVENT, openNewInvoice } from "@/lib/appEvents";
-import FlameLogo from "@/components/FlameLogo";
+import Logo from "@/components/Logo";
+import Wordmark from "@/components/Wordmark";
 import MadeByBadge from "@/components/MadeByBadge";
 import Onboarding from "@/components/Onboarding";
 import CommandPalette from "@/components/CommandPalette";
@@ -103,8 +104,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {/* Sidebar (desktop) */}
       <aside className="no-print fixed inset-y-0 left-0 z-20 hidden w-56 flex-col border-r border-slate-200 bg-white md:flex">
         <Link href="/" className="flex items-center gap-2 px-5 py-5">
-          <FlameLogo size={30} />
-          <span className="text-lg font-semibold tracking-tight">Registruti</span>
+          <Logo size={30} />
+          <Wordmark className="text-lg" />
         </Link>
         <button
           onClick={() => setPaletteOpen(true)}
@@ -149,8 +150,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {/* Top bar (mobile) */}
       <header className="no-print fixed inset-x-0 top-0 z-20 flex items-center justify-between border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur md:hidden">
         <Link href="/" className="flex items-center gap-2">
-          <FlameLogo size={26} />
-          <span className="text-base font-semibold tracking-tight">Registruti</span>
+          <Logo size={26} />
+          <Wordmark className="text-base" />
         </Link>
         <div className="flex items-center gap-3">
           <button

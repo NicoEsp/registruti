@@ -4,7 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import FlameLogo from "@/components/FlameLogo";
+import Logo from "@/components/Logo";
+import Wordmark from "@/components/Wordmark";
 
 export default function LoginPage() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
@@ -45,8 +46,8 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
       <div className="w-full max-w-sm">
         <Link href="/" className="mb-8 flex items-center justify-center gap-2">
-          <FlameLogo size={40} />
-          <span className="text-2xl font-semibold tracking-tight">Registruti</span>
+          <Logo size={40} />
+          <Wordmark className="text-2xl" />
         </Link>
         <form onSubmit={handleSubmit} className="rounded-xl bg-white p-6 shadow-sm">
           <h1 className="mb-4 text-lg font-semibold">

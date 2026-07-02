@@ -108,7 +108,7 @@ function Clients() {
         <p className="text-sm text-slate-400">Cargando…</p>
       ) : visible.length === 0 ? (
         <p className="py-12 text-center text-sm text-slate-400">
-          No hay clientes todavía. Creá el primero para empezar.
+          Todavía no tenés clientes. Agregá el primero para empezar a trackear.
         </p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
