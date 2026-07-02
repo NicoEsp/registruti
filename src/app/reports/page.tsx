@@ -157,7 +157,7 @@ function Reports() {
       <h1 className="mb-6 text-2xl font-semibold tracking-tight">Reportes</h1>
 
       <div className="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex gap-1 rounded-lg bg-slate-100 p-1">
+        <div className="flex flex-wrap gap-1 rounded-lg bg-slate-100 p-1">
           {(
             [
               ["week", "Esta semana"],
@@ -197,7 +197,7 @@ function Reports() {
         <select
           value={clientFilter}
           onChange={(e) => setClientFilter(e.target.value)}
-          className="ml-auto rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm"
+          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm sm:ml-auto sm:w-auto"
         >
           <option value="all">Todos los clientes</option>
           {clients.map((c) => (
@@ -374,8 +374,8 @@ function Reports() {
             </div>
           )}
 
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+            <table className="w-full min-w-[560px] text-sm">
               <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-4 py-3">Cliente</th>
