@@ -113,11 +113,11 @@ const STEPS = [
 const FAQS = [
   {
     q: "¿Hay una alternativa gratis a Toggl Track?",
-    a: "Sí. Diamble Jambe es una alternativa gratuita y en español a Toggl Track, pensada para freelancers. Incluye desde el inicio lo que en Toggl requiere el plan Starter (~USD 10/usuario/mes): tarifas por cliente, montos facturables y generación de facturas. Empezá gratis hoy, sin tarjeta.",
+    a: "Sí. Registruti es una alternativa gratuita y en español a Toggl Track, pensada para freelancers. Incluye desde el inicio lo que en Toggl requiere el plan Starter (~USD 10/usuario/mes): tarifas por cliente, montos facturables y generación de facturas. Empezá gratis hoy, sin tarjeta.",
   },
   {
     q: "¿Cómo llevo el control de horas como freelancer?",
-    a: "La clave es registrar las horas el mismo día, asociadas a un cliente y con una descripción corta de la tarea. En Diamble Jambe lo hacés en una vista semanal con bloques de 15 minutos a 8 horas, y los reportes te muestran automáticamente cuántas horas y cuánta plata acumulaste por cliente en la semana, el mes o el rango que elijas.",
+    a: "La clave es registrar las horas el mismo día, asociadas a un cliente y con una descripción corta de la tarea. En Registruti lo hacés en una vista semanal con bloques de 15 minutos a 8 horas, y los reportes te muestran automáticamente cuántas horas y cuánta plata acumulaste por cliente en la semana, el mes o el rango que elijas.",
   },
   {
     q: "¿Puedo facturar en pesos y en dólares a la vez?",
@@ -129,11 +129,11 @@ const FAQS = [
   },
   {
     q: "¿Cómo genero la factura desde mis horas trackeadas?",
-    a: "Elegís el cliente y el período, y Diamble Jambe arma la factura automáticamente con todas las horas registradas, la tarifa del cliente y la numeración correlativa. Después la gestionás por estados (borrador, enviada, pagada) y la exportás a PDF para imprimir o enviar.",
+    a: "Elegís el cliente y el período, y Registruti arma la factura automáticamente con todas las horas registradas, la tarifa del cliente y la numeración correlativa. Después la gestionás por estados (borrador, enviada, pagada) y la exportás a PDF para imprimir o enviar.",
   },
   {
-    q: "¿Diamble Jambe sirve para equipos o empresas?",
-    a: "No es el foco. Diamble Jambe está diseñada para freelancers y consultores independientes que facturan por hora a varios clientes. Si necesitás gestión de equipos, permisos y nómina, una herramienta enterprise te va a servir mejor; si trabajás por tu cuenta, acá no pagás por funciones que no usás.",
+    q: "¿Registruti sirve para equipos o empresas?",
+    a: "No es el foco. Registruti está diseñada para freelancers y consultores independientes que facturan por hora a varios clientes. Si necesitás gestión de equipos, permisos y nómina, una herramienta enterprise te va a servir mejor; si trabajás por tu cuenta, acá no pagás por funciones que no usás.",
   },
 ];
 
@@ -175,7 +175,7 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <Link href="/" className="flex items-center gap-2">
             <FlameLogo size={30} />
-            <span className="text-lg font-semibold tracking-tight">Diamble Jambe</span>
+            <span className="text-lg font-semibold tracking-tight">Registruti</span>
           </Link>
           <nav className="hidden items-center gap-6 text-sm text-slate-600 md:flex">
             <a href="#funcionalidades" className="hover:text-slate-900">
@@ -322,7 +322,7 @@ export default function LandingPage() {
             De las horas trabajadas a la factura enviada, sin pasos intermedios.
           </h2>
           <p className="mx-auto mt-4 max-w-3xl text-slate-600">
-            Diamble Jambe convierte tu semana de trabajo en facturas listas para enviar: trackeás
+            Registruti convierte tu semana de trabajo en facturas listas para enviar: trackeás
             tus horas por cliente, cada uno con su tarifa y su moneda, y la factura se genera sola
             con el detalle completo. Tu cliente la ve desde un link público, sin crear cuenta ni
             pedirte explicaciones. En español, gratis, y sin las funciones enterprise que nunca vas
@@ -378,7 +378,7 @@ export default function LandingPage() {
       {/* vs Toggl Track */}
       <section id="vs-toggl" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-20">
         <h2 className="text-center text-2xl font-bold tracking-tight sm:text-3xl">
-          Diamble Jambe vs. Toggl Track
+          Registruti vs. Toggl Track
         </h2>
         <p className="mx-auto mt-3 max-w-3xl text-center text-slate-600">
           Toggl Track es una gran herramienta, pero está pensada (y cobrada) para equipos. Si sos
@@ -392,7 +392,7 @@ export default function LandingPage() {
                 <th className="px-5 py-4">Criterio</th>
                 <th className="px-5 py-4">
                   <span className="flex items-center gap-1.5 text-orange-600">
-                    <FlameLogo size={16} /> Diamble Jambe
+                    <FlameLogo size={16} /> Registruti
                   </span>
                 </th>
                 <th className="px-5 py-4">Toggl Track</th>
@@ -414,7 +414,7 @@ export default function LandingPage() {
         <p className="mx-auto mt-6 max-w-3xl text-center text-sm italic text-slate-500">
           Resumen honesto: si necesitás cronómetro corriendo en segundo plano y app nativa, Toggl
           gana. Si necesitás pasar de horas a factura cobrable, en tu idioma y sin pagar USD 120 al
-          año, Diamble Jambe es para vos.
+          año, Registruti es para vos.
         </p>
       </section>
 
@@ -467,11 +467,10 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-4 py-10 text-center">
           <div className="flex items-center gap-2">
             <FlameLogo size={22} />
-            <span className="font-semibold">Diamble Jambe</span>
+            <span className="font-semibold">Registruti</span>
           </div>
           <p className="text-sm text-slate-500">
-            Inspirada en la pierna en llamas de cierto cocinero pirata: que cada hora tuya pegue
-            fuerte. 🔥
+            Registrá cada hora que trabajás y convertila en factura. Sin vueltas.
           </p>
           <nav className="flex gap-5 text-sm text-slate-500">
             <a href="#funcionalidades" className="hover:text-slate-900">
@@ -488,7 +487,7 @@ export default function LandingPage() {
             </Link>
           </nav>
           <p className="text-xs text-slate-400">
-            © {new Date().getFullYear()} Diamble Jambe — Control de horas y facturación para
+            © {new Date().getFullYear()} Registruti — Control de horas y facturación para
             freelancers.
           </p>
         </div>

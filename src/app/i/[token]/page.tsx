@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import InvoiceDocument from "@/components/InvoiceDocument";
+import InvoiceActions from "@/components/InvoiceActions";
 import { supabase } from "@/lib/supabase";
 import type { PublicInvoice } from "@/lib/types";
 import { STATUS_LABELS, STATUS_STYLES } from "@/lib/invoiceStatus";
@@ -51,12 +52,15 @@ export default function PublicInvoicePage() {
           >
             {STATUS_LABELS[data.invoice.status]}
           </span>
-          <button
-            onClick={() => window.print()}
-            className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
-          >
-            Imprimir / PDF
-          </button>
+          <div className="flex gap-2">
+            <InvoiceActions
+              invoice={data.invoice}
+              clientName={data.client.name}
+              clientContact={data.client.contact_name}
+              clientEmail={data.client.email}
+              entries={data.entries}
+            />
+          </div>
         </div>
         <InvoiceDocument
           invoice={data.invoice}

@@ -32,13 +32,13 @@ export const metadata: Metadata = {
     url: SITE_URL,
     siteName: SITE_NAME,
     locale: "es_AR",
-    title: "Diamble Jambe — Trackeá tus horas, facturá a tus clientes. Gratis y en español.",
+    title: "Registruti — Trackeá tus horas, facturá a tus clientes. Gratis y en español.",
     description:
       "El time tracker pensado para freelancers de Latinoamérica: tarifas por cliente en 9 monedas, reportes claros y facturas en PDF con link público para que tu cliente vea cada hora. Empezá gratis hoy.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Diamble Jambe — Trackeá tus horas, facturá a tus clientes",
+    title: "Registruti — Trackeá tus horas, facturá a tus clientes",
     description:
       "Control de horas y facturación para freelancers, gratis y en español. La alternativa a Toggl Track hecha en Latinoamérica.",
   },

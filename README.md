@@ -1,15 +1,15 @@
-# Diamble — Time Tracking & Invoicing
+# Registruti — Time Tracking & Invoicing
 
 Aplicación de seguimiento de horas de consultoría y facturación por cliente, al estilo Toggl Track.
 
-**App:** https://diamble-jamble.vercel.app/
+**App:** https://registruti.app/
 
 ## Funcionalidades
 
 - **Tracker semanal**: registro de horas por día, en intervalos de 15 minutos (mínimo 0:15, máximo 8:00 por entrada), con descripción y cliente.
 - **Clientes**: alta, edición, archivado y eliminación de clientes, cada uno con tarifa por hora, moneda y color propio.
 - **Reportes**: horas y montos facturables por cliente y por día, con filtros por período (semana, mes, mes pasado o rango personalizado).
-- **Facturas**: generación de facturas por cliente y período a partir de las horas no facturadas, con estados (borrador → enviada → pagada), impresión/PDF y numeración automática.
+- **Facturas**: generación de facturas por cliente y período a partir de las horas no facturadas, con estados (borrador → enviada → pagada), descarga de PDF con el detalle del trabajo y numeración automática.
 - **Link público por factura**: cada factura tiene un link compartible (`/i/<token>`) para que el cliente vea el detalle de horas sin necesidad de cuenta — trazabilidad externa.
 
 ## Stack

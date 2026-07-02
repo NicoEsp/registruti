@@ -1,6 +1,5 @@
 /**
- * Marca de Diamble Jambe: una llama, en honor a la técnica Diable Jambe
- * de Sanji (One Piece) que inspira el nombre del producto.
+ * Logo provisional de Registruti. Pendiente de reemplazar por un ícono de reloj.
  */
 export default function FlameLogo({ size = 32 }: { size?: number }) {
   return (
