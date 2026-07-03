@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import AppShell from "@/components/AppShell";
 import Modal from "@/components/Modal";
 import { supabase } from "@/lib/supabase";
+import { NEW_CLIENT_EVENT, NEW_CLIENT_PARAM, useAppEvent, useOpenParam } from "@/lib/appEvents";
 import { CLIENT_COLORS, CURRENCIES, type Client } from "@/lib/types";
 import { formatDuration, formatMoney } from "@/lib/format";
 
@@ -47,6 +48,18 @@ function Clients() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Apertura del alta desde la command palette, vía evento o ?nuevo=1.
+  // Si ya hay un formulario abierto (alta o edición), no lo pisamos.
+  const formOpenRef = useRef(false);
+  formOpenRef.current = showForm || editing !== null;
+  const openNewForm = () => {
+    if (formOpenRef.current) return;
+    setEditing(null);
+    setShowForm(true);
+  };
+  useAppEvent(NEW_CLIENT_EVENT, openNewForm);
+  useOpenParam(NEW_CLIENT_PARAM, openNewForm);
 
   async function toggleArchived(client: Client) {
     const { error: err } = await supabase
@@ -92,7 +105,7 @@ function Clients() {
         <p className="text-sm text-slate-400">Cargando…</p>
       ) : visible.length === 0 ? (
         <p className="py-12 text-center text-sm text-slate-400">
-          No hay clientes todavía. Creá el primero para empezar.
+          Todavía no tenés clientes. Agregá el primero para empezar a trackear.
         </p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">

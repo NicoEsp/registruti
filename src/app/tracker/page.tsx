@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import AppShell from "@/components/AppShell";
 import Modal from "@/components/Modal";
 import { supabase } from "@/lib/supabase";
+import { ENTRY_ADDED_EVENT, useAppEvent } from "@/lib/appEvents";
 import type { Client, TimeEntry } from "@/lib/types";
 import {
   DAY_ABBREV,
@@ -71,6 +72,9 @@ function Tracker() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Refrescar en vivo cuando se registra tiempo desde el atajo global (T / ⌘K / botón +).
+  useAppEvent(ENTRY_ADDED_EVENT, loadData);
 
   const activeClients = clients.filter((c) => !c.archived);
   const clientById = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);

@@ -5,6 +5,13 @@ import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import Modal from "@/components/Modal";
 import { supabase } from "@/lib/supabase";
+import {
+  ENTRY_ADDED_EVENT,
+  NEW_INVOICE_EVENT,
+  NEW_INVOICE_PARAM,
+  useAppEvent,
+  useOpenParam,
+} from "@/lib/appEvents";
 import { downloadInvoicePdf, type InvoiceIssuer } from "@/lib/invoicePdf";
 import { fetchIssuer } from "@/lib/profile";
 import type { Client, Invoice, TimeEntry } from "@/lib/types";
@@ -25,15 +32,25 @@ function Invoices() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
+  const [newClientId, setNewClientId] = useState<string | null>(null);
+  const [newFrom, setNewFrom] = useState<string | null>(null);
   const [pdfBusyId, setPdfBusyId] = useState<string | null>(null);
   const [issuer, setIssuer] = useState<InvoiceIssuer | null>(null);
+  const [unbilled, setUnbilled] = useState<Map<string, { minutes: number; earliest: string }>>(
+    new Map()
+  );
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [invoicesRes, clientsRes, issuerData] = await Promise.all([
+    const [invoicesRes, clientsRes, issuerData, unbilledRes] = await Promise.all([
       supabase.from("invoices").select("*").order("created_at", { ascending: false }),
       supabase.from("clients").select("*").order("name"),
       fetchIssuer(),
+      supabase
+        .from("time_entries")
+        .select("client_id, duration_minutes, entry_date")
+        .is("invoice_id", null)
+        .eq("billable", true),
     ]);
     if (invoicesRes.error || clientsRes.error) {
       setError(invoicesRes.error?.message ?? clientsRes.error?.message ?? null);
@@ -41,7 +58,21 @@ function Invoices() {
       setInvoices(invoicesRes.data);
       setClients(clientsRes.data);
       setIssuer(issuerData);
-      setError(null);
+      const map = new Map<string, { minutes: number; earliest: string }>();
+      for (const e of unbilledRes.data ?? []) {
+        const agg = map.get(e.client_id) ?? { minutes: 0, earliest: e.entry_date };
+        agg.minutes += e.duration_minutes;
+        if (e.entry_date < agg.earliest) agg.earliest = e.entry_date;
+        map.set(e.client_id, agg);
+      }
+      setUnbilled(map);
+      // Si solo falló la query de horas sin facturar, lo decimos en vez de
+      // esconder el banner en silencio.
+      setError(
+        unbilledRes.error
+          ? `No se pudieron cargar las horas sin facturar: ${unbilledRes.error.message}`
+          : null
+      );
     }
     setLoading(false);
   }, []);
@@ -50,7 +81,24 @@ function Invoices() {
     loadData();
   }, [loadData]);
 
+  // Apertura del modal desde el atajo global (F / ⌘K), vía evento o ?nueva=1,
+  // y refresco en vivo cuando se registra tiempo desde el atajo global.
+  useAppEvent(NEW_INVOICE_EVENT, () => setShowNew(true));
+  useAppEvent(ENTRY_ADDED_EVENT, loadData);
+  useOpenParam(NEW_INVOICE_PARAM, () => setShowNew(true));
+
   const clientById = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
+
+  // Cliente activo con más horas facturables pendientes, para sugerir la factura.
+  const topUnbilled = useMemo(() => {
+    let best: { clientId: string; minutes: number; earliest: string } | null = null;
+    for (const [clientId, agg] of unbilled) {
+      const client = clientById.get(clientId);
+      if (!client || client.archived) continue;
+      if (!best || agg.minutes > best.minutes) best = { clientId, ...agg };
+    }
+    return best;
+  }, [unbilled, clientById]);
 
   async function handleDownloadPdf(inv: Invoice) {
     const client = clientById.get(inv.client_id);
@@ -100,6 +148,32 @@ function Invoices() {
 
       {error && (
         <p className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>
+      )}
+
+      {!loading && topUnbilled && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3">
+          <p className="text-sm text-indigo-900">
+            Tenés{" "}
+            <strong className="font-semibold">{formatDuration(topUnbilled.minutes)}</strong> sin
+            facturar de{" "}
+            <strong className="font-semibold">
+              {clientById.get(topUnbilled.clientId)?.name}
+            </strong>
+            . ¿Armamos el PDF?
+          </p>
+          <button
+            onClick={() => {
+              setNewClientId(topUnbilled.clientId);
+              // El período arranca en la entrada sin facturar más vieja, para
+              // que el modal muestre exactamente las horas que promete el banner.
+              setNewFrom(topUnbilled.earliest);
+              setShowNew(true);
+            }}
+            className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
+          >
+            Armar factura
+          </button>
+        </div>
       )}
 
       {loading ? (
@@ -176,9 +250,17 @@ function Invoices() {
         <NewInvoiceModal
           clients={clients.filter((c) => !c.archived)}
           invoiceCount={invoices.length}
-          onClose={() => setShowNew(false)}
+          initialClientId={newClientId}
+          initialFrom={newFrom}
+          onClose={() => {
+            setShowNew(false);
+            setNewClientId(null);
+            setNewFrom(null);
+          }}
           onCreated={() => {
             setShowNew(false);
+            setNewClientId(null);
+            setNewFrom(null);
             loadData();
           }}
         />
@@ -190,17 +272,23 @@ function Invoices() {
 function NewInvoiceModal({
   clients,
   invoiceCount,
+  initialClientId,
+  initialFrom,
   onClose,
   onCreated,
 }: {
   clients: Client[];
   invoiceCount: number;
+  initialClientId?: string | null;
+  initialFrom?: string | null;
   onClose: () => void;
   onCreated: () => void;
 }) {
   const now = new Date();
-  const [clientId, setClientId] = useState("");
-  const [from, setFrom] = useState(toISODate(new Date(now.getFullYear(), now.getMonth(), 1)));
+  const [clientId, setClientId] = useState(initialClientId ?? "");
+  const [from, setFrom] = useState(
+    initialFrom ?? toISODate(new Date(now.getFullYear(), now.getMonth(), 1))
+  );
   const [to, setTo] = useState(toISODate(new Date(now.getFullYear(), now.getMonth() + 1, 0)));
   const [preview, setPreview] = useState<TimeEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);

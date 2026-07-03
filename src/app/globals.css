@@ -8,6 +8,34 @@ body {
   @apply bg-slate-50 text-slate-900 antialiased;
 }
 
+@keyframes palette-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.palette-in {
+  animation: palette-in 0.16s ease-out;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+.toast-in {
+  animation: toast-in 0.2s ease-out;
+}
+
 @media print {
   .no-print {
     display: none !important;
