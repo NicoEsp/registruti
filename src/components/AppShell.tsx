@@ -49,16 +49,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Atajos globales: ⌘K/Ctrl+K abre la paleta; T registra tiempo; F nueva factura.
+  // Todo overlay (modales de página, onboarding, palette, quick-add) marca su
+  // backdrop con data-overlay: mientras haya uno abierto, los atajos no disparan
+  // acciones que puedan pisar o desmontar trabajo a medio hacer.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
+      const overlayOpen = !!document.querySelector("[data-overlay]");
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        setQuickAddOpen(false);
-        setPaletteOpen((open) => !open);
+        if (paletteOpen) setPaletteOpen(false);
+        else if (!overlayOpen) setPaletteOpen(true);
         return;
       }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (paletteOpen || quickAddOpen) return;
+      if (overlayOpen || paletteOpen || quickAddOpen) return;
       const target = e.target as HTMLElement | null;
       if (target?.closest("input, textarea, select, [contenteditable=true]")) return;
       const key = e.key.toLowerCase();
@@ -105,7 +109,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <aside className="no-print fixed inset-y-0 left-0 z-20 hidden w-56 flex-col border-r border-slate-200 bg-white md:flex">
         <Link href="/" className="flex items-center gap-2 px-5 py-5">
           <Logo size={30} />
-          <Wordmark className="text-lg" />
+          <Wordmark className="text-lg text-slate-800" />
         </Link>
         <button
           onClick={() => setPaletteOpen(true)}
@@ -151,7 +155,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <header className="no-print fixed inset-x-0 top-0 z-20 flex items-center justify-between border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur md:hidden">
         <Link href="/" className="flex items-center gap-2">
           <Logo size={26} />
-          <Wordmark className="text-base" />
+          <Wordmark className="text-base text-slate-800" />
         </Link>
         <div className="flex items-center gap-3">
           <button
@@ -199,6 +203,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         })}
       </nav>
 
+      {/* Onboarding va antes que palette/quick-add: si conviven, los overlays
+          del shell (que tienen el foco) pintan por encima. */}
+      <Onboarding />
+
       {paletteOpen && (
         <CommandPalette
           onClose={() => setPaletteOpen(false)}
@@ -212,8 +220,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           {toast}
         </div>
       )}
-
-      <Onboarding />
     </div>
   );
 }

@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import AppShell from "@/components/AppShell";
 import Modal from "@/components/Modal";
 import { supabase } from "@/lib/supabase";
-import { NEW_CLIENT_EVENT } from "@/lib/appEvents";
+import { NEW_CLIENT_EVENT, NEW_CLIENT_PARAM, useAppEvent, useOpenParam } from "@/lib/appEvents";
 import { CLIENT_COLORS, CURRENCIES, type Client } from "@/lib/types";
 import { formatDuration, formatMoney } from "@/lib/format";
 
@@ -50,19 +50,16 @@ function Clients() {
   }, [loadData]);
 
   // Apertura del alta desde la command palette, vía evento o ?nuevo=1.
-  useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("nuevo") === "1") {
-      setEditing(null);
-      setShowForm(true);
-      window.history.replaceState(null, "", "/clients");
-    }
-    const onNew = () => {
-      setEditing(null);
-      setShowForm(true);
-    };
-    window.addEventListener(NEW_CLIENT_EVENT, onNew);
-    return () => window.removeEventListener(NEW_CLIENT_EVENT, onNew);
-  }, []);
+  // Si ya hay un formulario abierto (alta o edición), no lo pisamos.
+  const formOpenRef = useRef(false);
+  formOpenRef.current = showForm || editing !== null;
+  const openNewForm = () => {
+    if (formOpenRef.current) return;
+    setEditing(null);
+    setShowForm(true);
+  };
+  useAppEvent(NEW_CLIENT_EVENT, openNewForm);
+  useOpenParam(NEW_CLIENT_PARAM, openNewForm);
 
   async function toggleArchived(client: Client) {
     const { error: err } = await supabase

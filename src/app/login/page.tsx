@@ -47,7 +47,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <Link href="/" className="mb-8 flex items-center justify-center gap-2">
           <Logo size={40} />
-          <Wordmark className="text-2xl" />
+          <Wordmark className="text-2xl text-slate-800" />
         </Link>
         <form onSubmit={handleSubmit} className="rounded-xl bg-white p-6 shadow-sm">
           <h1 className="mb-4 text-lg font-semibold">

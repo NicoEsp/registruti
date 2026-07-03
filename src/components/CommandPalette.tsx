@@ -124,6 +124,7 @@ export default function CommandPalette({
 
   return (
     <div
+      data-overlay
       className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 px-4 pt-[15vh]"
       onClick={onClose}
     >

@@ -177,7 +177,7 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <Link href="/" className="flex items-center gap-2">
             <Logo size={30} />
-            <Wordmark className="text-lg" />
+            <Wordmark className="text-lg text-slate-800" />
           </Link>
           <nav className="hidden items-center gap-6 text-sm text-slate-600 md:flex">
             <a href="#funcionalidades" className="hover:text-slate-900">
@@ -469,7 +469,7 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-4 py-10 text-center">
           <div className="flex items-center gap-2">
             <Logo size={22} />
-            <Wordmark />
+            <Wordmark className="text-slate-800" />
           </div>
           <p className="text-sm text-slate-500">
             Registrá cada hora que trabajás y convertila en factura. Sin vueltas.

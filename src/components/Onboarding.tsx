@@ -93,7 +93,10 @@ export default function Onboarding() {
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-0 sm:items-center sm:p-4">
+    <div
+      data-overlay
+      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-0 sm:items-center sm:p-4"
+    >
       <div className="w-full max-w-md rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl">
         {/* Progreso */}
         <div className="mb-5 flex gap-1.5">

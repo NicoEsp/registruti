@@ -5,7 +5,13 @@ import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import Modal from "@/components/Modal";
 import { supabase } from "@/lib/supabase";
-import { NEW_INVOICE_EVENT } from "@/lib/appEvents";
+import {
+  ENTRY_ADDED_EVENT,
+  NEW_INVOICE_EVENT,
+  NEW_INVOICE_PARAM,
+  useAppEvent,
+  useOpenParam,
+} from "@/lib/appEvents";
 import { downloadInvoicePdf, type InvoiceIssuer } from "@/lib/invoicePdf";
 import { fetchIssuer } from "@/lib/profile";
 import type { Client, Invoice, TimeEntry } from "@/lib/types";
@@ -27,9 +33,12 @@ function Invoices() {
   const [error, setError] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [newClientId, setNewClientId] = useState<string | null>(null);
+  const [newFrom, setNewFrom] = useState<string | null>(null);
   const [pdfBusyId, setPdfBusyId] = useState<string | null>(null);
   const [issuer, setIssuer] = useState<InvoiceIssuer | null>(null);
-  const [unbilled, setUnbilled] = useState<Map<string, number>>(new Map());
+  const [unbilled, setUnbilled] = useState<Map<string, { minutes: number; earliest: string }>>(
+    new Map()
+  );
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -39,7 +48,7 @@ function Invoices() {
       fetchIssuer(),
       supabase
         .from("time_entries")
-        .select("client_id, duration_minutes")
+        .select("client_id, duration_minutes, entry_date")
         .is("invoice_id", null)
         .eq("billable", true),
     ]);
@@ -49,12 +58,21 @@ function Invoices() {
       setInvoices(invoicesRes.data);
       setClients(clientsRes.data);
       setIssuer(issuerData);
-      const map = new Map<string, number>();
+      const map = new Map<string, { minutes: number; earliest: string }>();
       for (const e of unbilledRes.data ?? []) {
-        map.set(e.client_id, (map.get(e.client_id) ?? 0) + e.duration_minutes);
+        const agg = map.get(e.client_id) ?? { minutes: 0, earliest: e.entry_date };
+        agg.minutes += e.duration_minutes;
+        if (e.entry_date < agg.earliest) agg.earliest = e.entry_date;
+        map.set(e.client_id, agg);
       }
       setUnbilled(map);
-      setError(null);
+      // Si solo falló la query de horas sin facturar, lo decimos en vez de
+      // esconder el banner en silencio.
+      setError(
+        unbilledRes.error
+          ? `No se pudieron cargar las horas sin facturar: ${unbilledRes.error.message}`
+          : null
+      );
     }
     setLoading(false);
   }, []);
@@ -63,26 +81,21 @@ function Invoices() {
     loadData();
   }, [loadData]);
 
-  // Apertura del modal desde el atajo global (F / ⌘K), vía evento o ?nueva=1.
-  useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("nueva") === "1") {
-      setShowNew(true);
-      window.history.replaceState(null, "", "/invoices");
-    }
-    const onNew = () => setShowNew(true);
-    window.addEventListener(NEW_INVOICE_EVENT, onNew);
-    return () => window.removeEventListener(NEW_INVOICE_EVENT, onNew);
-  }, []);
+  // Apertura del modal desde el atajo global (F / ⌘K), vía evento o ?nueva=1,
+  // y refresco en vivo cuando se registra tiempo desde el atajo global.
+  useAppEvent(NEW_INVOICE_EVENT, () => setShowNew(true));
+  useAppEvent(ENTRY_ADDED_EVENT, loadData);
+  useOpenParam(NEW_INVOICE_PARAM, () => setShowNew(true));
 
   const clientById = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
 
   // Cliente activo con más horas facturables pendientes, para sugerir la factura.
   const topUnbilled = useMemo(() => {
-    let best: { clientId: string; minutes: number } | null = null;
-    for (const [clientId, minutes] of unbilled) {
+    let best: { clientId: string; minutes: number; earliest: string } | null = null;
+    for (const [clientId, agg] of unbilled) {
       const client = clientById.get(clientId);
       if (!client || client.archived) continue;
-      if (!best || minutes > best.minutes) best = { clientId, minutes };
+      if (!best || agg.minutes > best.minutes) best = { clientId, ...agg };
     }
     return best;
   }, [unbilled, clientById]);
@@ -151,6 +164,9 @@ function Invoices() {
           <button
             onClick={() => {
               setNewClientId(topUnbilled.clientId);
+              // El período arranca en la entrada sin facturar más vieja, para
+              // que el modal muestre exactamente las horas que promete el banner.
+              setNewFrom(topUnbilled.earliest);
               setShowNew(true);
             }}
             className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
@@ -235,13 +251,16 @@ function Invoices() {
           clients={clients.filter((c) => !c.archived)}
           invoiceCount={invoices.length}
           initialClientId={newClientId}
+          initialFrom={newFrom}
           onClose={() => {
             setShowNew(false);
             setNewClientId(null);
+            setNewFrom(null);
           }}
           onCreated={() => {
             setShowNew(false);
             setNewClientId(null);
+            setNewFrom(null);
             loadData();
           }}
         />
@@ -254,18 +273,22 @@ function NewInvoiceModal({
   clients,
   invoiceCount,
   initialClientId,
+  initialFrom,
   onClose,
   onCreated,
 }: {
   clients: Client[];
   invoiceCount: number;
   initialClientId?: string | null;
+  initialFrom?: string | null;
   onClose: () => void;
   onCreated: () => void;
 }) {
   const now = new Date();
   const [clientId, setClientId] = useState(initialClientId ?? "");
-  const [from, setFrom] = useState(toISODate(new Date(now.getFullYear(), now.getMonth(), 1)));
+  const [from, setFrom] = useState(
+    initialFrom ?? toISODate(new Date(now.getFullYear(), now.getMonth(), 1))
+  );
   const [to, setTo] = useState(toISODate(new Date(now.getFullYear(), now.getMonth() + 1, 0)));
   const [preview, setPreview] = useState<TimeEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
