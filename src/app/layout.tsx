@@ -7,6 +7,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: "#4f46e5",
 };
 
 export const metadata: Metadata = {
@@ -45,6 +46,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
+    site: "@nicoproducto",
+    creator: "@nicoproducto",
     title: "Registruti — Trackeá tus horas, facturá a tus clientes",
     description:
       "Control de horas y facturación para freelancers, gratis y en español. La alternativa a Toggl Track hecha en Latinoamérica.",
