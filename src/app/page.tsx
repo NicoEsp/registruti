@@ -191,6 +191,9 @@ export default function LandingPage() {
             </a>
           </nav>
           <div className="flex items-center gap-3">
+            <div className="hidden xl:block">
+              <MadeByBadge />
+            </div>
             <Link
               href="/login"
               className="hidden text-sm font-medium text-slate-600 hover:text-slate-900 sm:block"
