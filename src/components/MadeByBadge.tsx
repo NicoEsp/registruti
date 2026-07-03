@@ -19,23 +19,24 @@ function LinkedInIcon({ className }: { className?: string }) {
 
 /**
  * Badge "Un producto por NicoProducto" con links a X y LinkedIn.
- * `card` para la landing; `sidebar` es la variante compacta para el menú de la app.
+ * Chip con borde en una sola línea (misma forma en todos los productos).
+ * `sidebar` usa un tamaño más chico para el menú de la app.
  */
 export default function MadeByBadge({ variant = "card" }: { variant?: "card" | "sidebar" }) {
   const compact = variant === "sidebar";
+  const iconSize = compact ? "h-3.5 w-3.5" : "h-4 w-4";
   return (
     <div
       className={
         compact
-          ? "flex flex-wrap items-center gap-x-2 gap-y-1"
-          : "inline-flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm"
+          ? "flex w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-center shadow-sm"
+          : "inline-flex items-center gap-2 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm"
       }
     >
-      <span className={compact ? "text-xs text-slate-500" : "text-sm text-slate-500"}>
-        Un producto por{" "}
-        <span className="font-medium text-slate-900">NicoProducto</span>
+      <span className={`text-slate-500 ${compact ? "text-[11px] leading-tight" : "text-sm"}`}>
+        Un producto por <span className="font-medium text-slate-900">NicoProducto</span>
       </span>
-      <div className="flex items-center gap-2">
+      <span className="flex items-center gap-1.5">
         <a
           href={X_URL}
           target="_blank"
@@ -43,7 +44,7 @@ export default function MadeByBadge({ variant = "card" }: { variant?: "card" | "
           aria-label="NicoProducto en X (Twitter)"
           className="text-slate-500 transition-colors hover:text-slate-900"
         >
-          <XIcon className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
+          <XIcon className={iconSize} />
         </a>
         <a
           href={LINKEDIN_URL}
@@ -52,9 +53,9 @@ export default function MadeByBadge({ variant = "card" }: { variant?: "card" | "
           aria-label="NicoProducto en LinkedIn"
           className="text-slate-500 transition-colors hover:text-slate-900"
         >
-          <LinkedInIcon className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
+          <LinkedInIcon className={iconSize} />
         </a>
-      </div>
+      </span>
     </div>
   );
 }
