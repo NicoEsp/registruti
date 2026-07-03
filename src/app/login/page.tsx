@@ -2,49 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Logo from "@/components/Logo";
 import Wordmark from "@/components/Wordmark";
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const router = useRouter();
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setInfo(null);
-    setBusy(true);
-    try {
-      if (mode === "signin") {
-        const { error: err } = await supabase.auth.signInWithPassword({ email, password });
-        if (err) throw err;
-        router.replace("/tracker");
-      } else {
-        const { data, error: err } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-        });
-        if (err) throw err;
-        if (data.session) {
-          router.replace("/tracker");
-        } else {
-          setInfo("Te mandamos un email para confirmar la cuenta. Abrilo y listo.");
-        }
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error inesperado");
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function handleGoogle() {
     setError(null);
@@ -67,16 +31,17 @@ export default function LoginPage() {
           <Logo size={40} />
           <Wordmark className="text-2xl text-slate-800" />
         </Link>
-        <form onSubmit={handleSubmit} className="rounded-xl bg-white p-6 shadow-sm">
-          <h1 className="mb-4 text-lg font-semibold">
-            {mode === "signin" ? "Iniciar sesión" : "Crear cuenta"}
-          </h1>
+        <div className="rounded-xl bg-white p-6 shadow-sm">
+          <h1 className="text-lg font-semibold">Entrá a tu cuenta</h1>
+          <p className="mt-1 mb-5 text-sm text-slate-500">
+            Trackeá tus horas y facturá a tus clientes. Gratis y en español.
+          </p>
 
           <button
             type="button"
             onClick={handleGoogle}
             disabled={busy}
-            className="mb-4 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
               <path
@@ -96,47 +61,23 @@ export default function LoginPage() {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1A11 11 0 0 0 2.18 7.06l3.67 2.84C6.71 7.31 9.14 5.38 12 5.38Z"
               />
             </svg>
-            Continuar con Google
+            {busy ? "Redirigiendo…" : "Continuar con Google"}
           </button>
 
-          <div className="mb-4 flex items-center gap-3 text-xs text-slate-400">
-            <span className="h-px flex-1 bg-slate-200" />o<span className="h-px flex-1 bg-slate-200" />
-          </div>
+          {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+        </div>
 
-          <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-          />
-          <label className="mb-1 block text-sm font-medium text-slate-700">Contraseña</label>
-          <input
-            type="password"
-            required
-            minLength={6}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="mb-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-          />
-          {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
-          {info && <p className="mb-3 text-sm text-emerald-600">{info}</p>}
-          <button
-            type="submit"
-            disabled={busy}
-            className="w-full rounded-lg bg-indigo-600 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-          >
-            {busy ? "…" : mode === "signin" ? "Entrar" : "Registrarme"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-            className="mt-3 w-full text-center text-sm text-indigo-600 hover:underline"
-          >
-            {mode === "signin" ? "¿No tenés cuenta? Registrate" : "¿Ya tenés cuenta? Iniciá sesión"}
-          </button>
-        </form>
+        <p className="mt-4 text-center text-xs text-slate-400">
+          Al continuar aceptás los{" "}
+          <Link href="/terms" className="hover:text-slate-600 hover:underline">
+            Términos
+          </Link>{" "}
+          y la{" "}
+          <Link href="/privacy" className="hover:text-slate-600 hover:underline">
+            Política de privacidad
+          </Link>
+          .
+        </p>
       </div>
     </div>
   );
