@@ -3,6 +3,7 @@ import Link from "next/link";
 import Logo from "@/components/Logo";
 import Wordmark from "@/components/Wordmark";
 import MadeByBadge from "@/components/MadeByBadge";
+import LandingAuthRedirect from "@/components/LandingAuthRedirect";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -167,6 +168,7 @@ const JSON_LD = {
 export default function LandingPage() {
   return (
     <div className="bg-white text-slate-900">
+      <LandingAuthRedirect />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
