@@ -14,6 +14,7 @@ export const TOAST_EVENT = "registruti:toast";
 
 export const NEW_INVOICE_PARAM = "nueva";
 export const NEW_CLIENT_PARAM = "nuevo";
+export const QUICK_ADD_PARAM = "registrar";
 
 export function emitEntryAdded(): void {
   window.dispatchEvent(new CustomEvent(ENTRY_ADDED_EVENT));

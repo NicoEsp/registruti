@@ -97,7 +97,7 @@ export default function Onboarding() {
       data-overlay
       className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-0 sm:items-center sm:p-4"
     >
-      <div className="w-full max-w-md rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl">
+      <div className="sheet-in w-full max-w-md rounded-t-2xl bg-white p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-xl sm:rounded-2xl sm:pb-6">
         {/* Progreso */}
         <div className="mb-5 flex gap-1.5">
           {[0, 1, 2, 3].map((i) => (

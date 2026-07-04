@@ -108,7 +108,76 @@ function Clients() {
           Todavía no tenés clientes. Agregá el primero para empezar a trackear.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+        <>
+        {/* Mobile: tarjetas */}
+        <div className="space-y-3 md:hidden">
+          {visible.map((client) => (
+            <div
+              key={client.id}
+              className={`rounded-xl border border-slate-200 bg-white p-4 shadow-sm ${
+                client.archived ? "opacity-60" : ""
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: client.color }}
+                  />
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">
+                      {client.name}
+                      {client.archived && (
+                        <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-500">
+                          Archivado
+                        </span>
+                      )}
+                    </p>
+                    {(client.contact_name || client.email) && (
+                      <p className="truncate text-xs text-slate-500">
+                        {[client.contact_name, client.email].filter(Boolean).join(" · ")}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex shrink-0 gap-1">
+                  <button
+                    onClick={() => setEditing(client)}
+                    className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-50 hover:text-indigo-600"
+                    title="Editar"
+                  >
+                    ✎
+                  </button>
+                  <button
+                    onClick={() => toggleArchived(client)}
+                    className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-50 hover:text-amber-600"
+                    title={client.archived ? "Desarchivar" : "Archivar"}
+                  >
+                    {client.archived ? "📂" : "📁"}
+                  </button>
+                  <button
+                    onClick={() => handleDelete(client)}
+                    className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-50 hover:text-red-600"
+                    title="Eliminar"
+                  >
+                    🗑
+                  </button>
+                </div>
+              </div>
+              <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-sm">
+                <span className="text-slate-500">
+                  {formatMoney(client.hourly_rate, client.currency)}/h
+                </span>
+                <span className="font-mono text-slate-700">
+                  {formatDuration(totals.get(client.id) ?? 0)}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop: tabla */}
+        <div className="hidden overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm md:block">
           <table className="w-full min-w-[560px] text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
@@ -178,6 +247,7 @@ function Clients() {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {archivedCount > 0 && (

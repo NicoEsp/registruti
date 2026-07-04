@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
-import { TOAST_EVENT, openNewInvoice } from "@/lib/appEvents";
+import { QUICK_ADD_PARAM, TOAST_EVENT, openNewInvoice, useOpenParam } from "@/lib/appEvents";
 import Logo from "@/components/Logo";
 import Wordmark from "@/components/Wordmark";
 import MadeByBadge from "@/components/MadeByBadge";
@@ -14,12 +14,80 @@ import CommandPalette from "@/components/CommandPalette";
 import QuickAddEntry from "@/components/QuickAddEntry";
 
 const NAV_ITEMS = [
-  { href: "/tracker", label: "Tracker", icon: "⏱" },
-  { href: "/clients", label: "Clientes", icon: "👥" },
-  { href: "/reports", label: "Reportes", icon: "📊" },
-  { href: "/invoices", label: "Facturas", icon: "🧾" },
-  { href: "/settings", label: "Ajustes", icon: "⚙️" },
-];
+  { href: "/tracker", label: "Tracker", icon: "clock" },
+  { href: "/clients", label: "Clientes", icon: "users" },
+  { href: "/reports", label: "Reportes", icon: "chart" },
+  { href: "/invoices", label: "Facturas", icon: "invoice" },
+  { href: "/settings", label: "Ajustes", icon: "settings" },
+] as const;
+
+const NAV_ICON_PATHS: Record<(typeof NAV_ITEMS)[number]["icon"], React.ReactNode> = {
+  clock: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </>
+  ),
+  users: (
+    <>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" />
+      <circle cx="9.5" cy="7" r="4" />
+      <path d="M21 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M15 3.13a4 4 0 0 1 0 7.75" />
+    </>
+  ),
+  chart: (
+    <>
+      <path d="M4 20V10" />
+      <path d="M12 20V4" />
+      <path d="M20 20v-7" />
+    </>
+  ),
+  invoice: (
+    <>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v6h6" />
+      <path d="M8 13h8" />
+      <path d="M8 17h5" />
+    </>
+  ),
+  settings: (
+    <>
+      <path d="M4 21v-7" />
+      <path d="M4 10V3" />
+      <path d="M12 21v-9" />
+      <path d="M12 8V3" />
+      <path d="M20 21v-5" />
+      <path d="M20 12V3" />
+      <path d="M2 14h4" />
+      <path d="M10 8h4" />
+      <path d="M18 16h4" />
+    </>
+  ),
+};
+
+function NavIcon({
+  name,
+  className,
+}: {
+  name: (typeof NAV_ITEMS)[number]["icon"];
+  className?: string;
+}) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      {NAV_ICON_PATHS[name]}
+    </svg>
+  );
+}
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -47,6 +115,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setIsMac(/Mac|iPhone|iPad/i.test(navigator.userAgent));
   }, []);
+
+  // Atajo del ícono de la PWA instalada ("Registrar tiempo" → /tracker?registrar=1).
+  useOpenParam(QUICK_ADD_PARAM, () => setQuickAddOpen(true));
 
   // Atajos globales: ⌘K/Ctrl+K abre la paleta; T registra tiempo; F nueva factura.
   // Todo overlay (modales de página, onboarding, palette, quick-add) marca su
@@ -133,7 +204,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                 }`}
               >
-                <span aria-hidden>{item.icon}</span>
+                <NavIcon name={item.icon} className="h-[18px] w-[18px]" />
                 {item.label}
               </Link>
             );
@@ -152,7 +223,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Top bar (mobile) */}
-      <header className="no-print fixed inset-x-0 top-0 z-20 flex items-center justify-between border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur md:hidden">
+      <header className="no-print fixed inset-x-0 top-0 z-20 flex items-center justify-between border-b border-slate-200 bg-white/95 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur md:hidden">
         <Link href="/" className="flex items-center gap-2">
           <Logo size={26} />
           <Wordmark className="text-base text-slate-800" />
@@ -161,7 +232,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <button
             onClick={() => setQuickAddOpen(true)}
             aria-label="Registrar tiempo"
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white shadow-sm transition active:scale-95"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-600 text-white shadow-sm transition active:scale-95"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-4.5 w-4.5" aria-hidden>
               <path d="M12 5v14" />
@@ -177,8 +248,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      {/* Contenido */}
-      <main className="flex-1 px-4 pb-24 pt-20 md:ml-56 md:px-8 md:py-8 md:pb-8 print:ml-0 print:px-0 print:py-0 print:pb-0 print:pt-0">
+      {/* Contenido. El min-w-0 es crítico: sin él, cualquier hijo con ancho
+          intrínseco grande (tablas, selects) infla el <main> más allá del
+          viewport y toda la página desborda en mobile. */}
+      <main className="min-w-0 flex-1 px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-[calc(4.5rem+env(safe-area-inset-top))] md:ml-56 md:px-8 md:py-8 md:pb-8 print:ml-0 print:px-0 print:py-0 print:pb-0 print:pt-0">
         {children}
       </main>
 
@@ -190,14 +263,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition ${
+              aria-current={active ? "page" : undefined}
+              className={`flex min-w-0 flex-1 flex-col items-center gap-1 pb-1.5 pt-2 text-[11px] font-medium transition active:scale-95 ${
                 active ? "text-indigo-600" : "text-slate-500"
               }`}
             >
-              <span className="text-lg" aria-hidden>
-                {item.icon}
+              <span
+                className={`flex h-7 w-12 items-center justify-center rounded-full transition ${
+                  active ? "bg-indigo-50" : ""
+                }`}
+              >
+                <NavIcon name={item.icon} className="h-5 w-5" />
               </span>
-              {item.label}
+              <span className="truncate">{item.label}</span>
             </Link>
           );
         })}

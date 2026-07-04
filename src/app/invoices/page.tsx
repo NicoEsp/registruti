@@ -183,7 +183,57 @@ function Invoices() {
           Todavía no generaste facturas. Creá la primera a partir de tus horas trackeadas.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+        <>
+        {/* Mobile: tarjetas */}
+        <div className="space-y-3 md:hidden">
+          {invoices.map((inv) => (
+            <div key={inv.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <Link
+                  href={`/invoices/${inv.id}`}
+                  className="truncate font-medium text-indigo-600 hover:underline"
+                >
+                  {inv.invoice_number}
+                </Link>
+                <span
+                  className={`shrink-0 rounded px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[inv.status]}`}
+                >
+                  {STATUS_LABELS[inv.status]}
+                </span>
+              </div>
+              <p className="mt-1 truncate text-sm text-slate-700">
+                {clientById.get(inv.client_id)?.name ?? "—"}
+              </p>
+              <p className="text-xs text-slate-500">
+                {formatShortDate(inv.period_start)} – {formatShortDate(inv.period_end)} ·{" "}
+                <span className="font-mono">{formatDuration(inv.total_minutes)}</span>
+              </p>
+              <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
+                <span className="font-semibold">
+                  {formatMoney(inv.total_amount, inv.currency)}
+                </span>
+                <div className="flex gap-2">
+                  <Link
+                    href={`/invoices/${inv.id}`}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium hover:bg-slate-50"
+                  >
+                    Ver
+                  </Link>
+                  <button
+                    onClick={() => handleDownloadPdf(inv)}
+                    disabled={pdfBusyId === inv.id}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    {pdfBusyId === inv.id ? "…" : "Descargar"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop: tabla */}
+        <div className="hidden overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm md:block">
           <table className="w-full min-w-[640px] text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
@@ -244,6 +294,7 @@ function Invoices() {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {showNew && (
