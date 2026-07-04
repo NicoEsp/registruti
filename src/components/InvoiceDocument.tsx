@@ -21,7 +21,7 @@ export default function InvoiceDocument({
   entries: EntryRow[];
 }) {
   return (
-    <div className="print-page rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
+    <div className="print-page rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
       <div className="mb-8 flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Factura</h1>
@@ -76,7 +76,7 @@ export default function InvoiceDocument({
         </tbody>
       </table>
 
-      <div className="ml-auto w-64 space-y-1 text-sm">
+      <div className="ml-auto w-full max-w-64 space-y-1 text-sm">
         <p className="flex justify-between">
           <span className="text-slate-500">Horas totales</span>
           <span className="font-mono">{formatDuration(invoice.total_minutes)}</span>

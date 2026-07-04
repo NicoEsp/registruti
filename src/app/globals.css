@@ -4,8 +4,40 @@
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
+html {
+  /* Nada puede empujar el layout más allá del viewport: si un hijo mide de
+     más, se recorta en vez de agrandar toda la página (el zoom "gigante"
+     que se veía en mobile). */
+  overflow-x: clip;
+  /* Sin font boosting de Chrome Android ni auto-zoom de texto. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   @apply bg-slate-50 text-slate-900 antialiased;
+  overflow-x: clip;
+}
+
+a,
+button,
+input,
+select,
+textarea,
+label {
+  /* Sin flash gris al tocar y sin delay de doble tap en mobile. */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* iOS hace zoom automático al enfocar controles con fuente < 16px.
+   En pantallas táctiles chicas subimos la base para que nunca pase. */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }
 
 @keyframes palette-in {
@@ -20,6 +52,20 @@ body {
 }
 .palette-in {
   animation: palette-in 0.16s ease-out;
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0.6;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.sheet-in {
+  animation: sheet-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes toast-in {

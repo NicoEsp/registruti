@@ -135,7 +135,7 @@ function Tracker() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => shiftWeek(-1)}
-            className="shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-100"
+            className="shrink-0 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm hover:bg-slate-100 sm:py-1.5"
             title="Semana anterior"
           >
             ‹
@@ -145,7 +145,7 @@ function Tracker() {
           </span>
           <button
             onClick={() => shiftWeek(1)}
-            className="shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-100"
+            className="shrink-0 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm hover:bg-slate-100 sm:py-1.5"
             title="Semana siguiente"
           >
             ›
@@ -153,7 +153,7 @@ function Tracker() {
           <button
             onClick={goToToday}
             disabled={isViewingToday}
-            className="shrink-0 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-100 disabled:opacity-40"
+            className="shrink-0 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 disabled:opacity-40 sm:py-1.5"
             title="Ir a hoy"
           >
             Hoy
@@ -266,7 +266,7 @@ function Tracker() {
         <button
           type="submit"
           disabled={saving || !clientId}
-          className="w-full rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 sm:w-auto"
+          className="w-full rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 active:scale-[0.98] disabled:opacity-50 sm:w-auto sm:py-2"
         >
           Agregar
         </button>
@@ -300,7 +300,7 @@ function Tracker() {
                   {dayEntries.map((entry) => {
                     const client = clientById.get(entry.client_id);
                     return (
-                      <div key={entry.id} className="flex items-center gap-3 px-4 py-3">
+                      <div key={entry.id} className="flex items-center gap-2 py-2.5 pl-4 pr-2 sm:gap-3 sm:py-3 sm:pr-3">
                         <span
                           className="h-2.5 w-2.5 shrink-0 rounded-full"
                           style={{ backgroundColor: client?.color ?? "#94a3b8" }}
@@ -326,7 +326,7 @@ function Tracker() {
                         <button
                           onClick={() => setEditing(entry)}
                           disabled={!!entry.invoice_id}
-                          className="text-sm text-slate-400 hover:text-indigo-600 disabled:opacity-30"
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm text-slate-400 hover:bg-slate-50 hover:text-indigo-600 disabled:opacity-30"
                           title={entry.invoice_id ? "Entrada facturada" : "Editar"}
                         >
                           ✎
@@ -334,7 +334,7 @@ function Tracker() {
                         <button
                           onClick={() => handleDelete(entry)}
                           disabled={!!entry.invoice_id}
-                          className="text-sm text-slate-400 hover:text-red-600 disabled:opacity-30"
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm text-slate-400 hover:bg-slate-50 hover:text-red-600 disabled:opacity-30"
                           title={entry.invoice_id ? "Entrada facturada" : "Eliminar"}
                         >
                           🗑

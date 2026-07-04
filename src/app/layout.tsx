@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { Analytics } from "@vercel/analytics/next";
+import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
@@ -8,7 +9,9 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#4f46e5",
+  // Blanco como el header de la app: en la PWA instalada la barra de estado
+  // se funde con la UI en vez de mostrar una franja violeta.
+  themeColor: "#ffffff",
 };
 
 export const metadata: Metadata = {
@@ -36,6 +39,14 @@ export const metadata: Metadata = {
     "control de horas consultores",
   ],
   applicationName: SITE_NAME,
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: SITE_NAME,
+  },
+  formatDetection: {
+    telephone: false,
+  },
   openGraph: {
     type: "website",
     url: SITE_URL,
@@ -64,6 +75,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es" className={GeistSans.className}>
       <body>
         {children}
+        <ServiceWorkerRegister />
         <Analytics />
       </body>
     </html>

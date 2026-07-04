@@ -374,7 +374,50 @@ function Reports() {
             </div>
           )}
 
-          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+          {/* Mobile: tarjetas por cliente */}
+          <div className="space-y-3 md:hidden">
+            {byClient.length === 0 ? (
+              <p className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-400 shadow-sm">
+                No hay horas registradas en este período.
+              </p>
+            ) : (
+              byClient.map(({ clientId, client, minutes, billableMinutes }) => (
+                <div
+                  key={clientId}
+                  className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="flex min-w-0 items-center gap-2 font-medium">
+                      <span
+                        className="h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: client?.color ?? "#94a3b8" }}
+                      />
+                      <span className="truncate">{client?.name ?? "Cliente eliminado"}</span>
+                    </span>
+                    <span className="shrink-0 font-semibold">
+                      {client
+                        ? formatMoney((billableMinutes / 60) * client.hourly_rate, client.currency)
+                        : "—"}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex gap-4 text-xs text-slate-500">
+                    <span>
+                      Horas <span className="font-mono text-slate-700">{formatDuration(minutes)}</span>
+                    </span>
+                    <span>
+                      Facturables{" "}
+                      <span className="font-mono text-slate-700">
+                        {formatDuration(billableMinutes)}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop: tabla */}
+          <div className="hidden overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm md:block">
             <table className="w-full min-w-[560px] text-sm">
               <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                 <tr>
