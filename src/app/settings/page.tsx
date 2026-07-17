@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import AppShell from "@/components/AppShell";
+import Modal from "@/components/Modal";
 import { supabase } from "@/lib/supabase";
+import { showToast } from "@/lib/appEvents";
+import { COUNTRIES, countryFor, localeFor, validateTaxId } from "@/lib/countries";
+import { setMoneyLocale } from "@/lib/format";
 
 export default function SettingsPage() {
   return (
@@ -17,6 +21,7 @@ function Settings() {
   const [taxId, setTaxId] = useState("");
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
+  const [country, setCountry] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,10 +29,8 @@ function Settings() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data, error: err } = await supabase
-      .from("profiles")
-      .select("business_name, tax_id, email, address")
-      .maybeSingle();
+    // `select *` tolera columnas todavía no migradas (ej. country).
+    const { data, error: err } = await supabase.from("profiles").select("*").maybeSingle();
     if (err) {
       // Tabla inexistente (migración sin aplicar) u otro error: dejamos el form vacío.
       setError(err.message);
@@ -36,6 +39,7 @@ function Settings() {
       setTaxId(data.tax_id ?? "");
       setEmail(data.email ?? "");
       setAddress(data.address ?? "");
+      setCountry(data.country ?? "");
       setError(null);
     }
     setLoading(false);
@@ -44,6 +48,11 @@ function Settings() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const countryConfig = countryFor(country);
+  const taxIdLabel = countryConfig?.taxIdLabel ?? "CUIT / ID fiscal";
+  const taxIdPlaceholder = countryConfig?.taxIdPlaceholder ?? "20-12345678-9";
+  const taxIdOk = validateTaxId(countryConfig, taxId);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -64,12 +73,15 @@ function Settings() {
       tax_id: taxId.trim() || null,
       email: email.trim() || null,
       address: address.trim() || null,
+      country: country || null,
     });
     setBusy(false);
     if (err) {
       setError(err.message);
       return;
     }
+    // Los montos de toda la app pasan a formatearse con el locale del país.
+    setMoneyLocale(localeFor(country || null));
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   }
@@ -93,6 +105,24 @@ function Settings() {
       ) : (
         <form onSubmit={handleSave} className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">País</label>
+            <select
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            >
+              <option value="">Elegir…</option>
+              {COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.flag} {c.name}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-400">
+              Define el tipo de ID fiscal y el formato de los montos.
+            </p>
+          </div>
+          <div>
             <label className="mb-1 block text-xs font-medium text-slate-500">
               Nombre o razón social
             </label>
@@ -104,13 +134,19 @@ function Settings() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">CUIT / ID fiscal</label>
+            <label className="mb-1 block text-xs font-medium text-slate-500">{taxIdLabel}</label>
             <input
               value={taxId}
               onChange={(e) => setTaxId(e.target.value)}
-              placeholder="20-12345678-9"
+              placeholder={taxIdPlaceholder}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
             />
+            {!taxIdOk && (
+              <p className="mt-1 text-xs text-amber-600">
+                El formato no parece un {taxIdLabel} válido (ej. {taxIdPlaceholder}). Se guarda
+                igual.
+              </p>
+            )}
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-500">Email de contacto</label>
@@ -152,17 +188,11 @@ function Settings() {
 
 function AccountSection() {
   const [email, setEmail] = useState<string | null>(null);
+  const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
   }, []);
-
-  async function changePassword() {
-    const password = prompt("Nueva contraseña (mínimo 6 caracteres):");
-    if (!password) return;
-    const { error } = await supabase.auth.updateUser({ password });
-    alert(error ? `Error: ${error.message}` : "Contraseña actualizada.");
-  }
 
   return (
     <section className="mt-8">
@@ -171,7 +201,7 @@ function AccountSection() {
         {email && <p className="truncate text-sm text-slate-500">{email}</p>}
         <div className="flex flex-wrap gap-2">
           <button
-            onClick={changePassword}
+            onClick={() => setChangingPassword(true)}
             className="rounded-lg border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50"
           >
             Cambiar contraseña
@@ -184,6 +214,85 @@ function AccountSection() {
           </button>
         </div>
       </div>
+      {changingPassword && <PasswordModal onClose={() => setChangingPassword(false)} />}
     </section>
+  );
+}
+
+function PasswordModal({ onClose }: { onClose: () => void }) {
+  const [password, setPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (password.length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
+    if (password !== confirmation) {
+      setError("Las contraseñas no coinciden.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const { error: err } = await supabase.auth.updateUser({ password });
+    setBusy(false);
+    if (err) {
+      setError(err.message);
+      return;
+    }
+    showToast("✓ Contraseña actualizada");
+    onClose();
+  }
+
+  return (
+    <Modal title="Cambiar contraseña" onClose={onClose}>
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-500">
+            Nueva contraseña
+          </label>
+          <input
+            type="password"
+            autoFocus
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-500">
+            Repetir contraseña
+          </label>
+          <input
+            type="password"
+            autoComplete="new-password"
+            value={confirmation}
+            onChange={(e) => setConfirmation(e.target.value)}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+          />
+        </div>
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <div className="flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={busy || !password || !confirmation}
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {busy ? "Guardando…" : "Actualizar"}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }

@@ -6,11 +6,12 @@ Aplicación de seguimiento de horas de consultoría y facturación por cliente, 
 
 ## Funcionalidades
 
-- **Tracker semanal**: registro de horas por día, en intervalos de 15 minutos (mínimo 0:15, máximo 8:00 por entrada), con descripción y cliente.
+- **Tracker semanal**: registro de horas por día con duración de escritura libre ("1:30", "1.5", "90m"), en intervalos de 15 minutos (mínimo 0:15, máximo 8:00 por entrada), con descripción, cliente, marca de facturable y repetición de entradas con un click.
 - **Clientes**: alta, edición, archivado y eliminación de clientes, cada uno con tarifa por hora, moneda y color propio.
-- **Reportes**: horas y montos facturables por cliente y por día, con filtros por período (semana, mes, mes pasado o rango personalizado).
-- **Facturas**: generación de facturas por cliente y período a partir de las horas no facturadas, con estados (borrador → enviada → pagada), descarga de PDF con el detalle del trabajo y numeración automática.
-- **Link público por factura**: cada factura tiene un link compartible (`/i/<token>`) para que el cliente vea el detalle de horas sin necesidad de cuenta — trazabilidad externa.
+- **Reportes**: horas y montos facturables por cliente y por día, con filtros por período (semana, mes, mes pasado o rango personalizado) y exportación a CSV.
+- **Facturas**: generación de facturas por cliente y período a partir de las horas no facturadas, con estados (borrador → enviada → pagada), vencimiento opcional con marca de vencida, descarga de PDF con el detalle del trabajo y numeración automática.
+- **Link público por factura**: cada factura tiene un link compartible (`/i/<token>`, con token de 128 bits regenerable si se filtra) para que el cliente vea el detalle de horas sin necesidad de cuenta — trazabilidad externa.
+- **Por país**: el perfil guarda el país del emisor (Argentina, Uruguay, Chile, México, ... ) y con eso se adaptan el tipo de ID fiscal (CUIT, RUT, RFC, ...), la moneda sugerida y el formato de los montos.
 
 ## Stack
 

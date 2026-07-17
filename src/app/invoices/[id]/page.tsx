@@ -4,13 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import InvoiceDocument from "@/components/InvoiceDocument";
 import InvoiceActions from "@/components/InvoiceActions";
 import { supabase } from "@/lib/supabase";
+import { showToast } from "@/lib/appEvents";
 import { fetchIssuer } from "@/lib/profile";
 import type { InvoiceIssuer } from "@/lib/invoicePdf";
 import type { Client, Invoice, InvoiceStatus, TimeEntry } from "@/lib/types";
-import { STATUS_LABELS, STATUS_STYLES } from "@/lib/invoiceStatus";
+import { invoiceStatusLabel, invoiceStatusStyle } from "@/lib/invoiceStatus";
 
 export default function InvoiceDetailPage() {
   return (
@@ -30,6 +32,9 @@ function InvoiceDetail() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [issuer, setIssuer] = useState<InvoiceIssuer | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [confirmingRegen, setConfirmingRegen] = useState(false);
+  const [regenBusy, setRegenBusy] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -72,13 +77,8 @@ function InvoiceDetail() {
 
   async function handleDelete() {
     if (!invoice) return;
-    if (
-      !confirm(
-        "¿Eliminar esta factura? Las horas asociadas volverán a quedar disponibles para facturar."
-      )
-    )
-      return;
     const { error: err } = await supabase.from("invoices").delete().eq("id", invoice.id);
+    setConfirmingDelete(false);
     if (err) setError(err.message);
     else router.push("/invoices");
   }
@@ -90,6 +90,23 @@ function InvoiceDetail() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
+  }
+
+  // Rota el token: el link compartido anteriormente deja de funcionar.
+  async function regenerateLink() {
+    if (!invoice) return;
+    setRegenBusy(true);
+    const { data, error: err } = await supabase.rpc("regenerate_share_token", {
+      p_invoice_id: invoice.id,
+    });
+    setRegenBusy(false);
+    setConfirmingRegen(false);
+    if (err || typeof data !== "string") {
+      setError(err?.message ?? "No se pudo regenerar el link (¿migración sin aplicar?).");
+      return;
+    }
+    setInvoice({ ...invoice, share_token: data });
+    showToast("✓ Link regenerado: el anterior dejó de funcionar");
   }
 
   if (loading) return <p className="text-sm text-slate-400">Cargando…</p>;
@@ -109,9 +126,9 @@ function InvoiceDetail() {
           ← Facturas
         </Link>
         <span
-          className={`rounded px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[invoice.status]}`}
+          className={`rounded px-2 py-0.5 text-xs font-medium ${invoiceStatusStyle(invoice)}`}
         >
-          {STATUS_LABELS[invoice.status]}
+          {invoiceStatusLabel(invoice)}
         </span>
         <div className="ml-auto flex flex-wrap gap-2">
           {invoice.status === "draft" && (
@@ -136,6 +153,13 @@ function InvoiceDetail() {
           >
             {copied ? "¡Copiado!" : "Copiar link público"}
           </button>
+          <button
+            onClick={() => setConfirmingRegen(true)}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50"
+            title="Genera un link nuevo e invalida el anterior"
+          >
+            Regenerar link
+          </button>
           <InvoiceActions
             invoice={invoice}
             clientName={client.name}
@@ -145,7 +169,7 @@ function InvoiceDetail() {
             issuer={issuer}
           />
           <button
-            onClick={handleDelete}
+            onClick={() => setConfirmingDelete(true)}
             className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm text-red-600 hover:bg-red-50"
           >
             Eliminar
@@ -160,6 +184,28 @@ function InvoiceDetail() {
         clientEmail={client.email}
         entries={entries}
       />
+
+      {confirmingDelete && (
+        <ConfirmDialog
+          title="Eliminar factura"
+          message={`Se va a eliminar la factura ${invoice.invoice_number}. Las horas asociadas vuelven a quedar disponibles para facturar.`}
+          confirmLabel="Eliminar"
+          danger
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmingDelete(false)}
+        />
+      )}
+
+      {confirmingRegen && (
+        <ConfirmDialog
+          title="Regenerar link público"
+          message="Se genera un link nuevo y el que compartiste hasta ahora deja de funcionar. Usalo si el link se filtró o lo tiene alguien que no debería."
+          confirmLabel="Regenerar"
+          busy={regenBusy}
+          onConfirm={regenerateLink}
+          onCancel={() => setConfirmingRegen(false)}
+        />
+      )}
     </div>
   );
 }

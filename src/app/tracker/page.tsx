@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AppShell from "@/components/AppShell";
 import Modal from "@/components/Modal";
+import ConfirmDialog from "@/components/ConfirmDialog";
+import DurationInput from "@/components/DurationInput";
 import { supabase } from "@/lib/supabase";
-import { ENTRY_ADDED_EVENT, useAppEvent } from "@/lib/appEvents";
+import { ENTRY_ADDED_EVENT, showToast, useAppEvent } from "@/lib/appEvents";
 import type { Client, TimeEntry } from "@/lib/types";
 import {
   DAY_ABBREV,
-  DURATION_OPTIONS,
   addDays,
   formatDayLabel,
   formatDuration,
@@ -33,12 +34,14 @@ function Tracker() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<TimeEntry | null>(null);
+  const [deleting, setDeleting] = useState<TimeEntry | null>(null);
 
   // New entry form
   const [description, setDescription] = useState("");
   const [clientId, setClientId] = useState("");
   const [date, setDate] = useState(toISODate(new Date()));
-  const [duration, setDuration] = useState(60);
+  const [duration, setDuration] = useState<number | null>(60);
+  const [billable, setBillable] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const weekDays = useMemo(
@@ -82,13 +85,14 @@ function Tracker() {
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
-    if (!clientId) return;
+    if (!clientId || duration == null) return;
     setSaving(true);
     const { error: err } = await supabase.from("time_entries").insert({
       client_id: clientId,
       entry_date: date,
       duration_minutes: duration,
       description,
+      billable,
     });
     setSaving(false);
     if (err) {
@@ -99,15 +103,33 @@ function Tracker() {
     loadData();
   }
 
-  async function handleDelete(entry: TimeEntry) {
-    if (entry.invoice_id) {
-      alert("Esta entrada ya está facturada y no puede eliminarse.");
-      return;
-    }
-    if (!confirm("¿Eliminar esta entrada?")) return;
-    const { error: err } = await supabase.from("time_entries").delete().eq("id", entry.id);
+  async function confirmDelete() {
+    if (!deleting) return;
+    const { error: err } = await supabase.from("time_entries").delete().eq("id", deleting.id);
+    setDeleting(null);
     if (err) setError(err.message);
     else loadData();
+  }
+
+  // Duplica una entrada con fecha de hoy: ideal para trabajo recurrente.
+  async function handleRepeat(entry: TimeEntry) {
+    const { error: err } = await supabase.from("time_entries").insert({
+      client_id: entry.client_id,
+      entry_date: today,
+      duration_minutes: entry.duration_minutes,
+      description: entry.description,
+      billable: entry.billable,
+    });
+    if (err) {
+      setError(err.message);
+      return;
+    }
+    showToast(
+      `✓ ${formatDuration(entry.duration_minutes)} registradas hoy a ${
+        clientById.get(entry.client_id)?.name ?? "cliente"
+      }`
+    );
+    loadData();
   }
 
   const today = toISODate(new Date());
@@ -248,28 +270,29 @@ function Tracker() {
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
             />
           </div>
-          <div className="flex-1 sm:flex-none">
+          <div className="flex-1 sm:w-44 sm:flex-none">
             <label className="mb-1 block text-xs font-medium text-slate-500">Duración</label>
-            <select
-              value={duration}
-              onChange={(e) => setDuration(Number(e.target.value))}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-            >
-              {DURATION_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+            <DurationInput value={duration} onChange={setDuration} />
           </div>
         </div>
-        <button
-          type="submit"
-          disabled={saving || !clientId}
-          className="w-full rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 active:scale-[0.98] disabled:opacity-50 sm:w-auto sm:py-2"
-        >
-          Agregar
-        </button>
+        <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:flex-col sm:items-end sm:justify-end">
+          <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-500">
+            <input
+              type="checkbox"
+              checked={billable}
+              onChange={(e) => setBillable(e.target.checked)}
+              className="h-4 w-4 rounded accent-indigo-600"
+            />
+            Facturable
+          </label>
+          <button
+            type="submit"
+            disabled={saving || !clientId || duration == null}
+            className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 active:scale-[0.98] disabled:opacity-50 sm:py-2"
+          >
+            Agregar
+          </button>
+        </div>
       </form>
 
       {activeClients.length === 0 && !loading && (
@@ -318,11 +341,23 @@ function Tracker() {
                                 Facturada
                               </span>
                             )}
+                            {!entry.billable && (
+                              <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500">
+                                No facturable
+                              </span>
+                            )}
                           </p>
                         </div>
                         <span className="font-mono text-sm font-medium">
                           {formatDuration(entry.duration_minutes)}
                         </span>
+                        <button
+                          onClick={() => handleRepeat(entry)}
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm text-slate-400 hover:bg-slate-50 hover:text-indigo-600"
+                          title="Repetir hoy"
+                        >
+                          ↻
+                        </button>
                         <button
                           onClick={() => setEditing(entry)}
                           disabled={!!entry.invoice_id}
@@ -332,7 +367,7 @@ function Tracker() {
                           ✎
                         </button>
                         <button
-                          onClick={() => handleDelete(entry)}
+                          onClick={() => setDeleting(entry)}
                           disabled={!!entry.invoice_id}
                           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm text-slate-400 hover:bg-slate-50 hover:text-red-600 disabled:opacity-30"
                           title={entry.invoice_id ? "Entrada facturada" : "Eliminar"}
@@ -365,6 +400,21 @@ function Tracker() {
           }}
         />
       )}
+
+      {deleting && (
+        <ConfirmDialog
+          title="Eliminar entrada"
+          message={`Se va a eliminar "${
+            deleting.description || "Sin descripción"
+          }" (${formatDuration(deleting.duration_minutes)}) del ${formatDayLabel(
+            deleting.entry_date
+          )}.`}
+          confirmLabel="Eliminar"
+          danger
+          onConfirm={confirmDelete}
+          onCancel={() => setDeleting(null)}
+        />
+      )}
     </div>
   );
 }
@@ -383,12 +433,14 @@ function EditEntryModal({
   const [description, setDescription] = useState(entry.description);
   const [clientId, setClientId] = useState(entry.client_id);
   const [date, setDate] = useState(entry.entry_date);
-  const [duration, setDuration] = useState(entry.duration_minutes);
+  const [duration, setDuration] = useState<number | null>(entry.duration_minutes);
+  const [billable, setBillable] = useState(entry.billable);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    if (duration == null) return;
     setSaving(true);
     const { error: err } = await supabase
       .from("time_entries")
@@ -397,6 +449,7 @@ function EditEntryModal({
         client_id: clientId,
         entry_date: date,
         duration_minutes: duration,
+        billable,
       })
       .eq("id", entry.id);
     setSaving(false);
@@ -441,19 +494,18 @@ function EditEntryModal({
           </div>
           <div className="flex-1">
             <label className="mb-1 block text-xs font-medium text-slate-500">Duración</label>
-            <select
-              value={duration}
-              onChange={(e) => setDuration(Number(e.target.value))}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-            >
-              {DURATION_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+            <DurationInput value={duration} onChange={setDuration} />
           </div>
         </div>
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+          <input
+            type="checkbox"
+            checked={billable}
+            onChange={(e) => setBillable(e.target.checked)}
+            className="h-4 w-4 rounded accent-indigo-600"
+          />
+          Facturable
+        </label>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex justify-end gap-2 pt-2">
           <button
@@ -465,7 +517,7 @@ function EditEntryModal({
           </button>
           <button
             type="submit"
-            disabled={saving}
+            disabled={saving || duration == null}
             className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
           >
             Guardar
