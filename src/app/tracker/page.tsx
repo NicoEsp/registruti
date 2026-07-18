@@ -35,6 +35,7 @@ function Tracker() {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<TimeEntry | null>(null);
   const [deleting, setDeleting] = useState<TimeEntry | null>(null);
+  const [repeatingId, setRepeatingId] = useState<string | null>(null);
 
   // New entry form
   const [description, setDescription] = useState("");
@@ -113,6 +114,8 @@ function Tracker() {
 
   // Duplica una entrada con fecha de hoy: ideal para trabajo recurrente.
   async function handleRepeat(entry: TimeEntry) {
+    if (repeatingId === entry.id) return; // ya hay un insert de esta entrada en vuelo
+    setRepeatingId(entry.id);
     const { error: err } = await supabase.from("time_entries").insert({
       client_id: entry.client_id,
       entry_date: today,
@@ -120,6 +123,7 @@ function Tracker() {
       description: entry.description,
       billable: entry.billable,
     });
+    setRepeatingId(null);
     if (err) {
       setError(err.message);
       return;
@@ -353,7 +357,8 @@ function Tracker() {
                         </span>
                         <button
                           onClick={() => handleRepeat(entry)}
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm text-slate-400 hover:bg-slate-50 hover:text-indigo-600"
+                          disabled={repeatingId === entry.id}
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm text-slate-400 hover:bg-slate-50 hover:text-indigo-600 disabled:opacity-30"
                           title="Repetir hoy"
                         >
                           ↻

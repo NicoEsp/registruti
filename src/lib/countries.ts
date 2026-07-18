@@ -119,6 +119,16 @@ export const COUNTRIES: CountryConfig[] = [
     locale: "es-UY",
   },
   {
+    code: "VE",
+    name: "Venezuela",
+    flag: "🇻🇪",
+    taxIdLabel: "RIF",
+    taxIdPlaceholder: "J-12345678-9",
+    taxIdPattern: /^[VEJPG]\d{9}$/,
+    currency: "VES",
+    locale: "es-VE",
+  },
+  {
     code: "OTRO",
     name: "Otro país",
     flag: "🌎",

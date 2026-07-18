@@ -320,6 +320,13 @@ function ClientFormModal({
   const [email, setEmail] = useState(client?.email ?? "");
   const [rate, setRate] = useState(client?.hourly_rate.toString() ?? "");
   const [currency, setCurrency] = useState(client?.currency ?? defaultCurrency);
+  const [currencyTouched, setCurrencyTouched] = useState(false);
+
+  // El default llega async (perfil): si es un alta y el usuario no tocó la
+  // moneda, seguimos el default cuando resuelve para no guardar USD por error.
+  useEffect(() => {
+    if (!client && !currencyTouched) setCurrency(defaultCurrency);
+  }, [client, currencyTouched, defaultCurrency]);
   const [color, setColor] = useState(
     client?.color ?? CLIENT_COLORS[Math.floor(Math.random() * CLIENT_COLORS.length)]
   );
@@ -396,7 +403,10 @@ function ClientFormModal({
             <label className="mb-1 block text-xs font-medium text-slate-500">Moneda</label>
             <select
               value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
+              onChange={(e) => {
+                setCurrencyTouched(true);
+                setCurrency(e.target.value);
+              }}
               className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
             >
               {CURRENCIES.map((c) => (

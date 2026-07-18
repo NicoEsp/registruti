@@ -22,6 +22,11 @@ $$;
 alter table public.invoices
   alter column share_token set default public.generate_share_token();
 
+-- Sin el grant implícito a PUBLIC: el default de la columna corre con el rol
+-- que inserta (authenticated desde la app, service_role desde backend).
+revoke execute on function public.generate_share_token() from public;
+grant execute on function public.generate_share_token() to authenticated, service_role;
+
 -- La RPC pública se recrea desde cero: el `drop` cubre el caso de que la
 -- versión creada a mano tenga otro tipo de retorno.
 drop function if exists public.get_public_invoice(text);

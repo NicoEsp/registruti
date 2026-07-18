@@ -104,7 +104,7 @@ export function parseDuration(input: string): number | null {
   let m = s.match(/^(\d{1,2}):([0-5]?\d)$/); // h:mm
   if (m) return Number(m[1]) * 60 + Number(m[2]);
 
-  m = s.match(/^(\d+(?:\.\d+)?)\s*h(?:s|oras?)?(?:\s*(\d{1,2})\s*(?:m|min)?)?$/); // 2h, 1.5h, 2h30
+  m = s.match(/^(\d+(?:\.\d+)?)\s*h(?:s|oras?)?(?:\s*([0-5]?\d)\s*(?:m|min)?)?$/); // 2h, 1.5h, 2h30
   if (m) return Math.round(Number(m[1]) * 60) + (m[2] ? Number(m[2]) : 0);
 
   m = s.match(/^(\d+)\s*(?:m|min|mins|minutos?)$/); // 90m

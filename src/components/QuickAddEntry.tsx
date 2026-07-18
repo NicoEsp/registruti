@@ -41,14 +41,6 @@ export default function QuickAddEntry({ onClose }: { onClose: () => void }) {
       });
   }, []);
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!clientId || duration == null) return;

@@ -73,6 +73,7 @@ export const CURRENCIES = [
   "PEN",
   "PYG",
   "BOB",
+  "VES",
   "GBP",
 ] as const;
 

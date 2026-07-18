@@ -118,8 +118,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Formatear montos con el locale del país del perfil (es-AR hasta que cargue).
+  // El bump re-renderiza el árbol cuando el locale resuelve, para que los
+  // montos ya pintados se reformateen sin esperar otro cambio de estado.
+  const [, bumpLocale] = useState(0);
   useEffect(() => {
-    if (session) applyProfileMoneyLocale();
+    if (session) applyProfileMoneyLocale().then(() => bumpLocale((n) => n + 1));
   }, [session]);
 
   // Atajo del ícono de la PWA instalada ("Registrar tiempo" → /tracker?registrar=1).
