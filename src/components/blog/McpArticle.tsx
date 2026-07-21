@@ -2,6 +2,10 @@ import CodeBlock from "@/components/blog/CodeBlock";
 
 const MCP_ENDPOINT = "https://www.registruti.app/api/mcp";
 
+const CLI_COMMAND = `claude mcp add --transport http registruti \\
+  ${MCP_ENDPOINT} \\
+  --header "Authorization: Bearer reg_tu_token_aca"`;
+
 const CONFIG_JSON = `{
   "mcpServers": {
     "registruti": {
@@ -40,9 +44,17 @@ export default function McpArticle() {
       </blockquote>
 
       <p>
-        En esta guía vas a conectar Registruti a <strong>Claude Desktop</strong>. Toma unos 5
-        minutos. Todo lo que hagas queda scopeado a <strong>tu propia cuenta</strong>: el token que
-        generás identifica tu usuario y Claude solo ve y toca tus datos.
+        MCP es un <strong>estándar abierto</strong>, así que esto <strong>no es exclusivo de Claude
+        Desktop</strong>: funciona con cualquier cliente compatible con MCP que permita conectar un
+        servidor remoto con un header de autorización — por ejemplo <strong>Claude Code</strong>,{" "}
+        <strong>Cursor</strong> u otros. En esta guía usamos Claude Desktop como ejemplo porque es
+        el más común, pero la idea es la misma en todos: apuntás el cliente al endpoint de Registruti
+        con tu token. Lo único que cambia es <em>dónde</em> se pega la configuración (más abajo
+        tenés el ejemplo para otros clientes).
+      </p>
+      <p>
+        Toma unos 5 minutos. Todo lo que hagas queda scopeado a <strong>tu propia cuenta</strong>:
+        el token que generás identifica tu usuario y el asistente solo ve y toca tus datos.
       </p>
 
       <h2 id="requisitos">Lo que necesitás</h2>
@@ -203,11 +215,28 @@ export default function McpArticle() {
         </li>
       </ul>
 
+      <h2 id="otros-clientes">En otros clientes MCP</h2>
+      <p>
+        La configuración de arriba es puntual de Claude Desktop, pero el servidor de Registruti es
+        un MCP remoto estándar, así que lo podés usar desde cualquier cliente compatible. Lo único
+        que cambia es cómo se declara. Por ejemplo, en <strong>Claude Code</strong> (la CLI) es un
+        solo comando:
+      </p>
+      <CodeBlock code={CLI_COMMAND} />
+      <p>
+        En otros clientes como <strong>Cursor</strong>, agregás un servidor MCP remoto de tipo HTTP
+        apuntando al mismo endpoint (<code>{MCP_ENDPOINT}</code>) y con el header{" "}
+        <code>Authorization: Bearer &lt;tu-token&gt;</code>. Si tu cliente solo soporta servidores
+        locales, podés usar el puente <code>mcp-remote</code> igual que en el ejemplo de Claude
+        Desktop.
+      </p>
+
       <hr />
       <p>
-        Esto es la primera versión de la integración: funciona con Claude Desktop y clientes MCP que
-        aceptan un token. Estamos trabajando en el login con OAuth para sumar también Claude web y
-        mobile. ¿Sugerencias o algo que no funcionó? Escribinos.
+        Esto es la primera versión de la integración: funciona con Claude Desktop, Claude Code,
+        Cursor y cualquier otro cliente MCP que acepte un token. Estamos trabajando en el login con
+        OAuth para sumar también Claude web y mobile. ¿Sugerencias o algo que no funcionó?
+        Escribinos.
       </p>
     </>
   );

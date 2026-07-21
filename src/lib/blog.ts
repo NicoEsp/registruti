@@ -22,7 +22,7 @@ export const POSTS: BlogPost[] = [
     slug: "mcp",
     title: "Cómo conectar Registruti a Claude con MCP",
     description:
-      "Guía paso a paso para agregar Registruti como servidor MCP en Claude Desktop y cargar horas o consultar tus reportes por lenguaje natural.",
+      "Guía paso a paso para agregar Registruti como servidor MCP en Claude Desktop, Claude Code, Cursor u otro cliente MCP, y cargar horas o consultar tus reportes por lenguaje natural.",
     date: "21 de julio de 2026",
     dateISO: "2026-07-21",
     tag: "Integraciones",
