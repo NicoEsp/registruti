@@ -489,6 +489,9 @@ export default function LandingPage() {
             <a href="#faq" className="hover:text-slate-900">
               Preguntas
             </a>
+            <Link href="/blog" className="hover:text-slate-900">
+              Blog
+            </Link>
             <Link href="/login" className="hover:text-slate-900">
               Iniciar sesión
             </Link>
