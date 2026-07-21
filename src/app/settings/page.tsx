@@ -4,9 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import AppShell from "@/components/AppShell";
 import Modal from "@/components/Modal";
 import { supabase } from "@/lib/supabase";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import { showToast } from "@/lib/appEvents";
 import { COUNTRIES, countryFor, localeFor, validateTaxId } from "@/lib/countries";
 import { setMoneyLocale } from "@/lib/format";
+import { SITE_URL } from "@/lib/site";
 
 export default function SettingsPage() {
   return (
@@ -181,8 +183,212 @@ function Settings() {
         </form>
       )}
 
+      <McpSection />
+
       <AccountSection />
     </div>
+  );
+}
+
+interface McpToken {
+  id: string;
+  name: string | null;
+  created_at: string;
+  last_used_at: string | null;
+}
+
+const MCP_ENDPOINT = `${SITE_URL}/api/mcp`;
+
+/** Genera un token opaco de 256 bits: "reg_" + 64 chars hex. */
+function generateToken(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  const hex = Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  return `reg_${hex}`;
+}
+
+async function sha256Hex(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function McpSection() {
+  const [tokens, setTokens] = useState<McpToken[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [fresh, setFresh] = useState<string | null>(null); // token recién creado (se muestra una vez)
+  const [deleting, setDeleting] = useState<McpToken | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data, error: err } = await supabase
+      .from("mcp_tokens")
+      .select("id, name, created_at, last_used_at")
+      .order("created_at", { ascending: false });
+    if (err) setError(err.message);
+    else {
+      setTokens(data as McpToken[]);
+      setError(null);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function handleCreate() {
+    setCreating(true);
+    setError(null);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setError("No hay sesión activa.");
+      setCreating(false);
+      return;
+    }
+    const token = generateToken();
+    const token_hash = await sha256Hex(token);
+    const { error: err } = await supabase
+      .from("mcp_tokens")
+      .insert({ user_id: user.id, token_hash, name: name.trim() || null });
+    setCreating(false);
+    if (err) {
+      setError(err.message);
+      return;
+    }
+    setFresh(token);
+    setName("");
+    load();
+  }
+
+  async function confirmDelete() {
+    if (!deleting) return;
+    const { error: err } = await supabase.from("mcp_tokens").delete().eq("id", deleting.id);
+    setDeleting(null);
+    if (err) setError(err.message);
+    else load();
+  }
+
+  return (
+    <section className="mt-8">
+      <h2 className="mb-1 text-sm font-semibold text-slate-700">Conexión MCP (Claude, LLMs)</h2>
+      <p className="mb-3 text-xs text-slate-500">
+        Generá un token para conectar Registruti a Claude Desktop u otro cliente MCP y cargar horas o
+        consultar cómo vas por lenguaje natural. El token da acceso a tus datos: tratalo como una
+        contraseña.
+      </p>
+
+      <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        {error && (
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+        )}
+
+        {fresh && (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+            <p className="text-xs font-medium text-emerald-800">
+              Token nuevo — copialo ahora, no se vuelve a mostrar:
+            </p>
+            <div className="mt-2 flex items-center gap-2">
+              <code className="min-w-0 flex-1 truncate rounded border border-emerald-200 bg-white px-2 py-1.5 font-mono text-xs">
+                {fresh}
+              </code>
+              <button
+                onClick={() => {
+                  navigator.clipboard?.writeText(fresh);
+                  showToast("✓ Token copiado");
+                }}
+                className="shrink-0 rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+              >
+                Copiar
+              </button>
+            </div>
+            <button
+              onClick={() => setFresh(null)}
+              className="mt-2 text-xs text-emerald-700 underline"
+            >
+              Ya lo guardé
+            </button>
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="min-w-40 flex-1">
+            <label className="mb-1 block text-xs font-medium text-slate-500">
+              Nombre del token (opcional)
+            </label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ej: Claude Desktop"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            />
+          </div>
+          <button
+            onClick={handleCreate}
+            disabled={creating}
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {creating ? "Generando…" : "Generar token"}
+          </button>
+        </div>
+
+        <div className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+          Endpoint del servidor:{" "}
+          <code className="font-mono text-slate-800">{MCP_ENDPOINT}</code>
+        </div>
+
+        {loading ? (
+          <p className="text-sm text-slate-400">Cargando…</p>
+        ) : tokens.length === 0 ? (
+          <p className="text-sm text-slate-400">Todavía no generaste ningún token.</p>
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {tokens.map((t) => (
+              <li key={t.id} className="flex items-center gap-3 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{t.name || "Sin nombre"}</p>
+                  <p className="text-xs text-slate-500">
+                    Creado {new Date(t.created_at).toLocaleDateString()}
+                    {t.last_used_at
+                      ? ` · último uso ${new Date(t.last_used_at).toLocaleDateString()}`
+                      : " · sin usar"}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setDeleting(t)}
+                  className="shrink-0 rounded-lg px-2 py-1 text-sm text-slate-400 hover:bg-red-50 hover:text-red-600"
+                  title="Revocar token"
+                >
+                  🗑
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {deleting && (
+        <ConfirmDialog
+          title="Revocar token"
+          message={`Se va a revocar "${
+            deleting.name || "Sin nombre"
+          }". Cualquier cliente MCP que lo use dejará de tener acceso.`}
+          confirmLabel="Revocar"
+          danger
+          onConfirm={confirmDelete}
+          onCancel={() => setDeleting(null)}
+        />
+      )}
+    </section>
   );
 }
 

@@ -34,6 +34,22 @@ supabase db push
 4. `20260717000004_profile_country.sql` — columna `profiles.country` (país del
    emisor) que define etiqueta/formato del ID fiscal, moneda sugerida y locale
    de montos. **Requerida** por el selector de país de Ajustes/Onboarding.
+5. `20260721000005_mcp_tokens.sql` — tabla `mcp_tokens` (tokens de acceso al
+   servidor MCP, guardados como hash SHA-256) con RLS por usuario. **Requerida**
+   por la sección "Conexión MCP" de Ajustes y por el endpoint `/api/mcp`.
+
+## Servidor MCP (`/api/mcp`)
+
+El endpoint MCP corre con la **service role key** (bypassa RLS), así que necesita
+una env var extra en Vercel además de las publicables:
+
+```
+SUPABASE_SERVICE_ROLE_KEY=...   # Settings → API → service_role (secreta)
+```
+
+Sin esa variable el endpoint responde 500 y no puede leer/escribir. Toda query
+del servidor MCP filtra explícitamente por `user_id` (resuelto a partir del hash
+del token), porque la service role no aplica RLS por sí sola.
 
 ## Auditar RLS
 
@@ -54,6 +70,6 @@ order by t.tablename;
 ```
 
 Toda tabla con datos de usuario (`clients`, `time_entries`, `invoices`,
-`profiles`, `invoice_counters`) debe mostrar `rls_activo = true` y al menos una
-policy. Si alguna aparece en `false`, hay una fuga de datos entre usuarios y hay
+`profiles`, `invoice_counters`, `mcp_tokens`) debe mostrar `rls_activo = true` y
+al menos una policy. Si alguna aparece en `false`, hay una fuga de datos entre usuarios y hay
 que activar RLS y agregar policies antes de salir a producción.
