@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AppShell from "@/components/AppShell";
 import Modal from "@/components/Modal";
+import BillableCheckbox from "@/components/BillableCheckbox";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import DurationInput from "@/components/DurationInput";
 import { supabase } from "@/lib/supabase";
@@ -282,15 +283,7 @@ function Tracker() {
         {/* pt-5 en sm+ compensa la altura del label de los otros campos, para
             que el checkbox y el botón queden en línea con los inputs. */}
         <div className="flex w-full items-center justify-between gap-4 sm:w-auto sm:justify-start sm:pt-5">
-          <label className="flex cursor-pointer items-center gap-2 py-2 text-xs font-medium text-slate-500">
-            <input
-              type="checkbox"
-              checked={billable}
-              onChange={(e) => setBillable(e.target.checked)}
-              className="h-4 w-4 rounded accent-indigo-600"
-            />
-            Facturable
-          </label>
+          <BillableCheckbox checked={billable} onChange={setBillable} compact />
           <button
             type="submit"
             disabled={saving || !clientId || duration == null}
@@ -504,15 +497,7 @@ function EditEntryModal({
             <DurationInput value={duration} onChange={setDuration} />
           </div>
         </div>
-        <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
-          <input
-            type="checkbox"
-            checked={billable}
-            onChange={(e) => setBillable(e.target.checked)}
-            className="h-4 w-4 rounded accent-indigo-600"
-          />
-          Facturable
-        </label>
+        <BillableCheckbox checked={billable} onChange={setBillable} />
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex justify-end gap-2 pt-2">
           <button
