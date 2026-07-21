@@ -117,6 +117,9 @@ El flujo de pago usa [LemonSqueezy](https://www.lemonsqueezy.com/):
    `profiles.pro = true` del usuario (resuelto por `user_id`, o por email si no
    vino). El pago con otro email igual se matchea gracias al `user_id`.
 
+El webhook solo activa el `pro` si la orden es del **variant del lifetime
+access** (`1934751`), como defensa por si un evento ajeno llegara al endpoint.
+
 **Config del webhook** (LemonSqueezy → Settings → Webhooks):
 
 - **Callback URL:** `https://registruti.app/api/webhooks/lemonsqueezy`
@@ -126,10 +129,15 @@ El flujo de pago usa [LemonSqueezy](https://www.lemonsqueezy.com/):
 **Env vars en Vercel:**
 
 ```
-LEMONSQUEEZY_WEBHOOK_SECRET=...                 # el signing secret del webhook (secreto)
-NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL=https://...   # el "buy link" del producto
+LEMONSQUEEZY_WEBHOOK_SECRET=...      # el signing secret del webhook (secreto) — REQUERIDA
+
+# Opcionales (tienen default hardcodeado):
+NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL=https://nicoproducto.lemonsqueezy.com/checkout/buy/...
+LEMONSQUEEZY_VARIANT_ID=1934751     # variant del producto; 0 = no verificar
 ```
 
-El webhook reusa `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` (las mismas del MCP)
-para activar el acceso. Ver [`supabase/README.md`](supabase/README.md) para la
-activación manual y el detalle de la migración.
+El checkout URL y el variant ya vienen con default en el código (son públicos),
+así que solo hace falta setear `LEMONSQUEEZY_WEBHOOK_SECRET`. El webhook reusa
+`SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` (las mismas del MCP) para activar el
+acceso. Ver [`supabase/README.md`](supabase/README.md) para la activación manual
+y el detalle de la migración.

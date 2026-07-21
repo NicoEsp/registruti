@@ -7,9 +7,12 @@ export const FREE_CLIENT_LIMIT = 3;
 export const FREE_INVOICE_LIMIT = 4;
 
 // URL base del checkout del lifetime access en LemonSqueezy (el "buy link" del
-// producto). Ej: https://tienda.lemonsqueezy.com/buy/xxxxxxxx-xxxx-...
-// Si no está seteada, el paywall cae a un mailto de contacto.
-export const CHECKOUT_URL = process.env.NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL ?? "";
+// producto). Es pública, así que va hardcodeada como default; se puede
+// sobreescribir por env var. Si quedara vacía, el paywall cae a un mailto.
+const DEFAULT_CHECKOUT_URL =
+  "https://nicoproducto.lemonsqueezy.com/checkout/buy/e1727dda-4b32-4d09-a210-95d1e210dbd7";
+export const CHECKOUT_URL =
+  process.env.NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL ?? DEFAULT_CHECKOUT_URL;
 export const CHECKOUT_CONTACT_EMAIL = "hola@registruti.app";
 
 export interface PlanStatus {

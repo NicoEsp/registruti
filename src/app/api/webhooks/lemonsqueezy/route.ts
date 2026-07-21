@@ -16,6 +16,11 @@ import { getAdminClient } from "@/lib/supabaseAdmin";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// Variant del producto "lifetime access" en LemonSqueezy. Solo una orden de este
+// variant activa el pro (defensa por si un evento ajeno llegara al endpoint).
+// Sobreescribible por env var; 0 = no verificar.
+const EXPECTED_VARIANT_ID = Number(process.env.LEMONSQUEEZY_VARIANT_ID ?? 1934751);
+
 interface LemonWebhook {
   meta?: {
     event_name?: string;
@@ -25,6 +30,7 @@ interface LemonWebhook {
     attributes?: {
       user_email?: string;
       status?: string;
+      first_order_item?: { variant_id?: number };
     };
   };
 }
@@ -68,6 +74,13 @@ export async function POST(req: NextRequest) {
 
   const status = body.data?.attributes?.status;
   if (status && status !== "paid") {
+    return new Response("ok", { status: 200 });
+  }
+
+  // Solo el producto del lifetime access activa el pro. Si el evento trae otro
+  // variant, lo aceptamos (200) pero no hacemos nada.
+  const variantId = body.data?.attributes?.first_order_item?.variant_id;
+  if (EXPECTED_VARIANT_ID && variantId && variantId !== EXPECTED_VARIANT_ID) {
     return new Response("ok", { status: 200 });
   }
 
