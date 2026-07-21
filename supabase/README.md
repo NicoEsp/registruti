@@ -41,15 +41,18 @@ supabase db push
 ## Servidor MCP (`/api/mcp`)
 
 El endpoint MCP corre con la **service role key** (bypassa RLS), así que necesita
-una env var extra en Vercel además de las publicables:
+env vars propias en Vercel además de las publicables:
 
-```
-SUPABASE_SERVICE_ROLE_KEY=...   # Settings → API → service_role (secreta)
+```env
+SUPABASE_URL=...                 # URL del proyecto (misma que NEXT_PUBLIC_SUPABASE_URL)
+SUPABASE_SERVICE_ROLE_KEY=...    # Settings → API → service_role (secreta)
 ```
 
-Sin esa variable el endpoint responde 500 y no puede leer/escribir. Toda query
-del servidor MCP filtra explícitamente por `user_id` (resuelto a partir del hash
-del token), porque la service role no aplica RLS por sí sola.
+Ninguna tiene fallback: si falta alguna, el endpoint responde 500 en vez de
+adivinar. La URL se pide explícita a propósito — aparear la service role key con
+la URL equivocada leería/escribiría en el proyecto que no es. Toda query del
+servidor MCP filtra además por `user_id` (resuelto a partir del hash del token),
+porque la service role no aplica RLS por sí sola.
 
 ## Auditar RLS
 

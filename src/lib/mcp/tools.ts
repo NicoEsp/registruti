@@ -108,6 +108,17 @@ function validDate(s: string, label: string): string {
   return s;
 }
 
+const MAX_RANGE_DAYS = 366;
+
+// Evita que el LLM pida rangos gigantes (varios años) que traerían y
+// serializarían miles de filas en la respuesta de la tool.
+function assertRange(from: string, to: string): void {
+  const span = new Date(to).getTime() - new Date(from).getTime();
+  if (span > MAX_RANGE_DAYS * 24 * 60 * 60 * 1000) {
+    throw new Error("El rango de fechas es demasiado amplio (máximo ~1 año). Acotalo.");
+  }
+}
+
 async function fetchClients(userId: string): Promise<Client[]> {
   const admin = getAdminClient();
   const { data, error } = await admin
@@ -216,6 +227,7 @@ async function logTime(userId: string, args: Record<string, unknown>): Promise<s
 async function listTimeEntries(userId: string, args: Record<string, unknown>): Promise<string> {
   const from = args.from ? validDate(String(args.from), "desde") : daysAgoISO(30);
   const to = args.to ? validDate(String(args.to), "hasta") : todayISO();
+  assertRange(from, to);
 
   const clients = await fetchClients(userId);
   const clientById = new Map(clients.map((c) => [c.id, c]));
@@ -254,6 +266,7 @@ async function listTimeEntries(userId: string, args: Record<string, unknown>): P
 async function reportSummary(userId: string, args: Record<string, unknown>): Promise<string> {
   const from = args.from ? validDate(String(args.from), "desde") : monthStartISO();
   const to = args.to ? validDate(String(args.to), "hasta") : todayISO();
+  assertRange(from, to);
 
   const clients = await fetchClients(userId);
   const clientById = new Map(clients.map((c) => [c.id, c]));

@@ -8,6 +8,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import { showToast } from "@/lib/appEvents";
 import { COUNTRIES, countryFor, localeFor, validateTaxId } from "@/lib/countries";
 import { setMoneyLocale } from "@/lib/format";
+import { sha256Hex } from "@/lib/crypto";
 import { SITE_URL } from "@/lib/site";
 
 export default function SettingsPage() {
@@ -207,14 +208,6 @@ function generateToken(): string {
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
   return `reg_${hex}`;
-}
-
-async function sha256Hex(input: string): Promise<string> {
-  const data = new TextEncoder().encode(input);
-  const digest = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
 }
 
 function McpSection() {

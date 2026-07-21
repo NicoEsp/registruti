@@ -15,7 +15,8 @@ create table if not exists public.mcp_tokens (
   token_hash text not null unique,   -- SHA-256 (hex) del token en claro
   name text,                         -- etiqueta opcional ("Claude Desktop", ...)
   created_at timestamptz not null default now(),
-  last_used_at timestamptz
+  last_used_at timestamptz,
+  expires_at timestamptz             -- opcional: si está seteada, el server rechaza el token vencido
 );
 
 create index if not exists mcp_tokens_user_id_idx on public.mcp_tokens (user_id);

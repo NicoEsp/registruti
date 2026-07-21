@@ -80,9 +80,9 @@ Cada token resuelve un `user_id`; todas las tools quedan scopeadas a los datos d
 
 ### Configuración
 
-El endpoint usa la service role key de Supabase; hay que definir `SUPABASE_SERVICE_ROLE_KEY`
-como env var en Vercel (ver [`supabase/README.md`](supabase/README.md)) y aplicar la migración
-`20260721000005_mcp_tokens.sql`.
+El endpoint usa la service role key de Supabase; hay que definir `SUPABASE_URL` y
+`SUPABASE_SERVICE_ROLE_KEY` como env vars en Vercel (ver [`supabase/README.md`](supabase/README.md))
+y aplicar la migración `20260721000005_mcp_tokens.sql`.
 
 > **Nota:** la app web/mobile de Claude.ai exige OAuth para conectar un MCP remoto; eso es la
 > Fase 2. La Fase 1 cubre Claude Desktop, Claude Code y clientes similares que aceptan un token.

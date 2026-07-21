@@ -66,7 +66,10 @@ export async function POST(req: NextRequest) {
   }
   if (!userId) return unauthorized();
 
-  // 2. Parseo del body (mensaje único o batch).
+  // 2. Parseo del body. El protocolo por defecto (2025-06-18) eliminó el
+  // batching JSON-RPC; como este server es stateless no trackeamos la versión
+  // negociada por cliente, así que rechazamos arrays y procesamos un único
+  // mensaje. Los clientes MCP actuales (Claude, etc.) mandan mensajes sueltos.
   let body: unknown;
   try {
     body = await req.json();
@@ -74,27 +77,30 @@ export async function POST(req: NextRequest) {
     return json(rpcError(null, -32700, "Parse error."), 400);
   }
 
-  const isBatch = Array.isArray(body);
-  const messages = (isBatch ? body : [body]) as JsonRpcMessage[];
-
-  const responses = [];
-  for (const msg of messages) {
-    const res = await handleMessage(msg, userId);
-    if (res !== null) responses.push(res);
+  if (Array.isArray(body)) {
+    return json(rpcError(null, -32600, "JSON-RPC batching no está soportado."), 400);
   }
 
-  // 3. Un body de solo notificaciones no lleva respuesta → 202.
-  if (responses.length === 0) return new Response(null, { status: 202 });
+  const res = await handleMessage(body, userId);
 
-  return json(isBatch ? responses : responses[0]);
+  // Una notificación no lleva respuesta → 202.
+  if (res === null) return new Response(null, { status: 202 });
+
+  return json(res);
 }
 
-async function handleMessage(msg: JsonRpcMessage, userId: string) {
-  const id = msg?.id ?? null;
-  const isNotification = !msg || !("id" in msg) || msg.id === undefined;
-  const method = msg?.method;
+async function handleMessage(raw: unknown, userId: string) {
+  // El body parseado puede no ser un objeto (ej. un JSON primitivo): sin este
+  // guard, `"id" in raw` tiraría TypeError sobre un string/number/boolean.
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return rpcError(null, -32600, "Invalid Request");
+  }
+  const msg = raw as JsonRpcMessage;
+  const id = msg.id ?? null;
+  const isNotification = !("id" in msg) || msg.id === undefined;
+  const method = msg.method;
 
-  if (!msg || msg.jsonrpc !== "2.0" || typeof method !== "string") {
+  if (msg.jsonrpc !== "2.0" || typeof method !== "string") {
     return isNotification ? null : rpcError(id, -32600, "Invalid Request");
   }
 
