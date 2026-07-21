@@ -17,6 +17,10 @@ drop function if exists public.generate_share_token();
 alter table public.invoices
   alter column share_token set default gen_random_uuid();
 
+-- Índice único: lookup O(log n) del link público y garantía de no-colisión.
+create unique index if not exists invoices_share_token_key
+  on public.invoices (share_token);
+
 -- La RPC pública se recrea desde cero. Se cubren las dos firmas posibles de la
 -- versión creada a mano (text o uuid) para no dejar overloads ambiguos.
 drop function if exists public.get_public_invoice(text);
@@ -68,11 +72,17 @@ as $$
       '[]'::json
     )
   )
-  -- Comparación por texto: acepta cualquier token sin romper ante uno mal
-  -- formado (simplemente no matchea y devuelve null → "no encontrada").
+  -- Se valida el formato antes de castear el parámetro a uuid: un token mal
+  -- formado no matchea (null) en vez de tirar excepción, y al no castear la
+  -- columna el lookup puede usar el índice de share_token.
   from public.invoices i
   join public.clients c on c.id = i.client_id
-  where i.share_token::text = p_token;
+  where i.share_token = (
+    case
+      when p_token ~* '^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$' then p_token::uuid
+      else null
+    end
+  );
 $$;
 
 revoke execute on function public.get_public_invoice(text) from public;

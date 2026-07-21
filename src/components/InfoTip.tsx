@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 
 /**
  * Ícono de ayuda con tooltip liviano: hover/focus en desktop, tap en mobile
@@ -9,6 +9,7 @@ import { useState } from "react";
  */
 export default function InfoTip({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
+  const tooltipId = useId();
 
   return (
     <span className="relative inline-flex">
@@ -16,6 +17,7 @@ export default function InfoTip({ text }: { text: string }) {
         type="button"
         aria-label="Más información"
         aria-expanded={open}
+        aria-describedby={open ? tooltipId : undefined}
         onClick={() => setOpen((o) => !o)}
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
@@ -27,6 +29,7 @@ export default function InfoTip({ text }: { text: string }) {
       </button>
       {open && (
         <span
+          id={tooltipId}
           role="tooltip"
           className="absolute bottom-full left-0 z-30 mb-2 w-64 max-w-[calc(100vw-2rem)] rounded-lg bg-slate-900 px-3 py-2 text-[11px] font-normal leading-relaxed text-white shadow-lg"
         >
