@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { clampDuration, formatDuration, parseDuration } from "@/lib/format";
 
-const QUICK_CHIPS = [30, 60, 120, 240];
+// Hasta 2:00: tres chips entran en una sola fila incluso en el form inline
+// del tracker; para duraciones más largas está el campo de texto.
+const QUICK_CHIPS = [30, 60, 120];
 
 /**
  * Campo de duración de escritura libre: entiende "1:30", "1.5", "90m", "2h30"
@@ -58,7 +60,7 @@ export default function DurationInput({
           showError ? "border-red-400" : "border-slate-300 focus:border-indigo-500"
         }`}
       />
-      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+      <div className="mt-1 flex items-center gap-1.5">
         {QUICK_CHIPS.map((minutes) => (
           <button
             key={minutes}
