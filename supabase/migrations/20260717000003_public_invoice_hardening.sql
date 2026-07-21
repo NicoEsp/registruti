@@ -1,35 +1,30 @@
 -- Endurecimiento del link público de facturas.
--- 1. Versiona la generación del token compartible con entropía conocida
---    (128 bits vía pgcrypto) en lugar del default histórico creado a mano.
--- 2. Versiona y endurece la RPC `get_public_invoice` (security definer con
---    search_path fijo, match exacto por token, forma de salida mínima).
--- 3. Agrega `regenerate_share_token` para rotar el link si se filtró: el link
---    viejo deja de funcionar al instante.
+--
+-- La columna `invoices.share_token` es de tipo `uuid` con default
+-- `gen_random_uuid()` (~122 bits de entropía, no adivinable por fuerza bruta).
+-- Esta migración NO cambia el tipo ni los tokens ya emitidos; solo:
+--   1. Fija el default de forma explícita/versionada.
+--   2. Versiona y endurece la RPC `get_public_invoice` (security definer con
+--      search_path fijo, match seguro por token y forma de salida mínima).
+--   3. Agrega `regenerate_share_token` para rotar el link si se filtró: el link
+--      viejo deja de funcionar al instante.
 
-create extension if not exists pgcrypto;
+-- Limpieza defensiva por si una corrida anterior dejó una función a medias.
+drop function if exists public.generate_share_token();
 
--- Token de 32 hex chars = 128 bits de entropía: no adivinable por fuerza bruta.
--- `search_path` incluye `extensions` porque en Supabase pgcrypto vive ahí.
-create or replace function public.generate_share_token()
-returns text
-language sql
-volatile
-set search_path = public, extensions
-as $$
-  select encode(gen_random_bytes(16), 'hex');
-$$;
-
+-- Default versionado y conocido. `gen_random_uuid()` es nativo en Postgres 13+
+-- (Supabase corre 15), así que no hace falta ninguna extensión.
 alter table public.invoices
-  alter column share_token set default public.generate_share_token();
+  alter column share_token set default gen_random_uuid();
 
--- Sin el grant implícito a PUBLIC: el default de la columna corre con el rol
--- que inserta (authenticated desde la app, service_role desde backend).
-revoke execute on function public.generate_share_token() from public;
-grant execute on function public.generate_share_token() to authenticated, service_role;
+-- Índice único: lookup O(log n) del link público y garantía de no-colisión.
+create unique index if not exists invoices_share_token_key
+  on public.invoices (share_token);
 
--- La RPC pública se recrea desde cero: el `drop` cubre el caso de que la
--- versión creada a mano tenga otro tipo de retorno.
+-- La RPC pública se recrea desde cero. Se cubren las dos firmas posibles de la
+-- versión creada a mano (text o uuid) para no dejar overloads ambiguos.
 drop function if exists public.get_public_invoice(text);
+drop function if exists public.get_public_invoice(uuid);
 
 create function public.get_public_invoice(p_token text)
 returns json
@@ -77,9 +72,17 @@ as $$
       '[]'::json
     )
   )
+  -- Se valida el formato antes de castear el parámetro a uuid: un token mal
+  -- formado no matchea (null) en vez de tirar excepción, y al no castear la
+  -- columna el lookup puede usar el índice de share_token.
   from public.invoices i
   join public.clients c on c.id = i.client_id
-  where i.share_token = p_token;
+  where i.share_token = (
+    case
+      when p_token ~* '^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$' then p_token::uuid
+      else null
+    end
+  );
 $$;
 
 revoke execute on function public.get_public_invoice(text) from public;
@@ -89,13 +92,13 @@ grant execute on function public.get_public_invoice(text) to anon, authenticated
 -- `invoices` garantiza que solo el dueño puede actualizar su fila; si la
 -- factura no es del usuario, no actualiza nada y devuelve null.
 create or replace function public.regenerate_share_token(p_invoice_id uuid)
-returns text
+returns uuid
 language sql
 volatile
-set search_path = public, extensions
+set search_path = public
 as $$
   update public.invoices
-  set share_token = encode(gen_random_bytes(16), 'hex')
+  set share_token = gen_random_uuid()
   where id = p_invoice_id
   returning share_token;
 $$;

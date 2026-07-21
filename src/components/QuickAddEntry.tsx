@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Modal from "@/components/Modal";
+import BillableCheckbox from "@/components/BillableCheckbox";
 import DurationInput from "@/components/DurationInput";
 import { supabase } from "@/lib/supabase";
 import type { Client } from "@/lib/types";
@@ -120,15 +121,7 @@ export default function QuickAddEntry({ onClose }: { onClose: () => void }) {
               />
             </div>
           </div>
-          <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
-            <input
-              type="checkbox"
-              checked={billable}
-              onChange={(e) => setBillable(e.target.checked)}
-              className="h-4 w-4 rounded accent-indigo-600"
-            />
-            Facturable
-          </label>
+          <BillableCheckbox checked={billable} onChange={setBillable} />
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex items-center justify-between pt-2">
             <span className="hidden text-[11px] text-slate-400 sm:block">
