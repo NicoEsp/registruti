@@ -26,10 +26,11 @@ supabase db push
    función `next_invoice_number()` para numeración correlativa sin colisiones.
    Siembra el contador con el máximo número ya existente por usuario.
 3. `20260717000003_public_invoice_hardening.sql` — endurece el link público:
-   `share_token` con default versionado de 128 bits (`generate_share_token()`),
-   RPC `get_public_invoice` versionada (security definer con `search_path`
-   fijo) y `regenerate_share_token()` para rotar un link filtrado. **Requerida**
-   por el botón "Regenerar link" del detalle de factura.
+   fija el default versionado de `share_token` (columna `uuid`,
+   `gen_random_uuid()`, ~122 bits, no adivinable), versiona la RPC
+   `get_public_invoice` (security definer con `search_path` fijo) y agrega
+   `regenerate_share_token()` para rotar un link filtrado. **Requerida** por el
+   botón "Regenerar link" del detalle de factura.
 4. `20260717000004_profile_country.sql` — columna `profiles.country` (país del
    emisor) que define etiqueta/formato del ID fiscal, moneda sugerida y locale
    de montos. **Requerida** por el selector de país de Ajustes/Onboarding.
