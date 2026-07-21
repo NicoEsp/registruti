@@ -60,6 +60,12 @@ select public.grant_pro(null, 'cliente@mail.com');
 `grant_pro` resuelve el usuario por `user_id` (preferido, lo manda el checkout en
 `custom_data`) o por email, e inserta/actualiza el perfil de forma idempotente.
 
+**Owner siempre pro:** los emails de `owner_emails()` son pro de forma
+incondicional — `user_is_pro` los reconoce por email leyendo `auth.users`, así
+que la garantía sobrevive incluso a un reset de su fila en `profiles`. Para
+sumar/quitar owners, editá esa función. La UI lo consulta vía la RPC
+`is_pro_self()` (misma lógica que el enforcement), así que nunca ve el paywall.
+
 ## Servidor MCP (`/api/mcp`)
 
 El endpoint MCP corre con la **service role key** (bypassa RLS), así que necesita

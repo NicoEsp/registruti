@@ -22,22 +22,31 @@ export interface PlanStatus {
 }
 
 /**
+ * ¿El usuario logueado tiene lifetime access? Fuente de verdad: la RPC
+ * `is_pro_self`, que usa la MISMA lógica que el enforcement (incluye el check de
+ * owner por email). Tolerante a que la migración todavía no esté aplicada: si la
+ * RPC no existe, trata al usuario como free sin romper.
+ */
+export async function fetchIsPro(): Promise<boolean> {
+  const { data, error } = await supabase.rpc("is_pro_self");
+  if (error) return false;
+  return data === true;
+}
+
+/**
  * Estado del plan del usuario: si tiene lifetime access y cuánto lleva usado.
- * Tolerante a que la migración de planes todavía no esté aplicada (columna `pro`
- * inexistente): en ese caso trata al usuario como free sin romper.
  */
 export async function fetchPlanStatus(): Promise<PlanStatus> {
-  const [profileRes, clientsRes, invoicesRes] = await Promise.all([
-    supabase.from("profiles").select("*").maybeSingle(),
+  const [pro, clientsRes, invoicesRes] = await Promise.all([
+    fetchIsPro(),
     supabase
       .from("clients")
       .select("id", { count: "exact", head: true })
       .eq("archived", false),
     supabase.from("invoices").select("id", { count: "exact", head: true }),
   ]);
-  const profile = profileRes.data as { pro?: boolean } | null;
   return {
-    pro: profile?.pro === true,
+    pro,
     activeClients: clientsRes.count ?? 0,
     invoices: invoicesRes.count ?? 0,
   };

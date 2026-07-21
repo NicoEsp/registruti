@@ -22,15 +22,28 @@ create or replace function public.free_client_limit()
 create or replace function public.free_invoice_limit()
   returns int language sql immutable as $$ select 4 $$;
 
--- ¿El usuario tiene lifetime access? Falta de perfil = free.
+-- Email(s) del/los dueño(s) del proyecto: siempre pro, pase lo que pase con la
+-- fila de profiles. Centralizado acá para agregar/quitar en un solo lugar.
+create or replace function public.owner_emails()
+  returns text[] language sql immutable as $$ select array['nicolassespindola@gmail.com'] $$;
+
+-- ¿El usuario tiene lifetime access? Es pro si es owner (por email, garantía que
+-- sobrevive a un reset del perfil) o si su perfil tiene pro = true. Falta de
+-- perfil y no-owner = free.
 create or replace function public.user_is_pro(uid uuid)
 returns boolean
 language sql
 stable
 security definer
-set search_path = public
+set search_path = public, auth
 as $$
-  select coalesce((select pro from public.profiles where user_id = uid), false);
+  select coalesce(
+    (select true
+       from auth.users
+       where id = uid and lower(email) = any (select lower(e) from unnest(public.owner_emails()) e)),
+    (select pro from public.profiles where user_id = uid),
+    false
+  );
 $$;
 
 -- 3) Blindaje del entitlement: el usuario (rol authenticated/anon vía PostgREST)
@@ -172,5 +185,33 @@ $$;
 revoke all on function public.grant_pro(uuid, text) from public, anon, authenticated;
 grant execute on function public.grant_pro(uuid, text) to service_role;
 
+-- Pro efectivo del usuario actual, para la UI. Usa la MISMA lógica que el
+-- enforcement (incluye el check de owner por email), así el frontend nunca
+-- muestra el paywall a quien la base considera pro. No expone el email de nadie:
+-- solo devuelve un booleano del usuario logueado.
+create or replace function public.is_pro_self()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select public.user_is_pro(auth.uid());
+$$;
+
+grant execute on function public.is_pro_self() to authenticated;
+
 -- Activación manual alternativa (SQL Editor), por si hace falta hacerlo a mano:
 --   select public.grant_pro(null, 'cliente@mail.com');
+
+-- 7) Seed: el/los owner(s) arrancan con lifetime access, para que la UI también
+--    lo refleje (además del check por email en user_is_pro, que es la garantía
+--    de fondo). Idempotente; no-op si el usuario todavía no existe en auth.users.
+do $$
+declare
+  e text;
+begin
+  foreach e in array public.owner_emails() loop
+    perform public.grant_pro(null, e);
+  end loop;
+end $$;

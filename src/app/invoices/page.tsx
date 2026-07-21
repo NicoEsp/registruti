@@ -14,8 +14,8 @@ import {
   useOpenParam,
 } from "@/lib/appEvents";
 import { downloadInvoicePdf, type InvoiceIssuer } from "@/lib/invoicePdf";
-import { fetchIssuer, fetchProfile } from "@/lib/profile";
-import { FREE_INVOICE_LIMIT, isInvoiceLimitError } from "@/lib/plan";
+import { fetchIssuer } from "@/lib/profile";
+import { FREE_INVOICE_LIMIT, fetchIsPro, isInvoiceLimitError } from "@/lib/plan";
 import type { Client, Invoice, TimeEntry } from "@/lib/types";
 import { formatDuration, formatMoney, formatShortDate, toISODate } from "@/lib/format";
 import { invoiceStatusLabel, invoiceStatusStyle } from "@/lib/invoiceStatus";
@@ -86,7 +86,7 @@ function Invoices() {
   }, [loadData]);
 
   useEffect(() => {
-    fetchProfile().then((profile) => setPro(profile?.pro === true));
+    fetchIsPro().then(setPro);
   }, []);
 
   // Plan gratis: hasta FREE_INVOICE_LIMIT facturas en total.

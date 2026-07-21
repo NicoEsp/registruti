@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase";
 import { NEW_CLIENT_EVENT, NEW_CLIENT_PARAM, useAppEvent, useOpenParam } from "@/lib/appEvents";
 import { countryFor } from "@/lib/countries";
 import { fetchProfile } from "@/lib/profile";
-import { FREE_CLIENT_LIMIT, isClientLimitError } from "@/lib/plan";
+import { FREE_CLIENT_LIMIT, fetchIsPro, isClientLimitError } from "@/lib/plan";
 import { CLIENT_COLORS, CURRENCIES, type Client } from "@/lib/types";
 import { formatDuration, formatMoney } from "@/lib/format";
 
@@ -39,8 +39,8 @@ function Clients() {
     fetchProfile().then((profile) => {
       const currency = countryFor(profile?.country ?? null)?.currency;
       if (currency) setDefaultCurrency(currency);
-      setPro(profile?.pro === true);
     });
+    fetchIsPro().then(setPro);
   }, []);
 
   const loadData = useCallback(async () => {
