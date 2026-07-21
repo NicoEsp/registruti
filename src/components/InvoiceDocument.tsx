@@ -37,6 +37,12 @@ export default function InvoiceDocument({
               {formatShortDate(invoice.period_start)} – {formatShortDate(invoice.period_end)}
             </span>
           </p>
+          {invoice.due_date && (
+            <p>
+              Vencimiento:{" "}
+              <span className="text-slate-900">{formatShortDate(invoice.due_date)}</span>
+            </p>
+          )}
         </div>
       </div>
 

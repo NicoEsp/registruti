@@ -16,7 +16,7 @@ import { downloadInvoicePdf, type InvoiceIssuer } from "@/lib/invoicePdf";
 import { fetchIssuer } from "@/lib/profile";
 import type { Client, Invoice, TimeEntry } from "@/lib/types";
 import { formatDuration, formatMoney, formatShortDate, toISODate } from "@/lib/format";
-import { STATUS_LABELS, STATUS_STYLES } from "@/lib/invoiceStatus";
+import { invoiceStatusLabel, invoiceStatusStyle } from "@/lib/invoiceStatus";
 
 export default function InvoicesPage() {
   return (
@@ -196,9 +196,9 @@ function Invoices() {
                   {inv.invoice_number}
                 </Link>
                 <span
-                  className={`shrink-0 rounded px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[inv.status]}`}
+                  className={`shrink-0 rounded px-2 py-0.5 text-xs font-medium ${invoiceStatusStyle(inv)}`}
                 >
-                  {STATUS_LABELS[inv.status]}
+                  {invoiceStatusLabel(inv)}
                 </span>
               </div>
               <p className="mt-1 truncate text-sm text-slate-700">
@@ -267,9 +267,9 @@ function Invoices() {
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`rounded px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[inv.status]}`}
+                      className={`rounded px-2 py-0.5 text-xs font-medium ${invoiceStatusStyle(inv)}`}
                     >
-                      {STATUS_LABELS[inv.status]}
+                      {invoiceStatusLabel(inv)}
                     </span>
                   </td>
                   <td className="px-4 py-3">
@@ -341,6 +341,7 @@ function NewInvoiceModal({
     initialFrom ?? toISODate(new Date(now.getFullYear(), now.getMonth(), 1))
   );
   const [to, setTo] = useState(toISODate(new Date(now.getFullYear(), now.getMonth() + 1, 0)));
+  const [dueDate, setDueDate] = useState("");
   const [preview, setPreview] = useState<TimeEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -396,6 +397,7 @@ function NewInvoiceModal({
         invoice_number: invoiceNumber,
         period_start: from,
         period_end: to,
+        due_date: dueDate || null,
         hourly_rate: client.hourly_rate,
         currency: client.currency,
         total_minutes: totalMinutes,
@@ -460,6 +462,21 @@ function NewInvoiceModal({
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
             />
           </div>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-500">
+            Vencimiento (opcional)
+          </label>
+          <input
+            type="date"
+            value={dueDate}
+            min={toISODate(now)}
+            onChange={(e) => setDueDate(e.target.value)}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+          />
+          <p className="mt-1 text-xs text-slate-400">
+            Pasada esta fecha, la factura enviada se marca como vencida.
+          </p>
         </div>
 
         {client && preview && (

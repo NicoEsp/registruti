@@ -29,6 +29,7 @@ export interface Profile {
   tax_id: string | null;
   email: string | null;
   address: string | null;
+  country: string | null; // código de countries.ts (AR, UY, ..., OTRO)
   created_at: string;
   updated_at: string;
 }
@@ -60,7 +61,21 @@ export interface PublicInvoice {
   entries: Pick<TimeEntry, "entry_date" | "duration_minutes" | "description">[];
 }
 
-export const CURRENCIES = ["USD", "EUR", "ARS", "UYU", "BRL", "CLP", "COP", "MXN", "GBP"] as const;
+export const CURRENCIES = [
+  "USD",
+  "EUR",
+  "ARS",
+  "UYU",
+  "BRL",
+  "CLP",
+  "COP",
+  "MXN",
+  "PEN",
+  "PYG",
+  "BOB",
+  "VES",
+  "GBP",
+] as const;
 
 export const CLIENT_COLORS = [
   "#6366f1",

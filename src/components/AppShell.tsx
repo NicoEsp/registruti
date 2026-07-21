@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { applyProfileMoneyLocale } from "@/lib/profile";
 import { QUICK_ADD_PARAM, TOAST_EVENT, openNewInvoice, useOpenParam } from "@/lib/appEvents";
 import Logo from "@/components/Logo";
 import Wordmark from "@/components/Wordmark";
@@ -115,6 +116,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setIsMac(/Mac|iPhone|iPad/i.test(navigator.userAgent));
   }, []);
+
+  // Formatear montos con el locale del país del perfil (es-AR hasta que cargue).
+  // El bump re-renderiza el árbol cuando el locale resuelve, para que los
+  // montos ya pintados se reformateen sin esperar otro cambio de estado.
+  const [, bumpLocale] = useState(0);
+  useEffect(() => {
+    if (session) applyProfileMoneyLocale().then(() => bumpLocale((n) => n + 1));
+  }, [session]);
 
   // Atajo del ícono de la PWA instalada ("Registrar tiempo" → /tracker?registrar=1).
   useOpenParam(QUICK_ADD_PARAM, () => setQuickAddOpen(true));

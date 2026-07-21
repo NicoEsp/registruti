@@ -152,6 +152,44 @@ function Reports() {
   const clientWeekTotal = (clientId: string, weekDays: string[]) =>
     weekDays.reduce((s, d) => s + (byClientDay.get(clientId)?.get(d) ?? 0), 0);
 
+  // CSV con una fila por entrada del período filtrado. Separador ";" y decimales
+  // con coma: es lo que Excel/Sheets en locales latinos abren sin pelear.
+  function exportCsv() {
+    const decimal = (n: number) => n.toString().replace(".", ",");
+    const rows: string[][] = [
+      ["Fecha", "Cliente", "Descripción", "Duración", "Horas", "Facturable", "Tarifa", "Moneda", "Monto"],
+    ];
+    const sorted = [...entries].sort(
+      (a, b) => a.entry_date.localeCompare(b.entry_date) || a.created_at.localeCompare(b.created_at)
+    );
+    for (const e of sorted) {
+      const client = clientById.get(e.client_id);
+      const amount = e.billable && client ? (e.duration_minutes / 60) * client.hourly_rate : 0;
+      rows.push([
+        e.entry_date,
+        client?.name ?? "Cliente eliminado",
+        e.description ?? "",
+        formatDuration(e.duration_minutes),
+        decimal(e.duration_minutes / 60),
+        e.billable ? "Sí" : "No",
+        client ? decimal(client.hourly_rate) : "",
+        client?.currency ?? "",
+        decimal(Math.round(amount * 100) / 100),
+      ]);
+    }
+    const csv = rows
+      .map((row) => row.map((cell) => `"${cell.replaceAll('"', '""')}"`).join(";"))
+      .join("\r\n");
+    // El BOM hace que Excel detecte UTF-8 (tildes, ñ) en vez de asumir Latin-1.
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `registruti-${range.from}-${range.to}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="mx-auto max-w-5xl">
       <h1 className="mb-6 text-2xl font-semibold tracking-tight">Reportes</h1>
@@ -206,6 +244,14 @@ function Reports() {
             </option>
           ))}
         </select>
+        <button
+          onClick={exportCsv}
+          disabled={loading || entries.length === 0}
+          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-40 sm:w-auto"
+          title="Descargar las entradas del período como CSV"
+        >
+          Exportar CSV
+        </button>
       </div>
 
       {error && (

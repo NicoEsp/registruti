@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { CLIENT_COLORS, CURRENCIES } from "@/lib/types";
+import { COUNTRIES, countryFor, localeFor } from "@/lib/countries";
+import { setMoneyLocale } from "@/lib/format";
 
 const ONBOARDED_KEY = "registruti_onboarded_v1";
 
@@ -16,6 +18,7 @@ export default function Onboarding() {
   const [step, setStep] = useState(0);
 
   // Datos de facturación (opcionales)
+  const [country, setCountry] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [taxId, setTaxId] = useState("");
 
@@ -54,16 +57,18 @@ export default function Onboarding() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (user && (businessName.trim() || taxId.trim())) {
+    if (user && (country || businessName.trim() || taxId.trim())) {
       const { error } = await supabase.from("profiles").upsert({
         user_id: user.id,
         business_name: businessName.trim() || null,
         tax_id: taxId.trim() || null,
+        country: country || null,
       });
       if (error) {
         // La tabla puede no existir todavía (migración sin aplicar): no bloqueamos.
         setNote("No se pudieron guardar los datos de facturación ahora; podés cargarlos luego en Ajustes.");
       } else {
+        if (country) setMoneyLocale(localeFor(country));
         setChanged(true);
       }
     }
@@ -140,6 +145,28 @@ export default function Onboarding() {
             <div className="mt-4 space-y-3">
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-500">
+                  ¿Desde dónde trabajás?
+                </label>
+                <select
+                  value={country}
+                  onChange={(e) => {
+                    setCountry(e.target.value);
+                    // La moneda del primer proyecto arranca en la del país.
+                    const config = countryFor(e.target.value);
+                    if (config) setCurrency(config.currency);
+                  }}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                >
+                  <option value="">Elegir país…</option>
+                  {COUNTRIES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.flag} {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">
                   Nombre o razón social
                 </label>
                 <input
@@ -151,12 +178,12 @@ export default function Onboarding() {
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-500">
-                  CUIT / ID fiscal
+                  {countryFor(country)?.taxIdLabel ?? "CUIT / ID fiscal"}
                 </label>
                 <input
                   value={taxId}
                   onChange={(e) => setTaxId(e.target.value)}
-                  placeholder="20-12345678-9"
+                  placeholder={countryFor(country)?.taxIdPlaceholder ?? "20-12345678-9"}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
                 />
               </div>

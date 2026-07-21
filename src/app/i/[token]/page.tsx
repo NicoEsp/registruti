@@ -6,7 +6,7 @@ import InvoiceDocument from "@/components/InvoiceDocument";
 import InvoiceActions from "@/components/InvoiceActions";
 import { supabase } from "@/lib/supabase";
 import type { PublicInvoice } from "@/lib/types";
-import { STATUS_LABELS, STATUS_STYLES } from "@/lib/invoiceStatus";
+import { invoiceStatusLabel, invoiceStatusStyle } from "@/lib/invoiceStatus";
 
 export default function PublicInvoicePage() {
   const { token } = useParams<{ token: string }>();
@@ -48,9 +48,9 @@ export default function PublicInvoicePage() {
       <div className="mx-auto max-w-3xl">
         <div className="no-print mb-6 flex items-center justify-between">
           <span
-            className={`rounded px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[data.invoice.status]}`}
+            className={`rounded px-2 py-0.5 text-xs font-medium ${invoiceStatusStyle(data.invoice)}`}
           >
-            {STATUS_LABELS[data.invoice.status]}
+            {invoiceStatusLabel(data.invoice)}
           </span>
           <div className="flex gap-2">
             <InvoiceActions

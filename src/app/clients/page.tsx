@@ -2,9 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import AppShell from "@/components/AppShell";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import Modal from "@/components/Modal";
 import { supabase } from "@/lib/supabase";
 import { NEW_CLIENT_EVENT, NEW_CLIENT_PARAM, useAppEvent, useOpenParam } from "@/lib/appEvents";
+import { countryFor } from "@/lib/countries";
+import { fetchProfile } from "@/lib/profile";
 import { CLIENT_COLORS, CURRENCIES, type Client } from "@/lib/types";
 import { formatDuration, formatMoney } from "@/lib/format";
 
@@ -23,7 +26,17 @@ function Clients() {
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
+  const [deleting, setDeleting] = useState<Client | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  // Moneda sugerida para clientes nuevos, según el país del perfil.
+  const [defaultCurrency, setDefaultCurrency] = useState("USD");
+
+  useEffect(() => {
+    fetchProfile().then((profile) => {
+      const currency = countryFor(profile?.country ?? null)?.currency;
+      if (currency) setDefaultCurrency(currency);
+    });
+  }, []);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -70,14 +83,10 @@ function Clients() {
     else loadData();
   }
 
-  async function handleDelete(client: Client) {
-    const tracked = totals.get(client.id) ?? 0;
-    const msg =
-      tracked > 0
-        ? `"${client.name}" tiene ${formatDuration(tracked)} horas trackeadas. Se eliminarán también sus entradas y facturas. ¿Continuar?`
-        : `¿Eliminar a "${client.name}"?`;
-    if (!confirm(msg)) return;
-    const { error: err } = await supabase.from("clients").delete().eq("id", client.id);
+  async function confirmDelete() {
+    if (!deleting) return;
+    const { error: err } = await supabase.from("clients").delete().eq("id", deleting.id);
+    setDeleting(null);
     if (err) setError(err.message);
     else loadData();
   }
@@ -156,7 +165,7 @@ function Clients() {
                     {client.archived ? "📂" : "📁"}
                   </button>
                   <button
-                    onClick={() => handleDelete(client)}
+                    onClick={() => setDeleting(client)}
                     className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-50 hover:text-red-600"
                     title="Eliminar"
                   >
@@ -235,7 +244,7 @@ function Clients() {
                       {client.archived ? "📂" : "📁"}
                     </button>
                     <button
-                      onClick={() => handleDelete(client)}
+                      onClick={() => setDeleting(client)}
                       className="text-slate-400 hover:text-red-600"
                       title="Eliminar"
                     >
@@ -262,6 +271,7 @@ function Clients() {
       {(showForm || editing) && (
         <ClientFormModal
           client={editing}
+          defaultCurrency={defaultCurrency}
           onClose={() => {
             setShowForm(false);
             setEditing(null);
@@ -273,16 +283,35 @@ function Clients() {
           }}
         />
       )}
+
+      {deleting && (
+        <ConfirmDialog
+          title="Eliminar cliente"
+          message={
+            (totals.get(deleting.id) ?? 0) > 0
+              ? `"${deleting.name}" tiene ${formatDuration(
+                  totals.get(deleting.id) ?? 0
+                )} horas trackeadas. Se eliminan también sus entradas y facturas.`
+              : `Se va a eliminar a "${deleting.name}".`
+          }
+          confirmLabel="Eliminar"
+          danger
+          onConfirm={confirmDelete}
+          onCancel={() => setDeleting(null)}
+        />
+      )}
     </div>
   );
 }
 
 function ClientFormModal({
   client,
+  defaultCurrency,
   onClose,
   onSaved,
 }: {
   client: Client | null;
+  defaultCurrency: string;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -290,7 +319,14 @@ function ClientFormModal({
   const [contactName, setContactName] = useState(client?.contact_name ?? "");
   const [email, setEmail] = useState(client?.email ?? "");
   const [rate, setRate] = useState(client?.hourly_rate.toString() ?? "");
-  const [currency, setCurrency] = useState(client?.currency ?? "USD");
+  const [currency, setCurrency] = useState(client?.currency ?? defaultCurrency);
+  const [currencyTouched, setCurrencyTouched] = useState(false);
+
+  // El default llega async (perfil): si es un alta y el usuario no tocó la
+  // moneda, seguimos el default cuando resuelve para no guardar USD por error.
+  useEffect(() => {
+    if (!client && !currencyTouched) setCurrency(defaultCurrency);
+  }, [client, currencyTouched, defaultCurrency]);
   const [color, setColor] = useState(
     client?.color ?? CLIENT_COLORS[Math.floor(Math.random() * CLIENT_COLORS.length)]
   );
@@ -367,7 +403,10 @@ function ClientFormModal({
             <label className="mb-1 block text-xs font-medium text-slate-500">Moneda</label>
             <select
               value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
+              onChange={(e) => {
+                setCurrencyTouched(true);
+                setCurrency(e.target.value);
+              }}
               className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
             >
               {CURRENCIES.map((c) => (
