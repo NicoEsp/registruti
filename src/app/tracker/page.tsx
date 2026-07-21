@@ -234,7 +234,7 @@ function Tracker() {
 
       <form
         onSubmit={handleAdd}
-        className="mb-8 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+        className="mb-8 flex flex-wrap items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
       >
         <div className="w-full sm:min-w-48 sm:flex-1">
           <label className="mb-1 block text-xs font-medium text-slate-500">
@@ -279,8 +279,10 @@ function Tracker() {
             <DurationInput value={duration} onChange={setDuration} />
           </div>
         </div>
-        <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:flex-col sm:items-end sm:justify-end">
-          <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-500">
+        {/* pt-5 en sm+ compensa la altura del label de los otros campos, para
+            que el checkbox y el botón queden en línea con los inputs. */}
+        <div className="flex w-full items-center justify-between gap-4 sm:w-auto sm:justify-start sm:pt-5">
+          <label className="flex cursor-pointer items-center gap-2 py-2 text-xs font-medium text-slate-500">
             <input
               type="checkbox"
               checked={billable}

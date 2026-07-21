@@ -10,7 +10,8 @@ const QUICK_CHIPS = [30, 60, 120, 240];
  * y números pelados ("2" → 2:00, "45" → 0:45). Normaliza al múltiplo de 15 más
  * cercano dentro de 0:15–8:00 y lo muestra al salir del campo. Mientras el
  * texto no se entienda, `onChange(null)` avisa al form para deshabilitar el
- * guardado.
+ * guardado; el estado de error recién se muestra al salir del campo, para no
+ * marcar rojo un valor a medio tipear.
  */
 export default function DurationInput({
   value,
@@ -20,6 +21,7 @@ export default function DurationInput({
   onChange: (minutes: number | null) => void;
 }) {
   const [text, setText] = useState(value != null ? formatDuration(value) : "");
+  const [focused, setFocused] = useState(false);
 
   function handleChange(raw: string) {
     setText(raw);
@@ -28,6 +30,7 @@ export default function DurationInput({
   }
 
   function handleBlur() {
+    setFocused(false);
     if (value != null) setText(formatDuration(value));
   }
 
@@ -37,7 +40,7 @@ export default function DurationInput({
   }
 
   const trimmed = text.trim();
-  const invalid = trimmed !== "" && value == null;
+  const showError = !focused && trimmed !== "" && value == null;
   // Vista previa de lo interpretado, solo cuando difiere de lo tipeado.
   const preview = value != null && trimmed !== "" && trimmed !== formatDuration(value);
 
@@ -46,17 +49,16 @@ export default function DurationInput({
       <input
         value={text}
         onChange={(e) => handleChange(e.target.value)}
+        onFocus={() => setFocused(true)}
         onBlur={handleBlur}
         placeholder="1:30"
         inputMode="text"
-        aria-invalid={invalid}
+        aria-invalid={showError}
         className={`w-full rounded-lg border px-3 py-2 font-mono text-sm focus:outline-none ${
-          invalid
-            ? "border-red-400 focus:border-red-500"
-            : "border-slate-300 focus:border-indigo-500"
+          showError ? "border-red-400" : "border-slate-300 focus:border-indigo-500"
         }`}
       />
-      <div className="mt-1.5 flex items-center gap-1.5">
+      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
         {QUICK_CHIPS.map((minutes) => (
           <button
             key={minutes}
@@ -71,16 +73,12 @@ export default function DurationInput({
             {formatDuration(minutes)}
           </button>
         ))}
-        {invalid ? (
-          <span className="ml-auto whitespace-nowrap text-[11px] text-red-600">
-            Probá 1:30, 1.5 o 90m
-          </span>
-        ) : preview ? (
-          <span className="ml-auto whitespace-nowrap font-mono text-[11px] text-slate-500">
-            = {formatDuration(value!)} h
-          </span>
-        ) : null}
       </div>
+      {showError ? (
+        <p className="mt-1 text-[11px] text-red-600">Ej: 1:30, 1.5 o 90m</p>
+      ) : preview ? (
+        <p className="mt-1 font-mono text-[11px] text-slate-500">= {formatDuration(value!)} h</p>
+      ) : null}
     </div>
   );
 }
