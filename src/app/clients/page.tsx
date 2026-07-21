@@ -4,10 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import AppShell from "@/components/AppShell";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import Modal from "@/components/Modal";
+import UpgradeModal from "@/components/UpgradeModal";
 import { supabase } from "@/lib/supabase";
 import { NEW_CLIENT_EVENT, NEW_CLIENT_PARAM, useAppEvent, useOpenParam } from "@/lib/appEvents";
 import { countryFor } from "@/lib/countries";
 import { fetchProfile } from "@/lib/profile";
+import { FREE_CLIENT_LIMIT, isClientLimitError } from "@/lib/plan";
 import { CLIENT_COLORS, CURRENCIES, type Client } from "@/lib/types";
 import { formatDuration, formatMoney } from "@/lib/format";
 
@@ -28,13 +30,16 @@ function Clients() {
   const [editing, setEditing] = useState<Client | null>(null);
   const [deleting, setDeleting] = useState<Client | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   // Moneda sugerida para clientes nuevos, según el país del perfil.
   const [defaultCurrency, setDefaultCurrency] = useState("USD");
+  const [pro, setPro] = useState(false);
 
   useEffect(() => {
     fetchProfile().then((profile) => {
       const currency = countryFor(profile?.country ?? null)?.currency;
       if (currency) setDefaultCurrency(currency);
+      setPro(profile?.pro === true);
     });
   }, []);
 
@@ -62,12 +67,21 @@ function Clients() {
     loadData();
   }, [loadData]);
 
+  // Plan gratis: hasta FREE_CLIENT_LIMIT clientes activos (no archivados).
+  const activeCount = clients.filter((c) => !c.archived).length;
+  const atClientLimit = !pro && activeCount >= FREE_CLIENT_LIMIT;
+
   // Apertura del alta desde la command palette, vía evento o ?nuevo=1.
   // Si ya hay un formulario abierto (alta o edición), no lo pisamos.
   const formOpenRef = useRef(false);
   formOpenRef.current = showForm || editing !== null;
   const openNewForm = () => {
     if (formOpenRef.current) return;
+    // Al topar el límite, en vez del alta mostramos el paywall.
+    if (atClientLimit) {
+      setShowUpgrade(true);
+      return;
+    }
     setEditing(null);
     setShowForm(true);
   };
@@ -98,12 +112,19 @@ function Clients() {
     <div className="mx-auto max-w-4xl">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight">Clientes</h1>
-        <button
-          onClick={() => setShowForm(true)}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-        >
-          + Nuevo cliente
-        </button>
+        <div className="flex items-center gap-3">
+          {!pro && (
+            <span className="hidden text-xs text-slate-400 sm:inline">
+              {activeCount}/{FREE_CLIENT_LIMIT} en plan gratis
+            </span>
+          )}
+          <button
+            onClick={openNewForm}
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+          >
+            + Nuevo cliente
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -276,6 +297,11 @@ function Clients() {
             setShowForm(false);
             setEditing(null);
           }}
+          onLimit={() => {
+            setShowForm(false);
+            setEditing(null);
+            setShowUpgrade(true);
+          }}
           onSaved={() => {
             setShowForm(false);
             setEditing(null);
@@ -283,6 +309,8 @@ function Clients() {
           }}
         />
       )}
+
+      {showUpgrade && <UpgradeModal reason="clients" onClose={() => setShowUpgrade(false)} />}
 
       {deleting && (
         <ConfirmDialog
@@ -308,11 +336,13 @@ function ClientFormModal({
   client,
   defaultCurrency,
   onClose,
+  onLimit,
   onSaved,
 }: {
   client: Client | null;
   defaultCurrency: string;
   onClose: () => void;
+  onLimit: () => void;
   onSaved: () => void;
 }) {
   const [name, setName] = useState(client?.name ?? "");
@@ -349,8 +379,12 @@ function ClientFormModal({
       : supabase.from("clients").insert(payload);
     const { error: err } = await query;
     setSaving(false);
-    if (err) setError(err.message);
-    else onSaved();
+    if (err) {
+      // El límite lo aplica un trigger de la base: si saltó, abrimos el paywall
+      // en vez de mostrar el error crudo.
+      if (isClientLimitError(err.message)) onLimit();
+      else setError(err.message);
+    } else onSaved();
   }
 
   return (
