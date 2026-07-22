@@ -5,11 +5,17 @@ import { notFound } from "next/navigation";
 import { POSTS, getPost } from "@/lib/blog";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import McpArticle from "@/components/blog/McpArticle";
+import TogglAlternativasArticle from "@/components/blog/TogglAlternativasArticle";
+import TimeTrackersArticle from "@/components/blog/TimeTrackersArticle";
+import ControlHorasArticle from "@/components/blog/ControlHorasArticle";
 
 // Mapa slug → cuerpo del artículo. Al sumar un post: agregá su entrada en
 // src/lib/blog.ts y su componente acá.
 const BODIES: Record<string, ReactNode> = {
   mcp: <McpArticle />,
+  "mejores-alternativas-toggl-track": <TogglAlternativasArticle />,
+  "mejores-time-trackers-freelancers": <TimeTrackersArticle />,
+  "control-de-horas-trabajadas": <ControlHorasArticle />,
 };
 
 export function generateStaticParams() {
@@ -28,13 +34,22 @@ export async function generateMetadata({
   return {
     title: post.title,
     description: post.description,
-    alternates: { canonical: `/blog/${post.slug}` },
+    keywords: post.keywords,
+    alternates: {
+      canonical: `/blog/${post.slug}`,
+      types: { "application/rss+xml": `${SITE_URL}/blog/feed.xml` },
+    },
     openGraph: {
       type: "article",
       url,
       title: post.title,
       description: post.description,
       publishedTime: post.dateISO,
+      modifiedTime: post.dateISO,
+      section: post.tag,
+      tags: post.keywords,
+      locale: "es_AR",
+      siteName: SITE_NAME,
     },
     twitter: {
       card: "summary_large_image",
@@ -56,14 +71,42 @@ export default async function BlogPostPage({
 
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "BlogPosting",
-    headline: post.title,
-    description: post.description,
-    datePublished: post.dateISO,
-    inLanguage: "es",
-    author: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
-    publisher: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
-    mainEntityOfPage: { "@type": "WebPage", "@id": `${SITE_URL}/blog/${post.slug}` },
+    "@graph": [
+      {
+        "@type": "BlogPosting",
+        "@id": `${SITE_URL}/blog/${post.slug}#article`,
+        headline: post.title,
+        description: post.description,
+        datePublished: post.dateISO,
+        dateModified: post.dateISO,
+        inLanguage: "es",
+        keywords: post.keywords.join(", "),
+        articleSection: post.tag,
+        author: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
+        publisher: {
+          "@type": "Organization",
+          name: SITE_NAME,
+          url: SITE_URL,
+          logo: { "@type": "ImageObject", url: `${SITE_URL}/icon-512.png` },
+        },
+        image: `${SITE_URL}/opengraph-image.jpg`,
+        mainEntityOfPage: { "@type": "WebPage", "@id": `${SITE_URL}/blog/${post.slug}` },
+        isPartOf: { "@type": "Blog", "@id": `${SITE_URL}/blog#blog` },
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Inicio", item: SITE_URL },
+          { "@type": "ListItem", position: 2, name: "Blog", item: `${SITE_URL}/blog` },
+          {
+            "@type": "ListItem",
+            position: 3,
+            name: post.title,
+            item: `${SITE_URL}/blog/${post.slug}`,
+          },
+        ],
+      },
+    ],
   };
 
   return (
@@ -109,6 +152,33 @@ export default async function BlogPostPage({
           Empezá gratis hoy
         </Link>
       </div>
+
+      <RelatedPosts current={post.slug} />
     </main>
+  );
+}
+
+/** Otros artículos del blog, para retención y crawleo interno. */
+function RelatedPosts({ current }: { current: string }) {
+  const others = POSTS.filter((p) => p.slug !== current).slice(0, 3);
+  if (others.length === 0) return null;
+  return (
+    <aside className="mt-12">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+        Seguí leyendo
+      </h2>
+      <ul className="mt-4 space-y-3">
+        {others.map((p) => (
+          <li key={p.slug}>
+            <Link
+              href={`/blog/${p.slug}`}
+              className="text-sm font-medium text-indigo-600 underline-offset-2 hover:underline"
+            >
+              {p.title}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </aside>
   );
 }

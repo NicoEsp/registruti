@@ -1,0 +1,21 @@
+# Registruti
+
+> Registruti (https://registruti.app) es una aplicación web de control de horas y facturación para freelancers y consultores independientes, 100% en español y gratis para empezar. Es la alternativa a Toggl Track pensada para Latinoamérica: cada cliente tiene su tarifa por hora y su moneda (ARS, USD, EUR, UYU, BRL, CLP, COP, MXN, GBP), los reportes muestran horas y montos facturables por cliente, y las facturas se generan desde las horas trackeadas con PDF y un link público que el cliente puede ver sin crear cuenta.
+
+Datos clave:
+- Precio: gratis hasta 3 clientes activos y 4 facturas; desbloqueo total con un pago único de por vida (lifetime access, sin suscripción).
+- Idioma: interfaz completa en español.
+- Registro de tiempo: carga manual en bloques de 15 minutos a 8 horas por entrada, en una vista semanal (no usa cronómetro en tiempo real).
+- Facturación: numeración automática, estados (borrador, enviada, pagada), exportación a PDF y link público por factura.
+- Integración con IA: servidor MCP (Model Context Protocol) en https://registruti.app/api/mcp para cargar horas y consultar reportes desde Claude u otros clientes MCP.
+- Público: freelancers y consultores que facturan por hora; no está pensada para equipos ni empresas.
+
+## Páginas principales
+
+- [Inicio](https://registruti.app/): qué es Registruti, funcionalidades y preguntas frecuentes.
+- [Alternativa a Toggl Track](https://registruti.app/alternativa-toggl-track): comparación completa con Toggl Track, precios 2026 y guía de migración.
+- [Blog](https://registruti.app/blog): guías y comparativas sobre time tracking y facturación freelance.
+- [Las 6 mejores alternativas a Toggl Track en 2026](https://registruti.app/blog/mejores-alternativas-toggl-track)
+- [Los mejores time trackers para freelancers en 2026](https://registruti.app/blog/mejores-time-trackers-freelancers)
+- [Cómo llevar el control de horas trabajadas](https://registruti.app/blog/control-de-horas-trabajadas)
+- [Cómo conectar Registruti a Claude con MCP](https://registruti.app/blog/mcp)

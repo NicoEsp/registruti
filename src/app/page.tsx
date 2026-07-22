@@ -144,15 +144,42 @@ const JSON_LD = {
   "@context": "https://schema.org",
   "@graph": [
     {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#organization`,
+      name: SITE_NAME,
+      url: SITE_URL,
+      logo: { "@type": "ImageObject", url: `${SITE_URL}/icon-512.png` },
+      sameAs: ["https://x.com/nicoproducto"],
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      url: SITE_URL,
+      name: SITE_NAME,
+      inLanguage: "es",
+      publisher: { "@id": `${SITE_URL}/#organization` },
+    },
+    {
       "@type": "SoftwareApplication",
+      "@id": `${SITE_URL}/#app`,
       name: SITE_NAME,
       url: SITE_URL,
       description: SITE_DESCRIPTION,
       applicationCategory: "BusinessApplication",
+      applicationSubCategory: "Time tracking y facturación",
       operatingSystem: "Web",
       inLanguage: "es",
       offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+      featureList: [
+        "Registro de horas semanal en bloques de 15 minutos",
+        "Tarifa por hora y moneda propia por cliente (9 monedas)",
+        "Reportes de horas y montos facturables por cliente y período",
+        "Generación de facturas en PDF desde las horas trackeadas",
+        "Link público por factura para compartir con el cliente",
+        "Servidor MCP para cargar horas por lenguaje natural",
+      ],
       audience: { "@type": "Audience", audienceType: "Freelancers y consultores independientes" },
+      author: { "@id": `${SITE_URL}/#organization` },
     },
     {
       "@type": "FAQPage",
@@ -423,6 +450,14 @@ export default function LandingPage() {
           gana. Si necesitás pasar de horas a factura cobrable, en tu idioma y sin pagar USD 120 al
           año, Registruti es para vos.
         </p>
+        <p className="mt-4 text-center">
+          <Link
+            href="/alternativa-toggl-track"
+            className="text-sm font-medium text-indigo-600 underline-offset-2 hover:underline"
+          >
+            Ver la comparación completa: Registruti como alternativa a Toggl Track →
+          </Link>
+        </p>
       </section>
 
       {/* FAQ */}
@@ -483,9 +518,9 @@ export default function LandingPage() {
             <a href="#funcionalidades" className="hover:text-slate-900">
               Funcionalidades
             </a>
-            <a href="#vs-toggl" className="hover:text-slate-900">
-              vs Toggl Track
-            </a>
+            <Link href="/alternativa-toggl-track" className="hover:text-slate-900">
+              Alternativa a Toggl Track
+            </Link>
             <a href="#faq" className="hover:text-slate-900">
               Preguntas
             </a>

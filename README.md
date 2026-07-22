@@ -88,6 +88,31 @@ y aplicar la migración `20260721000005_mcp_tokens.sql`.
 > **Nota:** la app web/mobile de Claude.ai exige OAuth para conectar un MCP remoto; eso es la
 > Fase 2. La Fase 1 cubre Claude Desktop, Claude Code y clientes similares que aceptan un token.
 
+## SEO
+
+La captación orgánica apunta a búsquedas de "alternativa a Toggl Track", "time tracker
+gratis/en español" y "control de horas" (long-tail). Estructura:
+
+- **`/alternativa-toggl-track`** — página de comparación dedicada (la "money page"):
+  tabla completa, precios 2026, guía de migración y FAQ con schema propio.
+- **`/blog`** — artículos registrados en `src/lib/blog.ts` (metadata) con cuerpo en
+  `src/components/blog/*` y mapeo por slug en `src/app/blog/[slug]/page.tsx`.
+  Feed RSS en `/blog/feed.xml`.
+- **Structured data** — JSON-LD por página: `Organization` + `WebSite` +
+  `SoftwareApplication` + `FAQPage` en la landing; `BlogPosting` + `BreadcrumbList`
+  en los posts; `Blog` en el índice; `WebPage` + `FAQPage` + `BreadcrumbList` en la
+  comparación.
+- **Indexación** — `robots.ts` + headers `X-Robots-Tag: noindex` (vercel.json) para
+  las rutas privadas (`/tracker`, `/clients`, `/reports`, `/invoices`, `/settings`,
+  `/auth`, `/api`, `/i`); `sitemap.xml` generado desde `src/app/sitemap.ts`;
+  `public/llms.txt` para asistentes de IA.
+- **Search Console** — para verificar la propiedad por meta tag, setear en Vercel la
+  env var `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` con el token del método "HTML tag"
+  (solo el `content`). Alternativa: verificación por DNS, sin tocar nada acá.
+
+Al publicar un post nuevo: entrada en `src/lib/blog.ts` + componente + mapeo del slug.
+El sitemap, el feed y el índice lo levantan solos.
+
 ## Planes y límites
 
 Registruti es **freemium con lifetime access** (pago único, sin suscripción):
