@@ -21,7 +21,7 @@ const FEATURES = [
     icon: "💱",
     title: "Cada cliente, su tarifa y su moneda",
     description:
-      "Clientes ilimitados, cada uno con su tarifa por hora, su color y su moneda: ARS, USD, EUR, UYU, BRL, CLP, COP, MXN o GBP. Cobrale en pesos a uno y en dólares a otro sin hacer cuentas aparte.",
+      "Cada cliente con su tarifa por hora, su color y su moneda: ARS, USD, EUR, UYU, BRL, CLP, COP, MXN o GBP. Cobrale en pesos a uno y en dólares a otro sin hacer cuentas aparte.",
   },
   {
     icon: "📊",
@@ -52,8 +52,8 @@ const FEATURES = [
 const COMPARISON: { criterio: string; diamble: string; toggl: string; wins: boolean }[] = [
   {
     criterio: "Precio para facturar con tarifas",
-    diamble: "Gratis hoy",
-    toggl: "~USD 10/usuario/mes (plan Starter)",
+    diamble: "Gratis; todo ilimitado con un pago único (sin suscripción)",
+    toggl: "USD 9–11/usuario/mes (plan Starter)",
     wins: true,
   },
   { criterio: "Idioma", diamble: "100% en español", toggl: "Solo en inglés", wins: true },
@@ -79,6 +79,12 @@ const COMPARISON: { criterio: string; diamble: string; toggl: string; wins: bool
     criterio: "Pensada para",
     diamble: "Freelancers y consultores independientes",
     toggl: "Equipos y empresas",
+    wins: true,
+  },
+  {
+    criterio: "Asistentes de IA (MCP)",
+    diamble: "Sí: servidor MCP integrado — cargá horas desde Claude o Cursor",
+    toggl: "Sin soporte oficial",
     wins: true,
   },
   {
@@ -116,7 +122,11 @@ const STEPS = [
 const FAQS = [
   {
     q: "¿Hay una alternativa gratis a Toggl Track?",
-    a: "Sí. Registruti es una alternativa gratuita y en español a Toggl Track, pensada para freelancers. Incluye desde el inicio lo que en Toggl requiere el plan Starter (~USD 10/usuario/mes): tarifas por cliente, montos facturables y generación de facturas. Empezá gratis hoy, sin tarjeta.",
+    a: "Sí. Registruti es una alternativa gratuita y en español a Toggl Track, pensada para freelancers. Incluye desde el inicio lo que en Toggl requiere el plan Starter (USD 9/usuario/mes con facturación anual): tarifas por cliente, montos facturables y generación de facturas. Empezá gratis hoy, sin tarjeta.",
+  },
+  {
+    q: "¿Cuánto cuesta Registruti?",
+    a: "El plan gratis no vence nunca e incluye todas las funcionalidades —tracker, reportes, facturas en PDF con link público y conexión MCP— con un tope de 3 clientes activos y 4 facturas. Si necesitás más, el lifetime access desbloquea clientes y facturas ilimitados con un único pago de por vida: no hay suscripción mensual ni anual.",
   },
   {
     q: "¿Cómo llevo el control de horas como freelancer?",
@@ -135,6 +145,10 @@ const FAQS = [
     a: "Elegís el cliente y el período, y Registruti arma la factura automáticamente con todas las horas registradas, la tarifa del cliente y la numeración correlativa. Después la gestionás por estados (borrador, enviada, pagada) y la exportás a PDF para imprimir o enviar.",
   },
   {
+    q: "¿Puedo cargar horas hablándole a Claude u otro asistente de IA?",
+    a: "Sí. Registruti tiene un servidor MCP (Model Context Protocol) integrado: generás un token en Ajustes, lo conectás a Claude Desktop, Claude Code, Cursor u otro cliente MCP, y le pedís cosas como “cargá 2 horas de hoy para Acme” o “¿cuántas horas facturables llevo este mes?”. En el blog hay un tutorial paso a paso.",
+  },
+  {
     q: "¿Registruti sirve para equipos o empresas?",
     a: "No es el foco. Registruti está diseñada para freelancers y consultores independientes que facturan por hora a varios clientes. Si necesitás gestión de equipos, permisos y nómina, una herramienta enterprise te va a servir mejor; si trabajás por tu cuenta, acá no pagás por funciones que no usás.",
   },
@@ -144,15 +158,42 @@ const JSON_LD = {
   "@context": "https://schema.org",
   "@graph": [
     {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#organization`,
+      name: SITE_NAME,
+      url: SITE_URL,
+      logo: { "@type": "ImageObject", url: `${SITE_URL}/icon-512.png` },
+      sameAs: ["https://x.com/nicoproducto"],
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      url: SITE_URL,
+      name: SITE_NAME,
+      inLanguage: "es",
+      publisher: { "@id": `${SITE_URL}/#organization` },
+    },
+    {
       "@type": "SoftwareApplication",
+      "@id": `${SITE_URL}/#app`,
       name: SITE_NAME,
       url: SITE_URL,
       description: SITE_DESCRIPTION,
       applicationCategory: "BusinessApplication",
+      applicationSubCategory: "Time tracking y facturación",
       operatingSystem: "Web",
       inLanguage: "es",
       offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+      featureList: [
+        "Registro de horas semanal en bloques de 15 minutos",
+        "Tarifa por hora y moneda propia por cliente (9 monedas)",
+        "Reportes de horas y montos facturables por cliente y período",
+        "Generación de facturas en PDF desde las horas trackeadas",
+        "Link público por factura para compartir con el cliente",
+        "Servidor MCP para cargar horas por lenguaje natural",
+      ],
       audience: { "@type": "Audience", audienceType: "Freelancers y consultores independientes" },
+      author: { "@id": `${SITE_URL}/#organization` },
     },
     {
       "@type": "FAQPage",
@@ -185,9 +226,15 @@ export default function LandingPage() {
             <a href="#funcionalidades" className="hover:text-slate-900">
               Funcionalidades
             </a>
+            <a href="#precios" className="hover:text-slate-900">
+              Precios
+            </a>
             <a href="#vs-toggl" className="hover:text-slate-900">
               vs Toggl Track
             </a>
+            <Link href="/blog" className="hover:text-slate-900">
+              Blog
+            </Link>
             <a href="#faq" className="hover:text-slate-900">
               Preguntas
             </a>
@@ -232,7 +279,7 @@ export default function LandingPage() {
             <p className="mt-5 max-w-xl text-lg text-slate-600">
               Trackeá tu semana en bloques de 15 minutos, asignale a cada cliente su tarifa en su
               moneda (ARS, USD, EUR y 6 más) y generá la factura en PDF en un clic. Lo que Toggl
-              Track cobra USD 10 por mes, acá lo empezás gratis.
+              Track cobra desde USD 9 por usuario al mes, acá lo empezás gratis.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-4">
               <Link
@@ -382,6 +429,108 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Conexión MCP */}
+      <section className="mx-auto max-w-6xl px-4 pt-16">
+        <div className="flex flex-col items-start gap-4 rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 to-violet-50 p-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-4">
+            <span className="text-3xl" aria-hidden>
+              🤖
+            </span>
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">
+                Cargá horas hablándole a Claude
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-600">
+                Registruti tiene servidor MCP integrado: conectala a Claude Desktop, Claude Code o
+                Cursor y pedile “cargá 2 horas de hoy para Acme” o “¿cuánto facturo este mes?” sin
+                abrir la app.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/blog/mcp"
+            className="shrink-0 rounded-lg border border-indigo-200 bg-white px-4 py-2 text-sm font-medium text-indigo-700 shadow-sm hover:bg-indigo-50"
+          >
+            Ver el tutorial →
+          </Link>
+        </div>
+      </section>
+
+      {/* Precios */}
+      <section id="precios" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-20">
+        <h2 className="text-center text-2xl font-bold tracking-tight sm:text-3xl">
+          Precios simples: gratis, o un único pago
+        </h2>
+        <p className="mx-auto mt-3 max-w-2xl text-center text-slate-600">
+          Sin suscripciones. El plan gratis no vence, y si necesitás más, lo desbloqueás todo una
+          sola vez y para siempre.
+        </p>
+        <div className="mx-auto mt-10 grid max-w-3xl gap-6 sm:grid-cols-2">
+          <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h3 className="text-lg font-semibold">Gratis</h3>
+            <p className="mt-1 text-3xl font-bold tracking-tight">USD 0</p>
+            <p className="text-sm text-slate-500">para siempre, sin tarjeta</p>
+            <ul className="mt-5 space-y-2.5 text-sm text-slate-600">
+              {[
+                "Hasta 3 clientes activos y 4 facturas",
+                "Tracker semanal en bloques de 15 minutos",
+                "Tarifa y moneda por cliente (9 monedas)",
+                "Reportes de horas y montos + export CSV",
+                "Facturas en PDF con link público",
+                "Conexión MCP (Claude, Cursor)",
+              ].map((item) => (
+                <li key={item} className="flex gap-2">
+                  <span className="text-emerald-600" aria-hidden>
+                    ✓
+                  </span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <Link
+              href="/login"
+              className="mt-6 rounded-xl border border-slate-300 px-5 py-2.5 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Empezá gratis
+            </Link>
+          </div>
+          <div className="relative flex flex-col rounded-2xl border-2 border-indigo-500 bg-white p-6 shadow-md">
+            <span className="absolute -top-3 right-6 rounded-full bg-gradient-to-r from-indigo-600 to-indigo-500 px-3 py-0.5 text-xs font-semibold text-white">
+              Sin suscripción
+            </span>
+            <h3 className="text-lg font-semibold">Lifetime access</h3>
+            <p className="mt-1 text-3xl font-bold tracking-tight">Pago único</p>
+            <p className="text-sm text-slate-500">una vez, tuyo de por vida</p>
+            <ul className="mt-5 space-y-2.5 text-sm text-slate-600">
+              {[
+                "Todo lo del plan gratis",
+                "Clientes activos ilimitados",
+                "Facturas ilimitadas",
+                "Todas las funcionalidades futuras",
+                "Sin mensualidad, sin renovaciones",
+              ].map((item) => (
+                <li key={item} className="flex gap-2">
+                  <span className="text-emerald-600" aria-hidden>
+                    ✓
+                  </span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <Link
+              href="/login"
+              className="mt-6 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-5 py-2.5 text-center text-sm font-semibold text-white shadow-sm hover:from-indigo-700 hover:to-indigo-600"
+            >
+              Crear cuenta y desbloquear
+            </Link>
+          </div>
+        </div>
+        <p className="mx-auto mt-6 max-w-2xl text-center text-sm text-slate-500">
+          El lifetime access se desbloquea desde la app cuando lo necesites. Comparado con Toggl
+          Track Starter (USD 108 por año, todos los años), se paga solo.
+        </p>
+      </section>
+
       {/* vs Toggl Track */}
       <section id="vs-toggl" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-20">
         <h2 className="text-center text-2xl font-bold tracking-tight sm:text-3xl">
@@ -422,6 +571,14 @@ export default function LandingPage() {
           Resumen honesto: si necesitás cronómetro corriendo en segundo plano y app nativa, Toggl
           gana. Si necesitás pasar de horas a factura cobrable, en tu idioma y sin pagar USD 120 al
           año, Registruti es para vos.
+        </p>
+        <p className="mt-4 text-center">
+          <Link
+            href="/alternativa-toggl-track"
+            className="text-sm font-medium text-indigo-600 underline-offset-2 hover:underline"
+          >
+            Ver la comparación completa: Registruti como alternativa a Toggl Track →
+          </Link>
         </p>
       </section>
 
@@ -483,9 +640,12 @@ export default function LandingPage() {
             <a href="#funcionalidades" className="hover:text-slate-900">
               Funcionalidades
             </a>
-            <a href="#vs-toggl" className="hover:text-slate-900">
-              vs Toggl Track
+            <a href="#precios" className="hover:text-slate-900">
+              Precios
             </a>
+            <Link href="/alternativa-toggl-track" className="hover:text-slate-900">
+              Alternativa a Toggl Track
+            </Link>
             <a href="#faq" className="hover:text-slate-900">
               Preguntas
             </a>

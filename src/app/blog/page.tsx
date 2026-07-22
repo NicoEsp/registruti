@@ -4,23 +4,49 @@ import { POSTS } from "@/lib/blog";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Blog",
-  description: `Guías, novedades y tutoriales de ${SITE_NAME}: control de horas, facturación e integraciones para freelancers.`,
-  alternates: { canonical: "/blog" },
+  title: "Blog: guías de time tracking y facturación freelance",
+  description: `Guías, comparativas y tutoriales de ${SITE_NAME}: control de horas, alternativas a Toggl Track, facturación e integraciones para freelancers.`,
+  alternates: {
+    canonical: "/blog",
+    types: { "application/rss+xml": `${SITE_URL}/blog/feed.xml` },
+  },
   openGraph: {
     type: "website",
     url: `${SITE_URL}/blog`,
     title: `Blog | ${SITE_NAME}`,
-    description: `Guías, novedades y tutoriales de ${SITE_NAME}.`,
+    description: `Guías, comparativas y tutoriales de ${SITE_NAME}: control de horas, time trackers y facturación para freelancers.`,
   },
+};
+
+const JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "Blog",
+  "@id": `${SITE_URL}/blog#blog`,
+  url: `${SITE_URL}/blog`,
+  name: `Blog de ${SITE_NAME}`,
+  description: `Guías, comparativas y tutoriales sobre control de horas, time tracking y facturación para freelancers.`,
+  inLanguage: "es",
+  publisher: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
+  blogPost: POSTS.map((post) => ({
+    "@type": "BlogPosting",
+    headline: post.title,
+    url: `${SITE_URL}/blog/${post.slug}`,
+    datePublished: post.dateISO,
+  })),
 };
 
 export default function BlogIndexPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-16">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
+      />
+
       <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Blog</h1>
       <p className="mt-3 text-slate-600">
-        Guías, novedades y tutoriales para sacarle el jugo a Registruti.
+        Guías, comparativas y tutoriales sobre control de horas, time tracking y facturación para
+        freelancers.
       </p>
 
       <div className="mt-10 space-y-4">
@@ -46,6 +72,17 @@ export default function BlogIndexPage() {
           </Link>
         ))}
       </div>
+
+      <p className="mt-10 text-sm text-slate-500">
+        ¿Comparando herramientas? Empezá por{" "}
+        <Link
+          href="/alternativa-toggl-track"
+          className="font-medium text-indigo-600 underline-offset-2 hover:underline"
+        >
+          Registruti como alternativa a Toggl Track
+        </Link>
+        .
+      </p>
     </main>
   );
 }

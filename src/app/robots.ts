@@ -7,8 +7,10 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        // Secciones privadas de la app, callbacks de auth y links de facturas
-        // compartidas: no aportan al SEO y no deben indexarse.
+        // Secciones privadas de la app, callbacks de auth, API y links de
+        // facturas compartidas: no aportan al SEO y no deben indexarse.
+        // (Además llevan X-Robots-Tag: noindex vía vercel.json, que es lo que
+        // realmente saca de la SERP una URL ya conocida.)
         disallow: [
           "/tracker",
           "/clients",
@@ -16,6 +18,7 @@ export default function robots(): MetadataRoute.Robots {
           "/invoices",
           "/settings",
           "/auth/",
+          "/api/",
           "/i/",
         ],
       },

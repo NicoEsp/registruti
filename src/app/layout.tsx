@@ -39,6 +39,10 @@ export const metadata: Metadata = {
     "control de horas consultores",
   ],
   applicationName: SITE_NAME,
+  authors: [{ name: "Nicolás Espíndola", url: "https://x.com/nicoproducto" }],
+  creator: "Nicolás Espíndola",
+  publisher: SITE_NAME,
+  category: "technology",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -67,7 +71,20 @@ export const metadata: Metadata = {
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
   },
+  // Verificación de Google Search Console sin tocar código: setear la env var
+  // NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION en Vercel con el token del método
+  // "HTML tag" (solo el content, no la tag entera).
+  verification: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+    ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION }
+    : undefined,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
