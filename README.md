@@ -13,6 +13,7 @@ Aplicación de seguimiento de horas de consultoría y facturación por cliente, 
 - **Link público por factura**: cada factura tiene un link compartible (`/i/<token>`, con token de 128 bits regenerable si se filtra) para que el cliente vea el detalle de horas sin necesidad de cuenta — trazabilidad externa.
 - **Por país**: el perfil guarda el país del emisor (Argentina, Uruguay, Chile, México, ... ) y con eso se adaptan el tipo de ID fiscal (CUIT, RUT, RFC, ...), la moneda sugerida y el formato de los montos.
 - **Conexión MCP**: cada usuario puede generar un token en Ajustes y conectar Registruti a Claude Desktop (o cualquier cliente MCP con header de autorización) para cargar horas y consultar cómo va por lenguaje natural. Ver [Servidor MCP](#servidor-mcp) más abajo.
+- **Planes (freemium + lifetime access)**: el plan gratis incluye hasta 3 clientes activos y 4 facturas; el *lifetime access* (un único pago vía LemonSqueezy) desbloquea todo de por vida. Los límites se aplican en la base con triggers (no solo en el frontend), así que no son salteables desde la consola. Ver [Planes y límites](#planes-y-límites) más abajo.
 
 ## Stack
 
@@ -86,3 +87,57 @@ y aplicar la migración `20260721000005_mcp_tokens.sql`.
 
 > **Nota:** la app web/mobile de Claude.ai exige OAuth para conectar un MCP remoto; eso es la
 > Fase 2. La Fase 1 cubre Claude Desktop, Claude Code y clientes similares que aceptan un token.
+
+## Planes y límites
+
+Registruti es **freemium con lifetime access** (pago único, sin suscripción):
+
+| | Plan gratis | Lifetime access |
+| --- | --- | --- |
+| Clientes activos | hasta **3** | ilimitados |
+| Facturas | hasta **4** | ilimitadas |
+| Pago | — | único, para siempre |
+
+Al topar cualquiera de los dos límites (lo que llegue primero) la UI abre un
+paywall con el checkout. Los topes se aplican con **triggers en Postgres**
+(`clients`, `invoices`), no solo en el frontend, así que no se pueden saltear
+desde la consola del browser. El entitlement vive en `profiles.pro` y está
+**blindado**: el usuario no puede escribirlo; solo la service role o el SQL
+Editor lo activan.
+
+### Cobro con LemonSqueezy
+
+El flujo de pago usa [LemonSqueezy](https://www.lemonsqueezy.com/):
+
+1. El botón "Desbloquear lifetime access" abre el checkout de LemonSqueezy con el
+   `user_id` de Registruti en `custom_data` y el email precargados.
+2. Al concretarse el pago, LemonSqueezy dispara el evento `order_created` al
+   webhook `POST /api/webhooks/lemonsqueezy`.
+3. El endpoint verifica la firma HMAC y llama a la RPC `grant_pro`, que marca
+   `profiles.pro = true` del usuario (resuelto por `user_id`, o por email si no
+   vino). El pago con otro email igual se matchea gracias al `user_id`.
+
+El webhook solo activa el `pro` si la orden es del **variant del lifetime
+access** (`1934751`), como defensa por si un evento ajeno llegara al endpoint.
+
+**Config del webhook** (LemonSqueezy → Settings → Webhooks):
+
+- **Callback URL:** `https://registruti.app/api/webhooks/lemonsqueezy`
+- **Signing secret:** un valor que elegís vos; el mismo va en la env var de Vercel.
+- **Eventos:** `order_created`.
+
+**Env vars en Vercel:**
+
+```
+LEMONSQUEEZY_WEBHOOK_SECRET=...      # el signing secret del webhook (secreto) — REQUERIDA
+
+# Opcionales (tienen default hardcodeado):
+NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL=https://nicoproducto.lemonsqueezy.com/checkout/buy/...
+LEMONSQUEEZY_VARIANT_ID=1934751     # variant del producto; 0 = no verificar
+```
+
+El checkout URL y el variant ya vienen con default en el código (son públicos),
+así que solo hace falta setear `LEMONSQUEEZY_WEBHOOK_SECRET`. El webhook reusa
+`SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` (las mismas del MCP) para activar el
+acceso. Ver [`supabase/README.md`](supabase/README.md) para la activación manual
+y el detalle de la migración.

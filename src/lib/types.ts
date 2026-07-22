@@ -30,6 +30,8 @@ export interface Profile {
   email: string | null;
   address: string | null;
   country: string | null; // código de countries.ts (AR, UY, ..., OTRO)
+  pro: boolean; // lifetime access: desbloquea los límites del plan gratis
+  pro_since: string | null;
   created_at: string;
   updated_at: string;
 }

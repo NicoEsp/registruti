@@ -37,6 +37,34 @@ supabase db push
 5. `20260721000005_mcp_tokens.sql` — tabla `mcp_tokens` (tokens de acceso al
    servidor MCP, guardados como hash SHA-256) con RLS por usuario. **Requerida**
    por la sección "Conexión MCP" de Ajustes y por el endpoint `/api/mcp`.
+6. `20260721000006_pricing_limits.sql` — planes y límites del free tier
+   (freemium con lifetime access). Agrega `profiles.pro` / `profiles.pro_since`,
+   los blinda para que el usuario no pueda auto-otorgárselos (trigger
+   `protect_pro_columns`) y aplica los topes del plan gratis con triggers en
+   `clients` (máx. **3** clientes activos) e `invoices` (máx. **4** facturas).
+   Incluye la RPC `grant_pro(user_id, email)` (security definer, solo ejecutable
+   por la service role) que usa el webhook de pago para activar el acceso.
+   **Requerida** por el paywall de Clientes/Facturas y la sección "Plan" de
+   Ajustes.
+
+### Activar el lifetime access de un usuario
+
+El flag `pro` solo se puede setear desde la **service role** (webhook de pago) o
+el **SQL Editor** — el usuario no puede escribirlo. Lo normal es que lo haga el
+webhook de LemonSqueezy; a mano, desde el SQL Editor:
+
+```sql
+select public.grant_pro(null, 'cliente@mail.com');
+```
+
+`grant_pro` resuelve el usuario por `user_id` (preferido, lo manda el checkout en
+`custom_data`) o por email, e inserta/actualiza el perfil de forma idempotente.
+
+**Owner siempre pro:** los emails de `owner_emails()` son pro de forma
+incondicional — `user_is_pro` los reconoce por email leyendo `auth.users`, así
+que la garantía sobrevive incluso a un reset de su fila en `profiles`. Para
+sumar/quitar owners, editá esa función. La UI lo consulta vía la RPC
+`is_pro_self()` (misma lógica que el enforcement), así que nunca ve el paywall.
 
 ## Servidor MCP (`/api/mcp`)
 

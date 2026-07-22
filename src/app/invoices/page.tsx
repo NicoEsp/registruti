@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import Modal from "@/components/Modal";
+import UpgradeModal from "@/components/UpgradeModal";
 import { supabase } from "@/lib/supabase";
 import {
   ENTRY_ADDED_EVENT,
@@ -14,6 +15,7 @@ import {
 } from "@/lib/appEvents";
 import { downloadInvoicePdf, type InvoiceIssuer } from "@/lib/invoicePdf";
 import { fetchIssuer } from "@/lib/profile";
+import { FREE_INVOICE_LIMIT, fetchIsPro, isInvoiceLimitError } from "@/lib/plan";
 import type { Client, Invoice, TimeEntry } from "@/lib/types";
 import { formatDuration, formatMoney, formatShortDate, toISODate } from "@/lib/format";
 import { invoiceStatusLabel, invoiceStatusStyle } from "@/lib/invoiceStatus";
@@ -32,6 +34,8 @@ function Invoices() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const [pro, setPro] = useState(false);
   const [newClientId, setNewClientId] = useState<string | null>(null);
   const [newFrom, setNewFrom] = useState<string | null>(null);
   const [pdfBusyId, setPdfBusyId] = useState<string | null>(null);
@@ -81,11 +85,22 @@ function Invoices() {
     loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    fetchIsPro().then(setPro);
+  }, []);
+
+  // Plan gratis: hasta FREE_INVOICE_LIMIT facturas en total.
+  const atInvoiceLimit = !pro && invoices.length >= FREE_INVOICE_LIMIT;
+  const openNew = useCallback(() => {
+    if (atInvoiceLimit) setShowUpgrade(true);
+    else setShowNew(true);
+  }, [atInvoiceLimit]);
+
   // Apertura del modal desde el atajo global (F / ⌘K), vía evento o ?nueva=1,
   // y refresco en vivo cuando se registra tiempo desde el atajo global.
-  useAppEvent(NEW_INVOICE_EVENT, () => setShowNew(true));
+  useAppEvent(NEW_INVOICE_EVENT, openNew);
   useAppEvent(ENTRY_ADDED_EVENT, loadData);
-  useOpenParam(NEW_INVOICE_PARAM, () => setShowNew(true));
+  useOpenParam(NEW_INVOICE_PARAM, openNew);
 
   const clientById = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
 
@@ -138,12 +153,19 @@ function Invoices() {
     <div className="mx-auto max-w-4xl">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight">Facturas</h1>
-        <button
-          onClick={() => setShowNew(true)}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-        >
-          + Nueva factura
-        </button>
+        <div className="flex items-center gap-3">
+          {!pro && (
+            <span className="hidden text-xs text-slate-400 sm:inline">
+              {invoices.length}/{FREE_INVOICE_LIMIT} en plan gratis
+            </span>
+          )}
+          <button
+            onClick={openNew}
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+          >
+            + Nueva factura
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -163,6 +185,10 @@ function Invoices() {
           </p>
           <button
             onClick={() => {
+              if (atInvoiceLimit) {
+                setShowUpgrade(true);
+                return;
+              }
               setNewClientId(topUnbilled.clientId);
               // El período arranca en la entrada sin facturar más vieja, para
               // que el modal muestre exactamente las horas que promete el banner.
@@ -308,6 +334,12 @@ function Invoices() {
             setNewClientId(null);
             setNewFrom(null);
           }}
+          onLimit={() => {
+            setShowNew(false);
+            setNewClientId(null);
+            setNewFrom(null);
+            setShowUpgrade(true);
+          }}
           onCreated={() => {
             setShowNew(false);
             setNewClientId(null);
@@ -316,6 +348,8 @@ function Invoices() {
           }}
         />
       )}
+
+      {showUpgrade && <UpgradeModal reason="invoices" onClose={() => setShowUpgrade(false)} />}
     </div>
   );
 }
@@ -326,6 +360,7 @@ function NewInvoiceModal({
   initialClientId,
   initialFrom,
   onClose,
+  onLimit,
   onCreated,
 }: {
   clients: Client[];
@@ -333,6 +368,7 @@ function NewInvoiceModal({
   initialClientId?: string | null;
   initialFrom?: string | null;
   onClose: () => void;
+  onLimit: () => void;
   onCreated: () => void;
 }) {
   const now = new Date();
@@ -406,8 +442,11 @@ function NewInvoiceModal({
       .select()
       .single();
     if (invErr || !invoice) {
-      setError(invErr?.message ?? "No se pudo crear la factura");
       setBusy(false);
+      // El límite del plan gratis lo aplica un trigger de la base: si saltó,
+      // abrimos el paywall en vez de mostrar el error crudo.
+      if (isInvoiceLimitError(invErr?.message)) onLimit();
+      else setError(invErr?.message ?? "No se pudo crear la factura");
       return;
     }
     const { error: updErr } = await supabase
