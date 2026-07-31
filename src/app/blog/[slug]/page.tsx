@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { POSTS, getPost } from "@/lib/blog";
-import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { SITE_NAME, SITE_OG_IMAGE, SITE_URL } from "@/lib/site";
 import McpArticle from "@/components/blog/McpArticle";
 import TogglAlternativasArticle from "@/components/blog/TogglAlternativasArticle";
 import TimeTrackersArticle from "@/components/blog/TimeTrackersArticle";
@@ -40,6 +40,7 @@ export async function generateMetadata({
       types: { "application/rss+xml": `${SITE_URL}/blog/feed.xml` },
     },
     openGraph: {
+    images: [SITE_OG_IMAGE],
       type: "article",
       url,
       title: post.title,

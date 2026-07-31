@@ -29,12 +29,16 @@ export const POSTS: BlogPost[] = [
     dateISO: "2026-07-22",
     tag: "Comparativas",
     readingMinutes: 9,
+    // Intención de listicle/comparativa (plural). El término comercial en
+    // singular —"alternativa a Toggl Track", "Toggl Track en español"— lo
+    // trabaja /alternativa-toggl-track: si las dos páginas apuntan a lo mismo,
+    // Google elige una y suprime la otra, y la que convierte es aquella.
     keywords: [
-      "alternativas a Toggl Track",
-      "alternativa a Toggl Track gratis",
-      "Toggl Track en español",
-      "Toggl Track precio",
+      "mejores alternativas a Toggl Track",
+      "alternativas a Toggl Track 2026",
       "apps como Toggl",
+      "Toggl vs Clockify",
+      "comparativa de time trackers",
       "time tracking para freelancers",
     ],
   },

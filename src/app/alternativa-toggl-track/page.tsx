@@ -4,26 +4,35 @@ import Logo from "@/components/Logo";
 import Wordmark from "@/components/Wordmark";
 import SiteHeader from "@/components/marketing/SiteHeader";
 import SiteFooter from "@/components/marketing/SiteFooter";
-import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { SITE_NAME, SITE_OG_IMAGE, SITE_URL } from "@/lib/site";
+import { buildComparisonJsonLd } from "@/lib/comparisonJsonLd";
 
 const PAGE_URL = `${SITE_URL}/alternativa-toggl-track`;
-const UPDATED_ISO = "2026-07-22";
+// La página se publicó el 22 y se editó el 31 (sección sobre el idioma).
+const PUBLISHED_ISO = "2026-07-22";
+const UPDATED_ISO = "2026-07-31";
 
 export const metadata: Metadata = {
   title: "Alternativa a Toggl Track gratis y en español (2026)",
   description:
     "¿Buscás una alternativa a Toggl Track? Registruti es gratis, está 100% en español e incluye lo que Toggl cobra USD 9/mes: tarifas por cliente, reportes facturables y facturas en PDF.",
+  // Intención comercial en singular: quien busca reemplazar Toggl, no quien
+  // busca una lista para comparar. El plural ("mejores alternativas a Toggl
+  // Track") lo trabaja el artículo del blog, para que no compitan entre sí.
   keywords: [
     "alternativa a Toggl Track",
     "alternativa a Toggl Track gratis",
     "Toggl Track en español",
+    "Toggl en español",
     "Toggl Track precio",
     "Toggl Track gratis",
     "app como Toggl Track",
+    "reemplazo de Toggl Track",
     "time tracker con facturación",
   ],
   alternates: { canonical: "/alternativa-toggl-track" },
   openGraph: {
+    images: [SITE_OG_IMAGE],
     type: "website",
     url: PAGE_URL,
     siteName: SITE_NAME,
@@ -131,39 +140,16 @@ const FAQS = [
   },
 ];
 
-const JSON_LD = {
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "WebPage",
-      "@id": PAGE_URL,
-      url: PAGE_URL,
-      name: "Alternativa a Toggl Track gratis y en español (2026)",
-      description:
-        "Comparación completa entre Registruti y Toggl Track para freelancers: precios 2026, funcionalidades, idioma y cómo migrar.",
-      inLanguage: "es",
-      datePublished: UPDATED_ISO,
-      dateModified: UPDATED_ISO,
-      isPartOf: { "@type": "WebSite", "@id": `${SITE_URL}/#website` },
-      about: { "@type": "SoftwareApplication", "@id": `${SITE_URL}/#app` },
-    },
-    {
-      "@type": "BreadcrumbList",
-      itemListElement: [
-        { "@type": "ListItem", position: 1, name: "Inicio", item: SITE_URL },
-        { "@type": "ListItem", position: 2, name: "Alternativa a Toggl Track", item: PAGE_URL },
-      ],
-    },
-    {
-      "@type": "FAQPage",
-      mainEntity: FAQS.map((faq) => ({
-        "@type": "Question",
-        name: faq.q,
-        acceptedAnswer: { "@type": "Answer", text: faq.a },
-      })),
-    },
-  ],
-};
+const JSON_LD = buildComparisonJsonLd({
+  pageUrl: PAGE_URL,
+  name: "Alternativa a Toggl Track gratis y en español (2026)",
+  description:
+    "Comparación completa entre Registruti y Toggl Track para freelancers: precios 2026, funcionalidades, idioma y cómo migrar.",
+  breadcrumbLabel: "Alternativa a Toggl Track",
+  publishedISO: PUBLISHED_ISO,
+  modifiedISO: UPDATED_ISO,
+  faqs: FAQS,
+});
 
 export default function AlternativaTogglPage() {
   return (
@@ -359,6 +345,27 @@ export default function AlternativaTogglPage() {
           </p>
         </section>
 
+        {/* Toggl en español */}
+        <section className="mx-auto mt-16 max-w-3xl">
+          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            ¿Hay una versión de Toggl Track en español?
+          </h2>
+          <p className="mt-4 text-slate-600">
+            No. Toggl Track está disponible únicamente en inglés: la interfaz, los reportes, la
+            documentación y el soporte. No existe una traducción oficial al español ni está anunciada
+            para 2026. Lo que suele hacer la gente —traducir la página con el navegador— rompe la
+            interfaz y no arregla lo importante: los reportes que exportás y le mandás a tu cliente
+            siguen en inglés.
+          </p>
+          <p className="mt-4 text-slate-600">
+            Registruti está escrita en español desde cero, no traducida: los menús, los estados de
+            las facturas, los reportes y el PDF que abre tu cliente. Si buscabas “Toggl en español”,
+            esta es la parte que no vas a encontrar resolviendo en Toggl, porque no es una función
+            que falte sino una decisión de producto: Toggl apunta al mercado angloparlante y
+            empresarial.
+          </p>
+        </section>
+
         {/* Cuándo Toggl */}
         <section className="mx-auto mt-16 max-w-3xl">
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
@@ -478,6 +485,30 @@ export default function AlternativaTogglPage() {
                 className="font-medium text-indigo-600 underline-offset-2 hover:underline"
               >
                 Las 6 mejores alternativas a Toggl Track en 2026 (gratis y pagas)
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/alternativa-clockify"
+                className="font-medium text-indigo-600 underline-offset-2 hover:underline"
+              >
+                La alternativa a Clockify en español y con facturación
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/alternativa-harvest"
+                className="font-medium text-indigo-600 underline-offset-2 hover:underline"
+              >
+                La alternativa a Harvest para freelancers
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/cuanto-cobrar-por-hora"
+                className="font-medium text-indigo-600 underline-offset-2 hover:underline"
+              >
+                Calculadora: ¿cuánto cobrar por hora como freelance?
               </Link>
             </li>
             <li>

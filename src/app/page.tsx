@@ -646,6 +646,9 @@ export default function LandingPage() {
             <Link href="/alternativa-toggl-track" className="hover:text-slate-900">
               Alternativa a Toggl Track
             </Link>
+            <Link href="/cuanto-cobrar-por-hora" className="hover:text-slate-900">
+              Cuánto cobrar por hora
+            </Link>
             <a href="#faq" className="hover:text-slate-900">
               Preguntas
             </a>
