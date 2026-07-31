@@ -5,11 +5,11 @@ import Wordmark from "@/components/Wordmark";
 import SiteHeader from "@/components/marketing/SiteHeader";
 import SiteFooter from "@/components/marketing/SiteFooter";
 import { SITE_NAME, SITE_OG_IMAGE, SITE_URL } from "@/lib/site";
+import { buildComparisonJsonLd } from "@/lib/comparisonJsonLd";
 
 const PAGE_URL = `${SITE_URL}/alternativa-toggl-track`;
-// Tiene que coincidir con la fecha de esta página en sitemap.ts: si el sitemap
-// dice que cambió y el JSON-LD dice otra cosa, le estamos dando a Google dos
-// versiones distintas de lo mismo.
+// La página se publicó el 22 y se editó el 31 (sección sobre el idioma).
+const PUBLISHED_ISO = "2026-07-22";
 const UPDATED_ISO = "2026-07-31";
 
 export const metadata: Metadata = {
@@ -140,39 +140,16 @@ const FAQS = [
   },
 ];
 
-const JSON_LD = {
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "WebPage",
-      "@id": PAGE_URL,
-      url: PAGE_URL,
-      name: "Alternativa a Toggl Track gratis y en español (2026)",
-      description:
-        "Comparación completa entre Registruti y Toggl Track para freelancers: precios 2026, funcionalidades, idioma y cómo migrar.",
-      inLanguage: "es",
-      datePublished: UPDATED_ISO,
-      dateModified: UPDATED_ISO,
-      isPartOf: { "@type": "WebSite", "@id": `${SITE_URL}/#website` },
-      about: { "@type": "SoftwareApplication", "@id": `${SITE_URL}/#app` },
-    },
-    {
-      "@type": "BreadcrumbList",
-      itemListElement: [
-        { "@type": "ListItem", position: 1, name: "Inicio", item: SITE_URL },
-        { "@type": "ListItem", position: 2, name: "Alternativa a Toggl Track", item: PAGE_URL },
-      ],
-    },
-    {
-      "@type": "FAQPage",
-      mainEntity: FAQS.map((faq) => ({
-        "@type": "Question",
-        name: faq.q,
-        acceptedAnswer: { "@type": "Answer", text: faq.a },
-      })),
-    },
-  ],
-};
+const JSON_LD = buildComparisonJsonLd({
+  pageUrl: PAGE_URL,
+  name: "Alternativa a Toggl Track gratis y en español (2026)",
+  description:
+    "Comparación completa entre Registruti y Toggl Track para freelancers: precios 2026, funcionalidades, idioma y cómo migrar.",
+  breadcrumbLabel: "Alternativa a Toggl Track",
+  publishedISO: PUBLISHED_ISO,
+  modifiedISO: UPDATED_ISO,
+  faqs: FAQS,
+});
 
 export default function AlternativaTogglPage() {
   return (

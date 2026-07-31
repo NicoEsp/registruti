@@ -7,6 +7,8 @@ import RateCalculator from "@/components/marketing/RateCalculator";
 import { SITE_NAME, SITE_OG_IMAGE, SITE_URL } from "@/lib/site";
 
 const PAGE_URL = `${SITE_URL}/cuanto-cobrar-por-hora`;
+// datePublished no se toca al editar la página; solo se mueve UPDATED_ISO.
+const PUBLISHED_ISO = "2026-07-31";
 const UPDATED_ISO = "2026-07-31";
 
 export const metadata: Metadata = {
@@ -84,7 +86,7 @@ const JSON_LD = {
       description:
         "Calculadora gratuita de tarifa por hora para freelancers y consultores, con gastos, impuestos y horas facturables, en 9 monedas.",
       inLanguage: "es",
-      datePublished: UPDATED_ISO,
+      datePublished: PUBLISHED_ISO,
       dateModified: UPDATED_ISO,
       isPartOf: { "@type": "WebSite", "@id": `${SITE_URL}/#website` },
     },

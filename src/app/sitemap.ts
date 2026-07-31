@@ -20,9 +20,12 @@ const LEGAL_UPDATED = "2026-07-02";
 
 // El índice del blog cambia cuando se publica un post, así que su lastmod es la
 // fecha del post más reciente: se mantiene solo al sumar artículos.
+// La semilla sale del propio blog, no de HOME_UPDATED: si algún día todos los
+// posts quedan por debajo de la fecha de la home, /blog reportaría la fecha de
+// la home en vez de la de su contenido.
 const BLOG_UPDATED = POSTS.reduce(
   (latest, post) => (post.dateISO > latest ? post.dateISO : latest),
-  HOME_UPDATED
+  POSTS.length ? POSTS[0].dateISO : HOME_UPDATED
 );
 
 export default function sitemap(): MetadataRoute.Sitemap {

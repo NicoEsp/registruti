@@ -70,7 +70,12 @@ function Field({ label, hint, value, onChange, min, max, step = 1, suffix }: Fie
           max={max}
           step={step}
           onChange={(e) => {
-            const next = Number(e.target.value);
+            const raw = e.target.value;
+            // Number("") devuelve 0, no NaN. Sin este guard, vaciar el campo
+            // para retipearlo lo clavaba en `min` de una: querías cambiar 5
+            // días por 3, borrabas, y saltaba a 1 antes de que escribieras.
+            if (raw.trim() === "") return;
+            const next = Number(raw);
             if (Number.isNaN(next)) return;
             onChange(Math.min(max, Math.max(min, next)));
           }}

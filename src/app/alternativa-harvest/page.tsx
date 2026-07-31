@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import AlternativePage from "@/components/marketing/AlternativePage";
 import { SITE_NAME, SITE_OG_IMAGE, SITE_URL } from "@/lib/site";
+import { buildComparisonJsonLd } from "@/lib/comparisonJsonLd";
 
 const PAGE_URL = `${SITE_URL}/alternativa-harvest`;
+const PUBLISHED_ISO = "2026-07-31";
 const UPDATED_ISO = "2026-07-31";
 
 export const metadata: Metadata = {
@@ -125,39 +127,16 @@ const FAQS = [
   },
 ];
 
-const JSON_LD = {
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "WebPage",
-      "@id": PAGE_URL,
-      url: PAGE_URL,
-      name: "Alternativa a Harvest para freelancers, gratis y en español",
-      description:
-        "Comparación entre Registruti y Harvest para freelancers: plan gratis real, previsibilidad del precio, idioma y funcionalidades de facturación.",
-      inLanguage: "es",
-      datePublished: UPDATED_ISO,
-      dateModified: UPDATED_ISO,
-      isPartOf: { "@type": "WebSite", "@id": `${SITE_URL}/#website` },
-      about: { "@type": "SoftwareApplication", "@id": `${SITE_URL}/#app` },
-    },
-    {
-      "@type": "BreadcrumbList",
-      itemListElement: [
-        { "@type": "ListItem", position: 1, name: "Inicio", item: SITE_URL },
-        { "@type": "ListItem", position: 2, name: "Alternativa a Harvest", item: PAGE_URL },
-      ],
-    },
-    {
-      "@type": "FAQPage",
-      mainEntity: FAQS.map((faq) => ({
-        "@type": "Question",
-        name: faq.q,
-        acceptedAnswer: { "@type": "Answer", text: faq.a },
-      })),
-    },
-  ],
-};
+const JSON_LD = buildComparisonJsonLd({
+  pageUrl: PAGE_URL,
+  name: "Alternativa a Harvest para freelancers, gratis y en español",
+  description:
+    "Comparación entre Registruti y Harvest para freelancers: plan gratis real, previsibilidad del precio, idioma y funcionalidades de facturación.",
+  breadcrumbLabel: "Alternativa a Harvest",
+  publishedISO: PUBLISHED_ISO,
+  modifiedISO: UPDATED_ISO,
+  faqs: FAQS,
+});
 
 /** Sección propia de esta página: el problema del precio por uso. */
 const PRICING_SECTION = (
