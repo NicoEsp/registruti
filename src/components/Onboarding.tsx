@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { CLIENT_COLORS, CURRENCIES } from "@/lib/types";
 import { COUNTRIES, countryFor, localeFor } from "@/lib/countries";
 import { setMoneyLocale } from "@/lib/format";
+import { takeCalculatedRate } from "@/lib/calculatedRate";
 
 const ONBOARDED_KEY = "registruti_onboarded_v1";
 
@@ -30,6 +31,8 @@ export default function Onboarding() {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [changed, setChanged] = useState(false);
+  /** La tarifa vino de la calculadora pública, no de un default nuestro. */
+  const [rateFromCalculator, setRateFromCalculator] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -44,6 +47,18 @@ export default function Onboarding() {
         else localStorage.setItem(ONBOARDED_KEY, "1");
       });
   }, []);
+
+  // Si la persona llegó desde la calculadora de tarifa, el primer cliente
+  // arranca con el número que calculó. Se consume recién cuando el wizard se
+  // va a mostrar: si no, lo borraríamos sin usarlo.
+  useEffect(() => {
+    if (!show) return;
+    const calculated = takeCalculatedRate();
+    if (!calculated) return;
+    setRate(String(calculated.rate));
+    setCurrency(calculated.currency);
+    setRateFromCalculator(true);
+  }, [show]);
 
   function finish() {
     if (typeof window !== "undefined") localStorage.setItem(ONBOARDED_KEY, "1");
@@ -153,7 +168,10 @@ export default function Onboarding() {
                     setCountry(e.target.value);
                     // La moneda del primer proyecto arranca en la del país.
                     const config = countryFor(e.target.value);
-                    if (config) setCurrency(config.currency);
+                    // El país sugiere moneda, pero no pisa la que la persona
+                    // eligió en la calculadora: quedaría una tarifa en dólares
+                    // rotulada en pesos.
+                    if (config && !rateFromCalculator) setCurrency(config.currency);
                   }}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
                 >
@@ -213,6 +231,12 @@ export default function Onboarding() {
             <p className="mt-1 text-sm text-slate-500">
               Un proyecto (o cliente) es aquello a lo que le vas a imputar tiempo.
             </p>
+            {rateFromCalculator && (
+              <p className="mt-3 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
+                Dejamos cargada la tarifa que calculaste: {rate} {currency} por hora. Podés
+                cambiarla acá o después, cliente por cliente.
+              </p>
+            )}
             <div className="mt-4 space-y-3">
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-500">Nombre</label>

@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
+import { saveCalculatedRate } from "@/lib/calculatedRate";
 
 /**
  * Calculadora de tarifa por hora freelance.
@@ -133,6 +135,14 @@ export default function RateCalculator() {
   }, [monthlyIncome, monthlyExpenses, taxRate, daysPerWeek, billableHoursPerDay, weeksOff]);
 
   const money = (value: number) => formatMoney(value, selected.code, selected.locale);
+
+  // Lo que se le pasa al onboarding: redondeado igual que lo que se muestra,
+  // para que la tarifa del primer cliente sea el número que la persona vio y
+  // no un 35,19999999.
+  const roundedRate =
+    result.targetRate >= 1000
+      ? Math.round(result.targetRate)
+      : Math.round(result.targetRate * 100) / 100;
 
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
@@ -268,6 +278,19 @@ export default function RateCalculator() {
               )}
             </p>
           </div>
+
+          {/* El número solo sirve si se cobra. Acá es donde la persona tiene el
+              dato fresco: nos la llevamos al producto con la tarifa puesta. */}
+          <Link
+            href="/login"
+            onClick={() => saveCalculatedRate(roundedRate, selected.code)}
+            className="mt-6 block rounded-xl bg-white px-5 py-3 text-center text-sm font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-50"
+          >
+            Empezá a cobrar {money(result.targetRate)} la hora
+          </Link>
+          <p className="mt-2 text-center text-xs text-indigo-100">
+            Creás tu cuenta gratis y tu primer cliente ya arranca con esta tarifa cargada.
+          </p>
         </div>
       </div>
 
