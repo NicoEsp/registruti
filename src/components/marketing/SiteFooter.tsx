@@ -26,8 +26,17 @@ export default function SiteFooter({ wide = false }: { wide?: boolean }) {
           <Link href="/blog" className="hover:text-slate-900">
             Blog
           </Link>
+          <Link href="/cuanto-cobrar-por-hora" className="hover:text-slate-900">
+            Cuánto cobrar por hora
+          </Link>
           <Link href="/alternativa-toggl-track" className="hover:text-slate-900">
             Alternativa a Toggl Track
+          </Link>
+          <Link href="/alternativa-clockify" className="hover:text-slate-900">
+            Alternativa a Clockify
+          </Link>
+          <Link href="/alternativa-harvest" className="hover:text-slate-900">
+            Alternativa a Harvest
           </Link>
           <Link href="/login" className="hover:text-slate-900">
             Iniciar sesión

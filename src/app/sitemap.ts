@@ -11,7 +11,10 @@ import { POSTS } from "@/lib/blog";
 // las URLs quedan dando vueltas en "detectada / pendiente" sin terminar de
 // indexarse. Al editar de verdad una de estas páginas, actualizá su fecha acá.
 const HOME_UPDATED = "2026-07-22";
-const TOGGL_UPDATED = "2026-07-22";
+const TOGGL_UPDATED = "2026-07-31";
+const CLOCKIFY_UPDATED = "2026-07-31";
+const HARVEST_UPDATED = "2026-07-31";
+const RATE_CALC_UPDATED = "2026-07-31";
 // Coincide con el "Última actualización" que muestran las páginas legales.
 const LEGAL_UPDATED = "2026-07-02";
 
@@ -46,6 +49,24 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: new Date(TOGGL_UPDATED),
       changeFrequency: "monthly",
       priority: 0.9,
+    },
+    {
+      url: `${SITE_URL}/cuanto-cobrar-por-hora`,
+      lastModified: new Date(RATE_CALC_UPDATED),
+      changeFrequency: "monthly",
+      priority: 0.9,
+    },
+    {
+      url: `${SITE_URL}/alternativa-clockify`,
+      lastModified: new Date(CLOCKIFY_UPDATED),
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/alternativa-harvest`,
+      lastModified: new Date(HARVEST_UPDATED),
+      changeFrequency: "monthly",
+      priority: 0.8,
     },
     {
       url: `${SITE_URL}/blog`,

@@ -180,7 +180,8 @@ export default function TogglAlternativasArticle() {
       </ul>
       <p>
         <strong>Elegila si:</strong> tenés un equipo chico que solo necesita medir tiempo gratis, o
-        no te molesta pagar mensualidad para facturar.
+        no te molesta pagar mensualidad para facturar.{" "}
+        <Link href="/alternativa-clockify">Acá la comparación completa contra Clockify</Link>.
       </p>
 
       <h2 id="trackingtime">3. TrackingTime — hecha en Latinoamérica, con foco en equipos</h2>
@@ -247,7 +248,8 @@ export default function TogglAlternativasArticle() {
       </ul>
       <p>
         <strong>Elegila si:</strong> manejás una agencia con presupuestos por proyecto y cobro
-        online, y el costo te cierra.
+        online, y el costo te cierra.{" "}
+        <Link href="/alternativa-harvest">Acá la comparación completa contra Harvest</Link>.
       </p>
 
       <h2 id="planilla">6. Una planilla de cálculo — gratis, hasta que te queda chica</h2>
