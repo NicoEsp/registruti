@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import AlternativePage from "@/components/marketing/AlternativePage";
-import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { SITE_NAME, SITE_OG_IMAGE, SITE_URL } from "@/lib/site";
 
 const PAGE_URL = `${SITE_URL}/alternativa-harvest`;
 const UPDATED_ISO = "2026-07-31";
@@ -18,6 +18,7 @@ export const metadata: Metadata = {
   ],
   alternates: { canonical: "/alternativa-harvest" },
   openGraph: {
+    images: [SITE_OG_IMAGE],
     type: "website",
     url: PAGE_URL,
     siteName: SITE_NAME,

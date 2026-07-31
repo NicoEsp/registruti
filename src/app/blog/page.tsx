@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { POSTS } from "@/lib/blog";
-import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { SITE_NAME, SITE_OG_IMAGE, SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Blog: guías de time tracking y facturación freelance",
@@ -11,6 +11,7 @@ export const metadata: Metadata = {
     types: { "application/rss+xml": `${SITE_URL}/blog/feed.xml` },
   },
   openGraph: {
+    images: [SITE_OG_IMAGE],
     type: "website",
     url: `${SITE_URL}/blog`,
     title: `Blog | ${SITE_NAME}`,

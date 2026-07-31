@@ -4,10 +4,13 @@ import Logo from "@/components/Logo";
 import Wordmark from "@/components/Wordmark";
 import SiteHeader from "@/components/marketing/SiteHeader";
 import SiteFooter from "@/components/marketing/SiteFooter";
-import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { SITE_NAME, SITE_OG_IMAGE, SITE_URL } from "@/lib/site";
 
 const PAGE_URL = `${SITE_URL}/alternativa-toggl-track`;
-const UPDATED_ISO = "2026-07-22";
+// Tiene que coincidir con la fecha de esta página en sitemap.ts: si el sitemap
+// dice que cambió y el JSON-LD dice otra cosa, le estamos dando a Google dos
+// versiones distintas de lo mismo.
+const UPDATED_ISO = "2026-07-31";
 
 export const metadata: Metadata = {
   title: "Alternativa a Toggl Track gratis y en español (2026)",
@@ -29,6 +32,7 @@ export const metadata: Metadata = {
   ],
   alternates: { canonical: "/alternativa-toggl-track" },
   openGraph: {
+    images: [SITE_OG_IMAGE],
     type: "website",
     url: PAGE_URL,
     siteName: SITE_NAME,

@@ -87,7 +87,7 @@ export default function TimeTrackersArticle() {
         “reloj” es imbatible en precio. Para cobrar tus horas, en cambio, aparecen los planes pagos:
         la facturación llega con el plan Standard (USD 6,99/usuario/mes) y buena parte del roadmap
         apunta a monitoreo de equipos (GPS, capturas, aprobaciones) más que al freelancer
-        individual.
+        individual. <Link href="/alternativa-clockify">Acá la comparación completa contra Clockify</Link>.
       </p>
 
       <h2 id="proyectos">El mejor con presupuestos por proyecto: Everhour o Harvest</h2>
@@ -104,7 +104,8 @@ export default function TimeTrackersArticle() {
         <li>
           <strong>Harvest</strong> combina tiempo, gastos y facturación con cobro online; es la
           preferida histórica de agencias. En 2026 pasó a un modelo de precio por asiento (desde USD
-          9/usuario/mes) <em>más</em> cargos por uso, y el free es de 1 usuario y 2 proyectos.
+          9/usuario/mes) <em>más</em> cargos por uso, y el free es de 1 usuario y 2 proyectos.{" "}
+          <Link href="/alternativa-harvest">Acá la comparación completa contra Harvest</Link>.
         </li>
       </ul>
 

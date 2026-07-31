@@ -4,7 +4,7 @@ import Logo from "@/components/Logo";
 import SiteHeader from "@/components/marketing/SiteHeader";
 import SiteFooter from "@/components/marketing/SiteFooter";
 import RateCalculator from "@/components/marketing/RateCalculator";
-import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { SITE_NAME, SITE_OG_IMAGE, SITE_URL } from "@/lib/site";
 
 const PAGE_URL = `${SITE_URL}/cuanto-cobrar-por-hora`;
 const UPDATED_ISO = "2026-07-31";
@@ -24,6 +24,7 @@ export const metadata: Metadata = {
   ],
   alternates: { canonical: "/cuanto-cobrar-por-hora" },
   openGraph: {
+    images: [SITE_OG_IMAGE],
     type: "website",
     url: PAGE_URL,
     siteName: SITE_NAME,
