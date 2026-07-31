@@ -1,26 +1,17 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Canonicalización de host. Google trata http://, https://, con y sin www
-  // como cuatro URLs distintas hasta que le demostrás cuál es la buena: si las
-  // cuatro responden 200, la home queda repartida en variantes duplicadas y
-  // ninguna termina de consolidarse.
+  // Canonicalización de host (www vs apex): NO agregar redirects por host acá.
   //
-  // Vercel ya resuelve http → https en el edge; lo que depende de la config del
-  // dominio en el panel es el www → apex. Este redirect lo garantiza desde la
-  // app hacia https://registruti.app, que es lo que declaran SITE_URL, los
-  // canonical y el sitemap. Solo matchea ese host exacto, así que los deploys
-  // de preview (*.vercel.app) no se ven afectados.
-  async redirects() {
-    return [
-      {
-        source: "/:path*",
-        has: [{ type: "host", value: "www.registruti.app" }],
-        destination: "https://registruti.app/:path*",
-        permanent: true,
-      },
-    ];
-  },
+  // Eso lo decide la config de Domains en el panel de Vercel, y tiene que ser
+  // el único dueño. Un redirect a nivel app no puede ver cómo está configurado
+  // el dominio en el edge: si el panel apunta en el sentido contrario, cada
+  // capa deshace a la otra y el sitio entero cae con ERR_TOO_MANY_REDIRECTS
+  // (pasó en producción: el panel mandaba apex → www y la app www → apex).
+  //
+  // Para canonicalizar en https://registruti.app (lo que declaran SITE_URL,
+  // los canonical y el sitemap): Vercel → Settings → Domains → registruti.app
+  // como dominio primario, y www.registruti.app en "Redirect to" hacia él.
 };
 
 export default nextConfig;
