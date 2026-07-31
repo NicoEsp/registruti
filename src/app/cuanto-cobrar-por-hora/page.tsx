@@ -24,7 +24,6 @@ export const metadata: Metadata = {
   ],
   alternates: { canonical: "/cuanto-cobrar-por-hora" },
   openGraph: {
-    images: [SITE_OG_IMAGE],
     type: "website",
     url: PAGE_URL,
     siteName: SITE_NAME,
