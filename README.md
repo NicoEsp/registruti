@@ -79,6 +79,11 @@ Cada token resuelve un `user_id`; todas las tools quedan scopeadas a los datos d
 3. Pedile cosas como *"cargá 2 horas de hoy para Acme, reunión de kickoff"* o
    *"¿cuántas horas facturables llevo este mes?"*.
 
+> **Tiene que ser el apex, sin `www`.** `www.registruti.app` redirige a `registruti.app` y ese
+> salto es cross-origin: `fetch` (el que usan `mcp-remote` y los clientes MCP) borra el header
+> `Authorization` al seguir el redirect, la request llega sin token y el server contesta 401.
+> El síntoma es un cartel de error de conexión cada vez que se abre Claude, con un token válido.
+
 ### Configuración
 
 El endpoint usa la service role key de Supabase; hay que definir `SUPABASE_URL` y

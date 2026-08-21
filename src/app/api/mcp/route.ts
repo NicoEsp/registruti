@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { resolveUserId } from "@/lib/mcp/auth";
 import { TOOLS, callTool } from "@/lib/mcp/tools";
+import { SITE_URL } from "@/lib/site";
 
 // Servidor MCP de Registruti, implementado a mano sobre el transporte
 // Streamable HTTP (JSON-RPC 2.0 por POST). Stateless: cada request trae el
@@ -12,6 +13,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const SERVER_INFO = { name: "registruti", version: "1.0.0" };
+const CANONICAL_ENDPOINT = `${SITE_URL}/api/mcp`;
 const DEFAULT_PROTOCOL = "2025-06-18";
 const SUPPORTED_PROTOCOLS = new Set(["2024-11-05", "2025-03-26", "2025-06-18"]);
 
@@ -39,15 +41,36 @@ function json(payload: unknown, status = 200, extraHeaders: Record<string, strin
   });
 }
 
-function unauthorized() {
-  return json(rpcError(null, -32001, "Token MCP inválido o ausente."), 401, {
-    "www-authenticate": 'Bearer realm="registruti-mcp"',
-  });
+// El 401 distingue los dos casos porque se arreglan distinto, y confundirlos
+// manda al usuario a regenerar tokens que están bien:
+//
+//  - Sin header `Authorization`: casi siempre es la URL. Si el cliente apunta a
+//    www.registruti.app, el redirect al apex es cross-origin y `fetch` borra el
+//    header al seguirlo (spec de Fetch), así que la request nos llega pelada.
+//  - Con header pero sin match: ahí sí el token no existe o fue revocado.
+function missingCredentials() {
+  return json(
+    rpcError(
+      null,
+      -32001,
+      `Falta el header Authorization. Si tu cliente apunta a www.registruti.app, cambialo por ${CANONICAL_ENDPOINT}: el redirect del www al dominio principal borra el header y el token nunca llega.`
+    ),
+    401,
+    { "www-authenticate": 'Bearer realm="registruti-mcp"' }
+  );
+}
+
+function invalidToken() {
+  return json(
+    rpcError(null, -32001, "El token MCP no es válido o fue revocado. Generá uno nuevo en Ajustes → Conexión MCP."),
+    401,
+    { "www-authenticate": 'Bearer realm="registruti-mcp", error="invalid_token"' }
+  );
 }
 
 export async function GET() {
   return new Response(
-    "El endpoint MCP de Registruti usa POST (Streamable HTTP). Configuralo en tu cliente MCP con tu token personal.",
+    `El endpoint MCP de Registruti usa POST (Streamable HTTP). Configuralo en tu cliente MCP como ${CANONICAL_ENDPOINT} (sin www) con tu token personal.`,
     { status: 405, headers: { allow: "POST" } }
   );
 }
@@ -56,7 +79,7 @@ export async function POST(req: NextRequest) {
   // 1. Auth por bearer token.
   const authHeader = req.headers.get("authorization") ?? "";
   const match = authHeader.match(/^Bearer\s+(.+)$/i);
-  if (!match) return unauthorized();
+  if (!match) return missingCredentials();
 
   let userId: string | null;
   try {
@@ -64,7 +87,7 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     return json(rpcError(null, -32603, e instanceof Error ? e.message : "Error interno."), 500);
   }
-  if (!userId) return unauthorized();
+  if (!userId) return invalidToken();
 
   // 2. Parseo del body. El protocolo por defecto (2025-06-18) eliminó el
   // batching JSON-RPC; como este server es stateless no trackeamos la versión

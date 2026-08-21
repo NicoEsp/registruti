@@ -1,6 +1,14 @@
 import CodeBlock from "@/components/blog/CodeBlock";
+import { SITE_URL } from "@/lib/site";
 
-const MCP_ENDPOINT = "https://www.registruti.app/api/mcp";
+// OJO: tiene que ser el dominio canónico (apex, sin `www`), el mismo que expone
+// Ajustes → Conexión MCP. En Vercel, www.registruti.app redirige al apex, y ese
+// redirect es cross-origin: `fetch` —el que usan mcp-remote y todos los clientes
+// MCP— borra el header `Authorization` al seguirlo (lo pide la spec de Fetch).
+// La request llega sin token, el server responde 401 y Claude tira el cartel de
+// error de conexión cada vez que arranca. Por eso se arma desde SITE_URL y no a
+// mano: así no puede volver a divergir del host canónico.
+const MCP_ENDPOINT = `${SITE_URL}/api/mcp`;
 
 const CLI_COMMAND = `claude mcp add --transport http registruti \\
   ${MCP_ENDPOINT} \\
@@ -206,12 +214,16 @@ export default function McpArticle() {
         </li>
         <li>
           <strong>Error de conexión.</strong> Revisá que la URL sea exactamente{" "}
-          <code>{MCP_ENDPOINT}</code> (con <code>www</code>) y que el token esté completo, con el{" "}
-          <code>Bearer </code> adelante.
+          <code>{MCP_ENDPOINT}</code> —<strong>sin <code>www</code></strong>— y que el token esté
+          completo, con el <code>Bearer </code> adelante.
         </li>
         <li>
-          <strong>Dice “no autorizado” (401).</strong> El token no es válido o fue revocado. Generá
-          uno nuevo en Ajustes → Conexión MCP y actualizá el archivo.
+          <strong>Dice “no autorizado” (401).</strong> Primero fijate en la URL: si apunta a{" "}
+          <code>www.registruti.app</code>, cambiala por <code>{MCP_ENDPOINT}</code>. El{" "}
+          <code>www</code> redirige al dominio principal y ese salto borra el header{" "}
+          <code>Authorization</code>, así que el token nunca llega y el error aparece aunque sea
+          válido. Si la URL ya está bien, ahí sí el token fue revocado: generá uno nuevo en
+          Ajustes → Conexión MCP y actualizá el archivo.
         </li>
       </ul>
 
