@@ -247,46 +247,24 @@ export interface RegisterContext {
   ipHash: string | null;
 }
 
-// El registro es anónimo y persiste una fila por llamada, así que se acota
-// por IP y en total por hora; y los clientes que nunca llegaron a autorizar
-// se borran a los 7 días (acá de forma oportunista, y por cron en la base).
-async function enforceRegistrationLimits(ipHash: string | null): Promise<void> {
-  const admin = getAdminClient();
-  const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-
-  if (ipHash) {
-    const { count, error } = await admin
-      .from("oauth_clients")
-      .select("id", { count: "exact", head: true })
-      .eq("ip_hash", ipHash)
-      .gte("created_at", since);
-    if (error) throw new OAuthError("server_error", `No pude verificar el límite de registros: ${error.message}`, 500);
-    if ((count ?? 0) >= REGISTER_LIMIT_PER_IP_PER_HOUR) {
-      throw new OAuthError(
-        "rate_limited",
-        "Demasiados registros de clientes desde esta dirección. Probá de nuevo en una hora.",
-        429
-      );
-    }
-  }
-
-  const { count: total, error: totalError } = await admin
-    .from("oauth_clients")
-    .select("id", { count: "exact", head: true })
-    .gte("created_at", since);
-  if (totalError) {
-    throw new OAuthError("server_error", `No pude verificar el límite de registros: ${totalError.message}`, 500);
-  }
-  if ((total ?? 0) >= REGISTER_LIMIT_GLOBAL_PER_HOUR) {
+/**
+ * Hash con clave de la IP que registra un cliente. Sirve para contar
+ * registros por origen sin guardar la IP, y con clave (HMAC) para que quien
+ * lea la base no pueda enumerar las 4.000 millones de IPv4 contra un hash
+ * sin sal. La clave sale de OAUTH_IP_HASH_SALT o, si no está, de la service
+ * role key: ya es secreta, ya es server-only y no cambia entre deploys. Si no
+ * hay ninguna, el registro falla cerrado (sin ella tampoco habría base).
+ */
+export function hashClientIp(ip: string): string {
+  const key = process.env.OAUTH_IP_HASH_SALT ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) {
     throw new OAuthError(
-      "rate_limited",
-      "El registro de clientes está saturado en este momento. Probá de nuevo en unos minutos.",
-      429
+      "server_error",
+      "Falta OAUTH_IP_HASH_SALT (o SUPABASE_SERVICE_ROLE_KEY) para el rate limit del registro.",
+      500
     );
   }
-
-  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-  await admin.from("oauth_clients").delete().is("last_used_at", null).lt("created_at", weekAgo);
+  return crypto.createHmac("sha256", key).update(ip).digest("hex");
 }
 
 export async function registerClient(body: unknown, ctx: RegisterContext): Promise<Record<string, unknown>> {
@@ -345,27 +323,54 @@ export async function registerClient(body: unknown, ctx: RegisterContext): Promi
     throw new OAuthError("invalid_client_metadata", `scope inválido. Scopes disponibles: ${ALL_SCOPES.join(" ")}.`);
   }
 
-  await enforceRegistrationLimits(ctx.ipHash);
-
   const id = `rc_${randomHex(16)}`;
   const secret = authMethod === "none" ? null : `rcs_${randomHex(32)}`;
   const clientUri = optionalHttpsUrl(meta.client_uri);
   const logoUri = optionalHttpsUrl(meta.logo_uri);
 
   const admin = getAdminClient();
-  const { error } = await admin.from("oauth_clients").insert({
-    id,
-    secret_hash: secret ? await sha256Hex(secret) : null,
-    name,
-    redirect_uris: redirectUris,
-    token_endpoint_auth_method: authMethod,
-    grant_types: grantTypes,
-    scope: scopeString(requestedScopes),
-    client_uri: clientUri,
-    logo_uri: logoUri,
-    ip_hash: ctx.ipHash,
+
+  // Limpieza oportunista de clientes que nunca completaron una autorización
+  // (el cron de la base hace lo mismo cada hora).
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  await admin.from("oauth_clients").delete().is("last_used_at", null).lt("created_at", weekAgo);
+
+  // El registro es anónimo y persiste una fila por llamada, así que está
+  // acotado por IP y en total por hora. El conteo y el insert los hace una
+  // función de Postgres serializada con un advisory lock: contar acá y
+  // después insertar dejaba pasar los topes con requests concurrentes.
+  const { data: outcome, error } = await admin.rpc("oauth_register_client", {
+    p_id: id,
+    p_secret_hash: secret ? await sha256Hex(secret) : null,
+    p_name: name,
+    p_redirect_uris: redirectUris,
+    p_auth_method: authMethod,
+    p_grant_types: grantTypes,
+    p_scope: scopeString(requestedScopes),
+    p_client_uri: clientUri,
+    p_logo_uri: logoUri,
+    p_ip_hash: ctx.ipHash,
+    p_ip_limit: REGISTER_LIMIT_PER_IP_PER_HOUR,
+    p_global_limit: REGISTER_LIMIT_GLOBAL_PER_HOUR,
   });
   if (error) throw new OAuthError("server_error", `No pude registrar el cliente: ${error.message}`, 500);
+  if (outcome === "ip_limited") {
+    throw new OAuthError(
+      "rate_limited",
+      "Demasiados registros de clientes desde esta dirección. Probá de nuevo en una hora.",
+      429
+    );
+  }
+  if (outcome === "global_limited") {
+    throw new OAuthError(
+      "rate_limited",
+      "El registro de clientes está saturado en este momento. Probá de nuevo en unos minutos.",
+      429
+    );
+  }
+  if (outcome !== "ok") {
+    throw new OAuthError("server_error", `Respuesta inesperada al registrar el cliente: ${String(outcome)}`, 500);
+  }
 
   return {
     client_id: id,
@@ -822,13 +827,10 @@ export async function refreshAccessToken(p: RefreshRequest): Promise<TokenRespon
   if (!row.rotated_at) {
     await admin.from("oauth_refresh_tokens").update({ rotated_at: nowIso() }).eq("id", row.id);
   }
-  // Limpieza del grant: access tokens vencidos y refresh tokens ya fuera de gracia.
+  // Limpieza del grant: solo access tokens vencidos. Los refresh tokens ya
+  // rotados se conservan hasta vencer: son lo que permite reconocer un reuso
+  // tardío (arriba) y revocar la autorización.
   await admin.from("mcp_tokens").delete().eq("grant_id", grant.id).lt("expires_at", nowIso());
-  await admin
-    .from("oauth_refresh_tokens")
-    .delete()
-    .eq("grant_id", grant.id)
-    .lt("rotated_at", new Date(Date.now() - REFRESH_ROTATION_GRACE_SECONDS * 1000).toISOString());
 
   return issueTokens(grant as GrantRow, scopes);
 }

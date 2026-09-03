@@ -121,8 +121,10 @@ Implementado a mano en `src/lib/mcp/oauth.ts`, sin dependencias nuevas, siguiend
   *Apps conectadas*; borrarla borra en cascada sus tokens. Todo secreto se guarda como SHA-256.
   Reusar un refresh token ya rotado (fuera de la gracia) también revoca la autorización entera.
 - El registro dinámico es anónimo y escribe en la base, así que está limitado por IP (20/hora)
-  y en total (500/hora); los clientes que nunca completan una autorización se borran a los 7
-  días. Los Client ID Metadata Documents se leen con `src/lib/mcp/safeFetch.ts`, que valida la
+  y en total (500/hora). El conteo y el insert los hace la función `oauth_register_client()`
+  serializada con un advisory lock, así que el tope no se pasa con requests concurrentes; la IP
+  se guarda solo como HMAC con clave del server. Los clientes que nunca completan una
+  autorización se borran a los 7 días. Los Client ID Metadata Documents se leen con `src/lib/mcp/safeFetch.ts`, que valida la
   dirección resuelta en el propio socket (nada de loopback, privadas ni link-local) y no sigue
   redirects. La limpieza de codes y tokens vencidos corre cada hora por `pg_cron`
   (`mcp_oauth_cleanup()`), además de la limpieza oportunista de los endpoints.
@@ -133,11 +135,14 @@ Implementado a mano en `src/lib/mcp/oauth.ts`, sin dependencias nuevas, siguiend
 
 El endpoint usa la service role key de Supabase; hay que definir `SUPABASE_URL` y
 `SUPABASE_SERVICE_ROLE_KEY` como env vars en Vercel (ver [`supabase/README.md`](supabase/README.md))
-y aplicar las migraciones `20260721000005_mcp_tokens.sql`, `20260903000007_mcp_oauth.sql` y
-`20260903000008_mcp_oauth_hardening.sql`.
+y aplicar las migraciones `20260721000005_mcp_tokens.sql`, `20260903000007_mcp_oauth.sql`,
+`20260903000008_mcp_oauth_hardening.sql` y `20260903000009_oauth_register_atomic.sql`.
 
 Opcionales:
 
+- `OAUTH_IP_HASH_SALT`: clave del HMAC con el que se guarda la IP que registra un cliente MCP
+  (rate limit del registro dinámico). Si no está, se usa la service role key. Cambiarla solo
+  reinicia los conteos de la última hora.
 - `MCP_BASE_URL`: URL pública bajo la que se anuncian el servidor y sus endpoints OAuth
   (default `SITE_URL`). Sirve para probar el flujo completo en un preview de Vercel.
 - `MCP_ALLOW_INSECURE_CLIENT_METADATA=1`: acepta Client ID Metadata Documents por http. Solo

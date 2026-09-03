@@ -186,6 +186,33 @@ export async function startMockSupabase({ verbose = false } = {}) {
       }
     }
 
+    // --- RPC: registro atómico de clientes (misma semántica que la función SQL)
+    if (url.pathname === "/rest/v1/rpc/oauth_register_client") {
+      if (req.headers.apikey !== SERVICE_ROLE_KEY) return send(401, { message: "Invalid API key" });
+      const a = JSON.parse(rawBody);
+      const since = new Date(Date.now() - 60 * 60_000).toISOString();
+      const recent = db.oauth_clients.filter((c) => c.created_at >= since);
+      if (a.p_ip_hash != null && recent.filter((c) => c.ip_hash === a.p_ip_hash).length >= a.p_ip_limit) {
+        return send(200, "ip_limited");
+      }
+      if (recent.length >= a.p_global_limit) return send(200, "global_limited");
+      db.oauth_clients.push({
+        id: a.p_id,
+        secret_hash: a.p_secret_hash,
+        name: a.p_name,
+        redirect_uris: a.p_redirect_uris,
+        token_endpoint_auth_method: a.p_auth_method,
+        grant_types: a.p_grant_types,
+        scope: a.p_scope,
+        client_uri: a.p_client_uri,
+        logo_uri: a.p_logo_uri,
+        ip_hash: a.p_ip_hash,
+        created_at: now(),
+        last_used_at: null,
+      });
+      return send(200, "ok");
+    }
+
     // --- PostgREST ---------------------------------------------------------
     const m = url.pathname.match(/^\/rest\/v1\/([a-z_]+)$/);
     if (!m) return send(404, { message: `Not found: ${req.method} ${url.pathname}` });

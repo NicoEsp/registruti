@@ -1,7 +1,6 @@
 import type { NextRequest } from "next/server";
-import { oauthErrorResponse, registerClient } from "@/lib/mcp/oauth";
+import { hashClientIp, oauthErrorResponse, registerClient } from "@/lib/mcp/oauth";
 import { json, preflight } from "@/lib/mcp/http";
-import { sha256Hex } from "@/lib/crypto";
 
 // RFC 7591: registro dinámico de clientes. Abierto, como pide la spec de MCP:
 // un cliente nuevo (Claude, Cursor…) se registra solo antes de mandar al
@@ -12,8 +11,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // En Vercel, x-real-ip y x-forwarded-for los escribe el edge con la IP real
-// del cliente (no se pueden falsear desde afuera). Se guarda solo un hash con
-// sal fija: alcanza para contar registros por origen sin persistir la IP.
+// del cliente (no se pueden falsear desde afuera). Se guarda solo un HMAC con
+// clave del server (hashClientIp): alcanza para contar registros por origen
+// sin persistir la IP ni dejarla enumerable.
 function clientIp(req: NextRequest): string | null {
   const real = req.headers.get("x-real-ip")?.trim();
   if (real) return real;
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   }
   try {
     const ip = clientIp(req);
-    const ipHash = ip ? await sha256Hex(`registruti-oauth-register:${ip}`) : null;
+    const ipHash = ip ? hashClientIp(ip) : null;
     return json(await registerClient(body, { ipHash }), 201);
   } catch (e) {
     return oauthErrorResponse(e);

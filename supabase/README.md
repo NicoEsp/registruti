@@ -62,6 +62,13 @@ supabase db push
    tokens vencidos, refresh tokens ya rotados y clientes registrados que
    nunca autorizaron) y, si `pg_cron` está disponible, el job horario
    `mcp_oauth_cleanup` que la ejecuta. **Requerida** por `/api/oauth/register`.
+9. `20260903000009_oauth_register_atomic.sql` — la función
+   `oauth_register_client()` (security definer, solo service role) que cuenta
+   los registros por IP y globales y hace el insert en una sola transacción
+   serializada con un advisory lock, y `mcp_oauth_cleanup()` corregida para
+   conservar los refresh tokens rotados hasta que venzan (hacen falta para
+   detectar un reuso tardío y revocar la autorización). **Requerida** por
+   `/api/oauth/register`.
 
 ### Activar el lifetime access de un usuario
 

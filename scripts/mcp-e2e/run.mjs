@@ -523,7 +523,11 @@ async function runTests(mock) {
     eq(other.status, 201, "otra IP no se ve afectada");
     const spam = mock.db().oauth_clients.filter((c) => c.name.startsWith("Spam"));
     eq(spam.length, 21);
-    assert(spam.every((c) => typeof c.ip_hash === "string" && c.ip_hash.length === 64), "guarda el hash de la IP");
+    assert(spam.every((c) => typeof c.ip_hash === "string" && c.ip_hash.length === 64), "guarda el HMAC de la IP");
+    // 30 registros a la vez desde otra IP: exactamente 20 entran, el resto 429.
+    const burst = await Promise.all(Array.from({ length: 30 }, (_, i) => register("203.0.113.77", 100 + i)));
+    eq(burst.filter((r) => r.status === 201).length, 20, "registros concurrentes aceptados");
+    eq(burst.filter((r) => r.status === 429).length, 10, "registros concurrentes rechazados");
   });
 
   await test("loopback: el puerto de la redirect_uri puede variar (RFC 8252)", async () => {
