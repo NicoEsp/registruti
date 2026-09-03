@@ -1,13 +1,13 @@
 import CodeBlock from "@/components/blog/CodeBlock";
-import { SITE_URL } from "@/lib/site";
+import { MCP_ENDPOINT } from "@/lib/mcp/config";
 
 // OJO: tiene que ser el dominio canónico (apex, sin `www`), el mismo que expone
 // Ajustes. En Vercel, www.registruti.app redirige al apex, y ese redirect es
 // cross-origin: `fetch` —el que usan todos los clientes MCP— borra el header
 // `Authorization` al seguirlo (lo pide la spec de Fetch). La request llega sin
 // token, el server responde 401 y el cliente muestra un error de conexión. Por
-// eso se arma desde SITE_URL y no a mano: así no puede volver a divergir.
-const MCP_ENDPOINT = `${SITE_URL}/api/mcp`;
+// eso se toma de la config del MCP (la misma que anuncia el server) y no se
+// escribe a mano: así no puede volver a divergir.
 
 const CLAUDE_CODE_COMMAND = `claude mcp add --transport http --scope user registruti ${MCP_ENDPOINT}`;
 

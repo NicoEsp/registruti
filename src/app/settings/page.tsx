@@ -481,9 +481,13 @@ function McpSection() {
                       {fresh}
                     </code>
                     <button
-                      onClick={() => {
-                        navigator.clipboard?.writeText(fresh);
-                        showToast("✓ Token copiado");
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(fresh);
+                          showToast("✓ Token copiado");
+                        } catch {
+                          /* clipboard bloqueado: el token sigue visible para copiarlo a mano */
+                        }
                       }}
                       className="shrink-0 rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
                     >

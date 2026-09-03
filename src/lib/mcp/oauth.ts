@@ -2,14 +2,18 @@ import crypto from "node:crypto";
 import { getAdminClient } from "@/lib/supabaseAdmin";
 import { sha256Hex } from "@/lib/crypto";
 import { json } from "@/lib/mcp/http";
+import { fetchPublicJson } from "@/lib/mcp/safeFetch";
 import {
   ACCESS_TOKEN_TTL_SECONDS,
   ALL_SCOPES,
   AUTH_CODE_TTL_SECONDS,
+  CLIENT_METADATA_CACHE_MAX,
   MCP_ENDPOINT,
   OAUTH,
   REFRESH_ROTATION_GRACE_SECONDS,
   REFRESH_TOKEN_TTL_SECONDS,
+  REGISTER_LIMIT_GLOBAL_PER_HOUR,
+  REGISTER_LIMIT_PER_IP_PER_HOUR,
   SCOPES,
   parseScopes,
   scopeString,
@@ -60,7 +64,8 @@ export class AuthorizeError extends OAuthError {
 /** Respuesta de error estándar (RFC 6749 §5.2) para los endpoints OAuth. */
 export function oauthErrorResponse(e: unknown): Response {
   if (e instanceof OAuthError) {
-    return json({ error: e.code, error_description: e.message }, e.status);
+    const headers: Record<string, string> = e.status === 429 ? { "retry-after": "3600" } : {};
+    return json({ error: e.code, error_description: e.message }, e.status, headers);
   }
   return json(
     { error: "server_error", error_description: e instanceof Error ? e.message : "Error interno." },
@@ -237,7 +242,54 @@ export function resourceMatches(resource: string): boolean {
 // Clientes: registro dinámico (RFC 7591) y Client ID Metadata Documents
 // ---------------------------------------------------------------------------
 
-export async function registerClient(body: unknown): Promise<Record<string, unknown>> {
+export interface RegisterContext {
+  /** Hash de la IP que registra (null si no se pudo determinar): solo para limitar abuso. */
+  ipHash: string | null;
+}
+
+// El registro es anónimo y persiste una fila por llamada, así que se acota
+// por IP y en total por hora; y los clientes que nunca llegaron a autorizar
+// se borran a los 7 días (acá de forma oportunista, y por cron en la base).
+async function enforceRegistrationLimits(ipHash: string | null): Promise<void> {
+  const admin = getAdminClient();
+  const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+  if (ipHash) {
+    const { count, error } = await admin
+      .from("oauth_clients")
+      .select("id", { count: "exact", head: true })
+      .eq("ip_hash", ipHash)
+      .gte("created_at", since);
+    if (error) throw new OAuthError("server_error", `No pude verificar el límite de registros: ${error.message}`, 500);
+    if ((count ?? 0) >= REGISTER_LIMIT_PER_IP_PER_HOUR) {
+      throw new OAuthError(
+        "rate_limited",
+        "Demasiados registros de clientes desde esta dirección. Probá de nuevo en una hora.",
+        429
+      );
+    }
+  }
+
+  const { count: total, error: totalError } = await admin
+    .from("oauth_clients")
+    .select("id", { count: "exact", head: true })
+    .gte("created_at", since);
+  if (totalError) {
+    throw new OAuthError("server_error", `No pude verificar el límite de registros: ${totalError.message}`, 500);
+  }
+  if ((total ?? 0) >= REGISTER_LIMIT_GLOBAL_PER_HOUR) {
+    throw new OAuthError(
+      "rate_limited",
+      "El registro de clientes está saturado en este momento. Probá de nuevo en unos minutos.",
+      429
+    );
+  }
+
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  await admin.from("oauth_clients").delete().is("last_used_at", null).lt("created_at", weekAgo);
+}
+
+export async function registerClient(body: unknown, ctx: RegisterContext): Promise<Record<string, unknown>> {
   if (typeof body !== "object" || body === null || Array.isArray(body)) {
     throw new OAuthError(
       "invalid_client_metadata",
@@ -293,6 +345,8 @@ export async function registerClient(body: unknown): Promise<Record<string, unkn
     throw new OAuthError("invalid_client_metadata", `scope inválido. Scopes disponibles: ${ALL_SCOPES.join(" ")}.`);
   }
 
+  await enforceRegistrationLimits(ctx.ipHash);
+
   const id = `rc_${randomHex(16)}`;
   const secret = authMethod === "none" ? null : `rcs_${randomHex(32)}`;
   const clientUri = optionalHttpsUrl(meta.client_uri);
@@ -309,6 +363,7 @@ export async function registerClient(body: unknown): Promise<Record<string, unkn
     scope: scopeString(requestedScopes),
     client_uri: clientUri,
     logo_uri: logoUri,
+    ip_hash: ctx.ipHash,
   });
   if (error) throw new OAuthError("server_error", `No pude registrar el cliente: ${error.message}`, 500);
 
@@ -341,21 +396,39 @@ function isPrivateHost(host: string): boolean {
   return /^\d+\.\d+\.\d+\.\d+$/.test(h) || h.startsWith("[");
 }
 
-// http solo para las pruebas locales (scripts/mcp-e2e), jamás en producción.
+// http y direcciones privadas solo para las pruebas locales (scripts/mcp-e2e),
+// jamás en producción.
+function insecureClientMetadataAllowed(): boolean {
+  return process.env.MCP_ALLOW_INSECURE_CLIENT_METADATA === "1" && process.env.VERCEL_ENV !== "production";
+}
+
+// Filtro previo por hostname; la protección real contra SSRF (la dirección
+// resuelta, con DNS rebinding incluido) está en fetchPublicJson.
 function clientMetadataUrlAllowed(u: URL): boolean {
   if (u.username || u.password || u.hash) return false;
   if (u.protocol === "https:") return !isPrivateHost(u.hostname);
-  return (
-    u.protocol === "http:" &&
-    process.env.MCP_ALLOW_INSECURE_CLIENT_METADATA === "1" &&
-    process.env.VERCEL_ENV !== "production"
-  );
+  return u.protocol === "http:" && insecureClientMetadataAllowed();
 }
 
 // Caché por instancia: authorize y token leen el mismo documento seguidos.
 // Solo se cachean lecturas exitosas; un fallo transitorio no bloquea 10 min.
+// Está acotada porque la URL la elige el cliente sin autenticar: al insertar
+// se purgan los vencidos y, si sigue llena, los más viejos.
 const CLIENT_METADATA_CACHE_TTL_MS = 10 * 60 * 1000;
 const clientMetadataCache = new Map<string, { at: number; client: OAuthClient }>();
+
+function cacheClientMetadata(clientId: string, client: OAuthClient): void {
+  const now = Date.now();
+  for (const [key, entry] of clientMetadataCache) {
+    if (now - entry.at >= CLIENT_METADATA_CACHE_TTL_MS) clientMetadataCache.delete(key);
+  }
+  while (clientMetadataCache.size >= CLIENT_METADATA_CACHE_MAX) {
+    const oldest = clientMetadataCache.keys().next().value;
+    if (oldest === undefined) break;
+    clientMetadataCache.delete(oldest);
+  }
+  clientMetadataCache.set(clientId, { at: now, client });
+}
 
 function parseClientMetadataDocument(clientId: string, doc: unknown): OAuthClient | null {
   if (typeof doc !== "object" || doc === null || Array.isArray(doc)) return null;
@@ -391,23 +464,9 @@ async function loadClientMetadataDocument(clientId: string): Promise<OAuthClient
   const u = parseUrl(clientId);
   if (!u || !clientMetadataUrlAllowed(u)) return null;
 
-  let doc: unknown = null;
-  try {
-    const res = await fetch(clientId, {
-      headers: { accept: "application/json" },
-      redirect: "manual",
-      signal: AbortSignal.timeout(5000),
-    });
-    if (res.ok) {
-      const text = await res.text();
-      if (text.length <= 64 * 1024) doc = JSON.parse(text);
-    }
-  } catch {
-    doc = null;
-  }
-
+  const doc = await fetchPublicJson(u, { allowPrivate: insecureClientMetadataAllowed() });
   const client = parseClientMetadataDocument(clientId, doc);
-  if (client) clientMetadataCache.set(clientId, { at: Date.now(), client });
+  if (client) cacheClientMetadata(clientId, client);
   return client;
 }
 
@@ -549,6 +608,11 @@ export async function createAuthorizationCode(req: AuthorizeRequest, userId: str
   if (error) {
     throw new OAuthError("server_error", `No pude emitir el código de autorización: ${error.message}`, 500);
   }
+  // Un cliente registrado que llega hasta acá es real: queda fuera de la
+  // limpieza de clientes nunca usados. Best-effort.
+  if (req.client.kind === "registered") {
+    await admin.from("oauth_clients").update({ last_used_at: nowIso() }).eq("id", req.client.id);
+  }
   return buildRedirect(req.redirectUri, { code, state: req.state, iss: OAUTH.issuer });
 }
 
@@ -635,7 +699,12 @@ export async function exchangeAuthorizationCode(p: CodeExchange): Promise<TokenR
   if (row.used_at) {
     // Reuso de un code (RFC 6749 §4.1.2): o lo interceptaron o el cliente lo
     // repitió. Se revoca lo que salió de él.
-    if (row.grant_id) await admin.from("oauth_grants").delete().eq("id", row.grant_id);
+    if (row.grant_id) {
+      const { error: revokeError } = await admin.from("oauth_grants").delete().eq("id", row.grant_id);
+      if (revokeError) {
+        throw new OAuthError("server_error", `No pude revocar la autorización del código reusado: ${revokeError.message}`, 500);
+      }
+    }
     throw new OAuthError("invalid_grant", "El código ya fue usado. Volvé a conectar la app.");
   }
   if (isPast(row.expires_at)) {
@@ -706,7 +775,18 @@ export async function refreshAccessToken(p: RefreshRequest): Promise<TokenRespon
     throw new OAuthError("invalid_grant", "El refresh token venció. Volvé a conectar la app.");
   }
   if (row.rotated_at && Date.now() - new Date(row.rotated_at).getTime() > REFRESH_ROTATION_GRACE_SECONDS * 1000) {
-    throw new OAuthError("invalid_grant", "Este refresh token ya fue rotado. Volvé a conectar la app.");
+    // Reuso de un refresh token ya rotado, fuera de la ventana de gracia
+    // (RFC 9700 §4.14.2): alguien tiene un token que el cliente legítimo ya
+    // descartó. Se revoca la autorización entera y, en cascada, todos sus
+    // tokens; el usuario vuelve a autorizar y listo.
+    const { error: revokeError } = await admin.from("oauth_grants").delete().eq("id", row.grant_id);
+    if (revokeError) {
+      throw new OAuthError("server_error", `No pude revocar la autorización tras detectar el reuso: ${revokeError.message}`, 500);
+    }
+    throw new OAuthError(
+      "invalid_grant",
+      "Este refresh token ya había sido usado. Por seguridad se revocó la autorización: volvé a conectar la app."
+    );
   }
 
   const { data: grant, error: grantError } = await admin

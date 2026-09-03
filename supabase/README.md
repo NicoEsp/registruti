@@ -52,9 +52,16 @@ supabase db push
    delete por dueño), `oauth_codes` (authorization codes de un solo uso) y
    `oauth_refresh_tokens` (rotativos), más las columnas `grant_id` y `scope` en
    `mcp_tokens` para los access tokens emitidos por OAuth. **Requerida** por
-   la conexión con un clic desde Claude/Cursor y por "Apps conectadas" en
-   Ajustes; sin ella el flujo OAuth responde `server_error` y los tokens
-   personales siguen funcionando.
+   todo el endpoint MCP, tokens personales incluidos: la verificación del
+   bearer lee `grant_id` y `scope` de `mcp_tokens`, así que sin esta migración
+   `/api/mcp` responde 500 para cualquier token.
+8. `20260903000008_mcp_oauth_hardening.sql` — endurecimiento del OAuth:
+   columna `oauth_clients.ip_hash` (hash de la IP que registró el cliente,
+   para el rate limit del registro dinámico), índices para los predicados de
+   limpieza y rate limit, la función `mcp_oauth_cleanup()` (borra codes y
+   tokens vencidos, refresh tokens ya rotados y clientes registrados que
+   nunca autorizaron) y, si `pg_cron` está disponible, el job horario
+   `mcp_oauth_cleanup` que la ejecuta. **Requerida** por `/api/oauth/register`.
 
 ### Activar el lifetime access de un usuario
 

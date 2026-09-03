@@ -66,3 +66,13 @@ export const AUTH_CODE_TTL_SECONDS = 10 * 60; // 10 minutos
 // Ventana en la que un refresh token ya rotado sigue valiendo, para no romper
 // al cliente que dispara dos refresh a la vez (pasa en Claude al reconectar).
 export const REFRESH_ROTATION_GRACE_SECONDS = 60;
+
+// Límites del registro dinámico de clientes (RFC 7591), que es anónimo y
+// escribe en la base: por IP y global, por hora. Un usuario legítimo registra
+// un cliente por app y por máquina; esto solo frena a quien intente inflar la
+// tabla. Los clientes registrados que nunca completan una autorización se
+// borran a los 7 días (public.mcp_oauth_cleanup).
+export const REGISTER_LIMIT_PER_IP_PER_HOUR = 20;
+export const REGISTER_LIMIT_GLOBAL_PER_HOUR = 500;
+// Tope de Client ID Metadata Documents cacheados en memoria por instancia.
+export const CLIENT_METADATA_CACHE_MAX = 200;

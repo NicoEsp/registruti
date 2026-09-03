@@ -166,7 +166,8 @@ async function rpc(token, method, params = {}, id = 1) {
       accept: "application/json, text/event-stream",
       ...(token ? { authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify(id === undefined ? { jsonrpc: "2.0", method, params } : { jsonrpc: "2.0", id, method, params }),
+    // id === null → notificación (sin `id` en el body); `undefined` caería en el default.
+    body: JSON.stringify(id === null ? { jsonrpc: "2.0", method, params } : { jsonrpc: "2.0", id, method, params }),
   });
   const text = await res.text();
   return { status: res.status, headers: res.headers, body: text ? JSON.parse(text) : null };
@@ -419,18 +420,46 @@ async function runTests(mock) {
       client_id: provider.clientInfo.client_id,
     });
     eq(graced.status, 200, JSON.stringify(graced.body));
-    // Fuera de la gracia, no.
-    await fetch(`${mock.url}/__test/rotate-back`, { method: "POST" });
-    const stale = await tokenRequest({
-      grant_type: "refresh_token",
-      refresh_token: refreshBefore,
-      client_id: provider.clientInfo.client_id,
-    });
-    eq(stale.status, 400);
-    eq(stale.body.error, "invalid_grant");
     // Los access tokens vencidos del grant se limpiaron.
     const expired = mock.db().mcp_tokens.filter((t) => t.grant_id && new Date(t.expires_at) < new Date());
     eq(expired.length, 0, "quedaron access tokens vencidos");
+  });
+
+  await test("reusar un refresh token fuera de la gracia revoca la autorización entera", async () => {
+    const stolen = provider.tokensSaved.refresh_token;
+    const clientId = provider.clientInfo.client_id;
+    // El token actual ya se usó una vez (rotó); simulamos que fue hace mucho.
+    const rotated = await tokenRequest({ grant_type: "refresh_token", refresh_token: stolen, client_id: clientId });
+    eq(rotated.status, 200, JSON.stringify(rotated.body));
+    provider.saveTokens(rotated.body);
+    await fetch(`${mock.url}/__test/rotate-back`, { method: "POST" });
+    const replay = await tokenRequest({ grant_type: "refresh_token", refresh_token: stolen, client_id: clientId });
+    eq(replay.status, 400);
+    eq(replay.body.error, "invalid_grant");
+    assert(replay.body.error_description.includes("se revocó"), replay.body.error_description);
+    eq(mock.db().oauth_grants.filter((g) => g.client_id === clientId).length, 0, "el grant tenía que desaparecer");
+    const dead = await rpc(provider.tokensSaved.access_token, "ping");
+    eq(dead.status, 401, "el access token vigente también tenía que morir");
+  });
+
+  await test("tras la revocación, el SDK detecta invalid_grant y vuelve a pedir autorización", async () => {
+    await client.close().catch(() => {});
+    const transport = new StreamableHTTPClientTransport(new URL(MCP_URL), { authProvider: provider });
+    const again = new Client({ name: "registruti-e2e", version: "1.0.0" });
+    let thrown = null;
+    try {
+      await again.connect(transport);
+    } catch (e) {
+      thrown = e;
+    }
+    assert(thrown instanceof UnauthorizedError, `esperaba UnauthorizedError, vino: ${thrown}`);
+    eq(provider.tokensSaved, undefined, "el SDK tenía que descartar los tokens inválidos");
+    const { code } = await approve(provider.authorizationUrl);
+    await transport.finishAuth(code);
+    client = new Client({ name: "registruti-e2e", version: "1.0.0" });
+    await client.connect(new StreamableHTTPClientTransport(new URL(MCP_URL), { authProvider: provider }));
+    toolText(await client.callTool({ name: "list_clients", arguments: {} }));
+    eq(mock.db().oauth_grants.filter((g) => g.client_id === provider.clientInfo.client_id).length, 1);
   });
 
   await test("revocar el refresh token borra la autorización y sus tokens", async () => {
@@ -473,6 +502,28 @@ async function runTests(mock) {
     eq(bad.body.error, "invalid_redirect_uri");
     const none = await registerClient({ client_name: "Sin URIs" });
     eq(none.status, 400);
+  });
+
+  await test("registro dinámico: límite por IP y por hora (429 con Retry-After)", async () => {
+    const register = (ip, i) =>
+      fetch(`${BASE}/api/oauth/register`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-forwarded-for": `${ip}, 10.0.0.1` },
+        body: JSON.stringify({ client_name: `Spam ${i}`, redirect_uris: ["https://example.com/cb"], token_endpoint_auth_method: "none" }),
+      });
+    for (let i = 0; i < 20; i++) {
+      const res = await register("203.0.113.9", i);
+      eq(res.status, 201, `registro ${i}`);
+    }
+    const blocked = await register("203.0.113.9", 20);
+    eq(blocked.status, 429);
+    eq((await blocked.json()).error, "rate_limited");
+    eq(blocked.headers.get("retry-after"), "3600");
+    const other = await register("198.51.100.7", 0);
+    eq(other.status, 201, "otra IP no se ve afectada");
+    const spam = mock.db().oauth_clients.filter((c) => c.name.startsWith("Spam"));
+    eq(spam.length, 21);
+    assert(spam.every((c) => typeof c.ip_hash === "string" && c.ip_hash.length === 64), "guarda el hash de la IP");
   });
 
   await test("loopback: el puerto de la redirect_uri puede variar (RFC 8252)", async () => {
@@ -663,6 +714,12 @@ async function runTests(mock) {
     const bad = await authorizeApi("inspect", { response_type: "code", client_id: clientId, redirect_uri: "https://evil.example.com/cb", code_challenge: challenge, code_challenge_method: "S256" });
     eq(bad.status, 400);
     eq(bad.body.redirect, null);
+    // Ni hosts privados ni IPs literales como client_id, aunque sean https.
+    for (const privateId of ["https://localhost/cimd.json", "https://10.0.0.1/cimd.json", "https://[::1]/cimd.json", "https://metadata.internal/cimd.json"]) {
+      const r = await authorizeApi("inspect", { response_type: "code", client_id: privateId, redirect_uri: "https://example.com/cb", code_challenge: challenge, code_challenge_method: "S256" });
+      eq(r.status, 400, privateId);
+      eq(r.body.redirect, null, privateId);
+    }
   });
 
   console.log("\nToken personal de Ajustes y detalles del protocolo");
@@ -685,8 +742,10 @@ async function runTests(mock) {
   await test("JSON-RPC: notificaciones 202, batch rechazado, método desconocido, versión de protocolo", async () => {
     const token = `reg_${crypto.randomBytes(32).toString("hex")}`;
     await fetch(`${mock.url}/__test/seed-token`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token_hash: sha256Hex(token) }) });
-    const notif = await rpc(token, "notifications/initialized", {}, undefined);
+    const notif = await rpc(token, "notifications/initialized", {}, null);
     eq(notif.status, 202);
+    const pingNotif = await rpc(token, "ping", {}, null);
+    eq(pingNotif.status, 202, "un ping sin id es una notificación: 202 sin body");
     const batch = await fetch(MCP_URL, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: "[]" });
     eq(batch.status, 400);
     const unknown = await rpc(token, "resources/list");

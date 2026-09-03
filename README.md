@@ -119,6 +119,13 @@ Implementado a mano en `src/lib/mcp/oauth.ts`, sin dependencias nuevas, siguiend
   Reusar un code revoca lo que salió de él.
 - Cada autorización es una fila de `oauth_grants`, que el usuario ve y revoca en Ajustes →
   *Apps conectadas*; borrarla borra en cascada sus tokens. Todo secreto se guarda como SHA-256.
+  Reusar un refresh token ya rotado (fuera de la gracia) también revoca la autorización entera.
+- El registro dinámico es anónimo y escribe en la base, así que está limitado por IP (20/hora)
+  y en total (500/hora); los clientes que nunca completan una autorización se borran a los 7
+  días. Los Client ID Metadata Documents se leen con `src/lib/mcp/safeFetch.ts`, que valida la
+  dirección resuelta en el propio socket (nada de loopback, privadas ni link-local) y no sigue
+  redirects. La limpieza de codes y tokens vencidos corre cada hora por `pg_cron`
+  (`mcp_oauth_cleanup()`), además de la limpieza oportunista de los endpoints.
 - Si el login hace falta en el medio, `/auth/callback` vuelve a la pantalla de autorización
   (`src/lib/postLogin.ts`) en vez de al tracker.
 
@@ -126,7 +133,8 @@ Implementado a mano en `src/lib/mcp/oauth.ts`, sin dependencias nuevas, siguiend
 
 El endpoint usa la service role key de Supabase; hay que definir `SUPABASE_URL` y
 `SUPABASE_SERVICE_ROLE_KEY` como env vars en Vercel (ver [`supabase/README.md`](supabase/README.md))
-y aplicar las migraciones `20260721000005_mcp_tokens.sql` y `20260903000007_mcp_oauth.sql`.
+y aplicar las migraciones `20260721000005_mcp_tokens.sql`, `20260903000007_mcp_oauth.sql` y
+`20260903000008_mcp_oauth_hardening.sql`.
 
 Opcionales:
 

@@ -206,28 +206,39 @@ export async function startMockSupabase({ verbose = false } = {}) {
       rows = applyFilter(rows, key, raw);
     }
 
-    const finish = (status, result) => {
+    const finish = (status, result, headers = {}) => {
       let out = result.map((r) => project(r, select));
       if (wantsObject) {
         if (out.length !== 1) {
           return send(406, { code: "PGRST116", message: `JSON object requested, multiple (or no) rows returned (${out.length})` });
         }
-        return send(status, out[0]);
+        return send(status, out[0], headers);
       }
-      return send(status, out);
+      return send(status, out, headers);
     };
 
     try {
       switch (req.method) {
-        case "GET": {
+        case "GET":
+        case "HEAD": {
           const order = url.searchParams.get("order");
           if (order) {
             const [col, dir] = order.split(".");
             rows = [...rows].sort((a, b) => (dir === "desc" ? -1 : 1) * compare(a[col], b[col]));
           }
+          const total = rows.length;
           const limit = url.searchParams.get("limit");
           if (limit) rows = rows.slice(0, Number(limit));
-          return finish(200, rows);
+          // Prefer: count=exact → Content-Range: 0-N/total (postgrest-js lee el total).
+          const headers = prefer.includes("count=")
+            ? { "content-range": `${total ? `0-${total - 1}` : "*"}/${total}` }
+            : {};
+          if (req.method === "HEAD") {
+            res.writeHead(200, { "content-type": "application/json", ...headers });
+            res.end();
+            return;
+          }
+          return finish(200, rows, headers);
         }
         case "POST": {
           const parsed = JSON.parse(rawBody);
