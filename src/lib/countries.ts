@@ -15,6 +15,8 @@ export interface CountryConfig {
   currency: string;
   /** Locale para Intl.NumberFormat. */
   locale: string;
+  /** Zona horaria IANA con la que el servidor MCP interpreta "hoy" y los rangos por defecto. */
+  timeZone: string;
 }
 
 export const COUNTRIES: CountryConfig[] = [
@@ -27,6 +29,7 @@ export const COUNTRIES: CountryConfig[] = [
     taxIdPattern: /^\d{11}$/,
     currency: "ARS",
     locale: "es-AR",
+    timeZone: "America/Argentina/Buenos_Aires",
   },
   {
     code: "BO",
@@ -37,6 +40,7 @@ export const COUNTRIES: CountryConfig[] = [
     taxIdPattern: /^\d{7,12}$/,
     currency: "BOB",
     locale: "es-BO",
+    timeZone: "America/La_Paz",
   },
   {
     code: "BR",
@@ -47,6 +51,7 @@ export const COUNTRIES: CountryConfig[] = [
     taxIdPattern: /^(\d{11}|\d{14})$/,
     currency: "BRL",
     locale: "pt-BR",
+    timeZone: "America/Sao_Paulo",
   },
   {
     code: "CL",
@@ -57,6 +62,7 @@ export const COUNTRIES: CountryConfig[] = [
     taxIdPattern: /^\d{7,8}[0-9K]$/,
     currency: "CLP",
     locale: "es-CL",
+    timeZone: "America/Santiago",
   },
   {
     code: "CO",
@@ -67,6 +73,7 @@ export const COUNTRIES: CountryConfig[] = [
     taxIdPattern: /^\d{8,11}$/,
     currency: "COP",
     locale: "es-CO",
+    timeZone: "America/Bogota",
   },
   {
     code: "EC",
@@ -77,6 +84,7 @@ export const COUNTRIES: CountryConfig[] = [
     taxIdPattern: /^\d{10}(\d{3})?$/,
     currency: "USD",
     locale: "es-EC",
+    timeZone: "America/Guayaquil",
   },
   {
     code: "MX",
@@ -87,6 +95,7 @@ export const COUNTRIES: CountryConfig[] = [
     taxIdPattern: /^[A-ZÑ&]{3,4}\d{6}[A-Z\d]{3}$/,
     currency: "MXN",
     locale: "es-MX",
+    timeZone: "America/Mexico_City",
   },
   {
     code: "PY",
@@ -97,6 +106,7 @@ export const COUNTRIES: CountryConfig[] = [
     taxIdPattern: /^\d{6,9}$/,
     currency: "PYG",
     locale: "es-PY",
+    timeZone: "America/Asuncion",
   },
   {
     code: "PE",
@@ -107,6 +117,7 @@ export const COUNTRIES: CountryConfig[] = [
     taxIdPattern: /^\d{11}$/,
     currency: "PEN",
     locale: "es-PE",
+    timeZone: "America/Lima",
   },
   {
     code: "UY",
@@ -117,6 +128,7 @@ export const COUNTRIES: CountryConfig[] = [
     taxIdPattern: /^\d{12}$/,
     currency: "UYU",
     locale: "es-UY",
+    timeZone: "America/Montevideo",
   },
   {
     code: "VE",
@@ -127,6 +139,7 @@ export const COUNTRIES: CountryConfig[] = [
     taxIdPattern: /^[VEJPG]\d{9}$/,
     currency: "VES",
     locale: "es-VE",
+    timeZone: "America/Caracas",
   },
   {
     code: "OTRO",
@@ -136,6 +149,7 @@ export const COUNTRIES: CountryConfig[] = [
     taxIdPlaceholder: "Tu identificación fiscal",
     currency: "USD",
     locale: "es",
+    timeZone: "America/Argentina/Buenos_Aires",
   },
 ];
 
@@ -147,6 +161,11 @@ export function countryFor(code: string | null | undefined): CountryConfig | nul
 /** Locale para montos según el país del perfil; sin país, el histórico es-AR. */
 export function localeFor(code: string | null | undefined): string {
   return countryFor(code)?.locale ?? "es-AR";
+}
+
+/** Zona horaria según el país del perfil; sin país, la de Buenos Aires (como el locale). */
+export function timeZoneFor(code: string | null | undefined): string {
+  return countryFor(code)?.timeZone ?? "America/Argentina/Buenos_Aires";
 }
 
 /**

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { consumePostLoginNext } from "@/lib/postLogin";
 
 /**
  * Red de seguridad para el retorno de OAuth / confirmación de email.
@@ -29,7 +30,7 @@ export default function LandingAuthRedirect() {
     const enter = () => {
       if (done) return;
       done = true;
-      router.replace("/tracker");
+      router.replace(consumePostLoginNext() ?? "/tracker");
     };
 
     // La sesión puede quedar lista antes o después de suscribirnos.

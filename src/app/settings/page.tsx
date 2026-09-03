@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import Modal from "@/components/Modal";
 import UpgradeModal from "@/components/UpgradeModal";
@@ -260,6 +261,14 @@ interface McpToken {
   last_used_at: string | null;
 }
 
+interface McpGrant {
+  id: string;
+  client_name: string;
+  scope: string;
+  created_at: string;
+  last_used_at: string | null;
+}
+
 const MCP_ENDPOINT = `${SITE_URL}/api/mcp`;
 
 /** Genera un token opaco de 256 bits: "reg_" + 64 chars hex. */
@@ -272,24 +281,47 @@ function generateToken(): string {
   return `reg_${hex}`;
 }
 
+function usageLabel(createdAt: string, lastUsedAt: string | null): string {
+  const created = new Date(createdAt).toLocaleDateString();
+  return lastUsedAt
+    ? `Conectada el ${created} · último uso ${new Date(lastUsedAt).toLocaleDateString()}`
+    : `Conectada el ${created} · sin usar todavía`;
+}
+
 function McpSection() {
+  const [grants, setGrants] = useState<McpGrant[]>([]);
   const [tokens, setTokens] = useState<McpToken[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
   const [fresh, setFresh] = useState<string | null>(null); // token recién creado (se muestra una vez)
-  const [deleting, setDeleting] = useState<McpToken | null>(null);
+  const [showTokens, setShowTokens] = useState(false);
+  const [deleting, setDeleting] = useState<
+    { kind: "grant"; item: McpGrant } | { kind: "token"; item: McpToken } | null
+  >(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data, error: err } = await supabase
-      .from("mcp_tokens")
-      .select("id, name, created_at, last_used_at")
-      .order("created_at", { ascending: false });
+    const [grantsRes, tokensRes] = await Promise.all([
+      supabase
+        .from("oauth_grants")
+        .select("id, client_name, scope, created_at, last_used_at")
+        .order("created_at", { ascending: false }),
+      // Los access tokens del flujo OAuth también viven en mcp_tokens (con
+      // grant_id); acá solo van los personales.
+      supabase
+        .from("mcp_tokens")
+        .select("id, name, created_at, last_used_at")
+        .is("grant_id", null)
+        .order("created_at", { ascending: false }),
+    ]);
+    const err = grantsRes.error ?? tokensRes.error;
     if (err) setError(err.message);
     else {
-      setTokens(data as McpToken[]);
+      setGrants(grantsRes.data as McpGrant[]);
+      setTokens(tokensRes.data as McpToken[]);
+      if ((tokensRes.data ?? []).length > 0) setShowTokens(true);
       setError(null);
     }
     setLoading(false);
@@ -298,6 +330,15 @@ function McpSection() {
   useEffect(() => {
     load();
   }, [load]);
+
+  async function copyEndpoint() {
+    try {
+      await navigator.clipboard.writeText(MCP_ENDPOINT);
+      showToast("✓ URL copiada");
+    } catch {
+      /* clipboard bloqueado */
+    }
+  }
 
   async function handleCreate() {
     setCreating(true);
@@ -327,117 +368,202 @@ function McpSection() {
 
   async function confirmDelete() {
     if (!deleting) return;
-    const { error: err } = await supabase.from("mcp_tokens").delete().eq("id", deleting.id);
+    const table = deleting.kind === "grant" ? "oauth_grants" : "mcp_tokens";
+    const { error: err } = await supabase.from(table).delete().eq("id", deleting.item.id);
+    const kind = deleting.kind;
     setDeleting(null);
     if (err) setError(err.message);
-    else load();
+    else {
+      showToast(kind === "grant" ? "✓ App desconectada" : "✓ Token revocado");
+      load();
+    }
   }
 
   return (
     <section className="mt-8">
-      <h2 className="mb-1 text-sm font-semibold text-slate-700">Conexión MCP (Claude, LLMs)</h2>
+      <h2 className="mb-1 text-sm font-semibold text-slate-700">
+        Conexión con Claude y otros asistentes (MCP)
+      </h2>
       <p className="mb-3 text-xs text-slate-500">
-        Generá un token para conectar Registruti a Claude Desktop u otro cliente MCP y cargar horas o
-        consultar cómo vas por lenguaje natural. El token da acceso a tus datos: tratalo como una
-        contraseña.
+        Cargá horas y consultá cómo vas hablándole a Claude (web, escritorio o celular), Claude
+        Code, Cursor u otro cliente MCP.{" "}
+        <Link href="/blog/mcp" className="text-indigo-600 hover:underline">
+          Ver la guía paso a paso
+        </Link>
+        .
       </p>
 
-      <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         {error && (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
         )}
 
-        {fresh && (
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-            <p className="text-xs font-medium text-emerald-800">
-              Token nuevo — copialo ahora, no se vuelve a mostrar:
-            </p>
-            <div className="mt-2 flex items-center gap-2">
-              <code className="min-w-0 flex-1 truncate rounded border border-emerald-200 bg-white px-2 py-1.5 font-mono text-xs">
-                {fresh}
-              </code>
-              <button
-                onClick={() => {
-                  navigator.clipboard?.writeText(fresh);
-                  showToast("✓ Token copiado");
-                }}
-                className="shrink-0 rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
-              >
-                Copiar
-              </button>
-            </div>
+        <div>
+          <p className="text-sm font-medium text-slate-700">Conectar una app</p>
+          <p className="mt-1 text-xs leading-relaxed text-slate-500">
+            En Claude: <strong>Ajustes → Conectores → Agregar conector personalizado</strong>, pegá
+            esta URL y, cuando te lo pida, autorizá el acceso con tu cuenta. En Claude Code:{" "}
+            <code className="font-mono">claude mcp add --transport http registruti {MCP_ENDPOINT}</code>{" "}
+            y después <code className="font-mono">/mcp</code> para autorizar.
+          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <code className="min-w-0 flex-1 truncate rounded border border-slate-200 bg-slate-50 px-2 py-1.5 font-mono text-xs text-slate-800">
+              {MCP_ENDPOINT}
+            </code>
             <button
-              onClick={() => setFresh(null)}
-              className="mt-2 text-xs text-emerald-700 underline"
+              onClick={copyEndpoint}
+              className="shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
             >
-              Ya lo guardé
+              Copiar
             </button>
           </div>
-        )}
+        </div>
 
-        <div className="flex flex-wrap items-end gap-2">
-          <div className="min-w-40 flex-1">
-            <label className="mb-1 block text-xs font-medium text-slate-500">
-              Nombre del token (opcional)
-            </label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ej: Claude Desktop"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-            />
-          </div>
+        <div>
+          <p className="text-sm font-medium text-slate-700">Apps conectadas</p>
+          {loading ? (
+            <p className="mt-1 text-sm text-slate-400">Cargando…</p>
+          ) : grants.length === 0 ? (
+            <p className="mt-1 text-sm text-slate-400">
+              Todavía no conectaste ninguna app. Cuando autorices una desde Claude u otro cliente,
+              aparece acá.
+            </p>
+          ) : (
+            <ul className="mt-1 divide-y divide-slate-100">
+              {grants.map((g) => (
+                <li key={g.id} className="flex items-center gap-3 py-2.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
+                      {g.client_name}
+                      <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-normal text-slate-500">
+                        {g.scope.includes("write") ? "Lectura y carga de horas" : "Solo lectura"}
+                      </span>
+                    </p>
+                    <p className="text-xs text-slate-500">{usageLabel(g.created_at, g.last_used_at)}</p>
+                  </div>
+                  <button
+                    onClick={() => setDeleting({ kind: "grant", item: g })}
+                    className="shrink-0 rounded-lg px-2 py-1 text-xs text-slate-500 hover:bg-red-50 hover:text-red-600"
+                  >
+                    Desconectar
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="border-t border-slate-100 pt-4">
           <button
-            onClick={handleCreate}
-            disabled={creating}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+            onClick={() => setShowTokens((v) => !v)}
+            className="text-xs font-medium text-slate-600 hover:text-slate-900"
+            aria-expanded={showTokens}
           >
-            {creating ? "Generando…" : "Generar token"}
+            {showTokens ? "▾" : "▸"} Tokens personales (para clientes sin OAuth)
           </button>
-        </div>
 
-        <div className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
-          Endpoint del servidor:{" "}
-          <code className="font-mono text-slate-800">{MCP_ENDPOINT}</code>
-        </div>
+          {showTokens && (
+            <div className="mt-3 space-y-4">
+              <p className="text-xs text-slate-500">
+                Para clientes que no saben autorizar solos, como el archivo de configuración de
+                Claude Desktop o un script propio: se manda como{" "}
+                <code className="font-mono">Authorization: Bearer &lt;token&gt;</code>. Da acceso
+                total a tus datos y no vence: tratalo como una contraseña.
+              </p>
 
-        {loading ? (
-          <p className="text-sm text-slate-400">Cargando…</p>
-        ) : tokens.length === 0 ? (
-          <p className="text-sm text-slate-400">Todavía no generaste ningún token.</p>
-        ) : (
-          <ul className="divide-y divide-slate-100">
-            {tokens.map((t) => (
-              <li key={t.id} className="flex items-center gap-3 py-2.5">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{t.name || "Sin nombre"}</p>
-                  <p className="text-xs text-slate-500">
-                    Creado {new Date(t.created_at).toLocaleDateString()}
-                    {t.last_used_at
-                      ? ` · último uso ${new Date(t.last_used_at).toLocaleDateString()}`
-                      : " · sin usar"}
+              {fresh && (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+                  <p className="text-xs font-medium text-emerald-800">
+                    Token nuevo — copialo ahora, no se vuelve a mostrar:
                   </p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <code className="min-w-0 flex-1 truncate rounded border border-emerald-200 bg-white px-2 py-1.5 font-mono text-xs">
+                      {fresh}
+                    </code>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(fresh);
+                          showToast("✓ Token copiado");
+                        } catch {
+                          /* clipboard bloqueado: el token sigue visible para copiarlo a mano */
+                        }
+                      }}
+                      className="shrink-0 rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+                    >
+                      Copiar
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => setFresh(null)}
+                    className="mt-2 text-xs text-emerald-700 underline"
+                  >
+                    Ya lo guardé
+                  </button>
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="min-w-40 flex-1">
+                  <label className="mb-1 block text-xs font-medium text-slate-500">
+                    Nombre del token (opcional)
+                  </label>
+                  <input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Ej: Claude Desktop"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                  />
                 </div>
                 <button
-                  onClick={() => setDeleting(t)}
-                  className="shrink-0 rounded-lg px-2 py-1 text-sm text-slate-400 hover:bg-red-50 hover:text-red-600"
-                  title="Revocar token"
+                  onClick={handleCreate}
+                  disabled={creating}
+                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                 >
-                  🗑
+                  {creating ? "Generando…" : "Generar token"}
                 </button>
-              </li>
-            ))}
-          </ul>
-        )}
+              </div>
+
+              {loading ? null : tokens.length === 0 ? (
+                <p className="text-sm text-slate-400">Todavía no generaste ningún token.</p>
+              ) : (
+                <ul className="divide-y divide-slate-100">
+                  {tokens.map((t) => (
+                    <li key={t.id} className="flex items-center gap-3 py-2.5">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{t.name || "Sin nombre"}</p>
+                        <p className="text-xs text-slate-500">
+                          Creado {new Date(t.created_at).toLocaleDateString()}
+                          {t.last_used_at
+                            ? ` · último uso ${new Date(t.last_used_at).toLocaleDateString()}`
+                            : " · sin usar"}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setDeleting({ kind: "token", item: t })}
+                        className="shrink-0 rounded-lg px-2 py-1 text-sm text-slate-400 hover:bg-red-50 hover:text-red-600"
+                        title="Revocar token"
+                      >
+                        🗑
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {deleting && (
         <ConfirmDialog
-          title="Revocar token"
-          message={`Se va a revocar "${
-            deleting.name || "Sin nombre"
-          }". Cualquier cliente MCP que lo use dejará de tener acceso.`}
-          confirmLabel="Revocar"
+          title={deleting.kind === "grant" ? "Desconectar app" : "Revocar token"}
+          message={
+            deleting.kind === "grant"
+              ? `${deleting.item.client_name} va a dejar de tener acceso a tu cuenta. Podés volver a conectarla cuando quieras.`
+              : `Se va a revocar "${deleting.item.name || "Sin nombre"}". Cualquier cliente MCP que lo use dejará de tener acceso.`
+          }
+          confirmLabel={deleting.kind === "grant" ? "Desconectar" : "Revocar"}
           danger
           onConfirm={confirmDelete}
           onCancel={() => setDeleting(null)}

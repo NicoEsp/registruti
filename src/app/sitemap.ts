@@ -10,7 +10,7 @@ import { POSTS } from "@/lib/blog";
 // cambiaron. Google descarta el <lastmod> de los sitios que lo reportan mal, y
 // las URLs quedan dando vueltas en "detectada / pendiente" sin terminar de
 // indexarse. Al editar de verdad una de estas páginas, actualizá su fecha acá.
-const HOME_UPDATED = "2026-07-22";
+const HOME_UPDATED = "2026-09-03";
 const TOGGL_UPDATED = "2026-07-31";
 const CLOCKIFY_UPDATED = "2026-07-31";
 const HARVEST_UPDATED = "2026-07-31";
@@ -23,15 +23,16 @@ const LEGAL_UPDATED = "2026-07-02";
 // La semilla sale del propio blog, no de HOME_UPDATED: si algún día todos los
 // posts quedan por debajo de la fecha de la home, /blog reportaría la fecha de
 // la home en vez de la de su contenido.
+const postUpdated = (post: (typeof POSTS)[number]) => post.updatedISO ?? post.dateISO;
 const BLOG_UPDATED = POSTS.reduce(
-  (latest, post) => (post.dateISO > latest ? post.dateISO : latest),
-  POSTS.length ? POSTS[0].dateISO : HOME_UPDATED
+  (latest, post) => (postUpdated(post) > latest ? postUpdated(post) : latest),
+  POSTS.length ? postUpdated(POSTS[0]) : HOME_UPDATED
 );
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const posts: MetadataRoute.Sitemap = POSTS.map((post) => ({
     url: `${SITE_URL}/blog/${post.slug}`,
-    lastModified: new Date(post.dateISO),
+    lastModified: new Date(postUpdated(post)),
     changeFrequency: "monthly",
     priority: 0.7,
   }));
