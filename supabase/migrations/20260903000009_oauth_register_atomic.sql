@@ -58,9 +58,12 @@ begin
 end;
 $$;
 
--- Solo la service role (el endpoint) la ejecuta: nadie desde el browser.
+-- Solo la service role (el endpoint) la ejecuta: nadie desde el browser. El
+-- grant explícito no depende de los default privileges del proyecto.
 revoke all on function public.oauth_register_client(text, text, text, text[], text, text[], text, text, text, text, integer, integer)
   from public, anon, authenticated;
+grant execute on function public.oauth_register_client(text, text, text, text[], text, text[], text, text, text, text, integer, integer)
+  to service_role;
 
 create or replace function public.mcp_oauth_cleanup()
 returns void
