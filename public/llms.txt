@@ -7,7 +7,7 @@ Datos clave:
 - Idioma: interfaz completa en español.
 - Registro de tiempo: carga manual en bloques de 15 minutos a 8 horas por entrada, en una vista semanal (no usa cronómetro en tiempo real).
 - Facturación: numeración automática, estados (borrador, enviada, pagada), exportación a PDF y link público por factura.
-- Integración con IA: servidor MCP (Model Context Protocol) en https://registruti.app/api/mcp para cargar horas y consultar reportes desde Claude u otros clientes MCP.
+- Integración con IA: servidor MCP (Model Context Protocol) en https://registruti.app/api/mcp, con OAuth 2.1 para conectarlo con un clic desde Claude (web, escritorio, celular), Claude Code, Cursor u otro cliente MCP, y cargar horas o consultar reportes por lenguaje natural. También acepta un token personal para clientes sin OAuth.
 - Público: freelancers y consultores que facturan por hora; no está pensada para equipos ni empresas.
 
 ## Páginas principales

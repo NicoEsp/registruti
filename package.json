@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:mcp": "node scripts/mcp-e2e/run.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.4",
@@ -19,6 +20,7 @@
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@tailwindcss/postcss": "^4.1.8",
     "@types/node": "^22.15.29",
     "@types/react": "^19.1.6",

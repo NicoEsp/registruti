@@ -11,6 +11,8 @@ export interface BlogPost {
   date: string;
   /** Fecha ISO (YYYY-MM-DD) para <time> y sitemap. */
   dateISO: string;
+  /** Última edición real del contenido (YYYY-MM-DD), si el post se actualizó después de publicarse. */
+  updatedISO?: string;
   /** Etiqueta corta de categoría. */
   tag: string;
   /** Minutos estimados de lectura. */
@@ -82,15 +84,17 @@ export const POSTS: BlogPost[] = [
     slug: "mcp",
     title: "Cómo conectar Registruti a Claude con MCP",
     description:
-      "Guía paso a paso para agregar Registruti como servidor MCP en Claude Desktop, Claude Code, Cursor u otro cliente MCP, y cargar horas o consultar tus reportes por lenguaje natural.",
+      "Conectá Registruti a Claude (web, escritorio o celular), Claude Code o Cursor con un clic: pegás la URL del servidor MCP, autorizás con tu cuenta y cargás horas o consultás tus reportes por lenguaje natural.",
     date: "21 de julio de 2026",
     dateISO: "2026-07-21",
+    updatedISO: "2026-09-03",
     tag: "Integraciones",
-    readingMinutes: 6,
+    readingMinutes: 7,
     keywords: [
       "MCP",
       "Model Context Protocol",
-      "Claude Desktop",
+      "conector personalizado Claude",
+      "Claude Code MCP",
       "conectar Claude a time tracker",
       "cargar horas con inteligencia artificial",
     ],

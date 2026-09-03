@@ -2,19 +2,24 @@ import CodeBlock from "@/components/blog/CodeBlock";
 import { SITE_URL } from "@/lib/site";
 
 // OJO: tiene que ser el dominio canónico (apex, sin `www`), el mismo que expone
-// Ajustes → Conexión MCP. En Vercel, www.registruti.app redirige al apex, y ese
-// redirect es cross-origin: `fetch` —el que usan mcp-remote y todos los clientes
-// MCP— borra el header `Authorization` al seguirlo (lo pide la spec de Fetch).
-// La request llega sin token, el server responde 401 y Claude tira el cartel de
-// error de conexión cada vez que arranca. Por eso se arma desde SITE_URL y no a
-// mano: así no puede volver a divergir del host canónico.
+// Ajustes. En Vercel, www.registruti.app redirige al apex, y ese redirect es
+// cross-origin: `fetch` —el que usan todos los clientes MCP— borra el header
+// `Authorization` al seguirlo (lo pide la spec de Fetch). La request llega sin
+// token, el server responde 401 y el cliente muestra un error de conexión. Por
+// eso se arma desde SITE_URL y no a mano: así no puede volver a divergir.
 const MCP_ENDPOINT = `${SITE_URL}/api/mcp`;
 
-const CLI_COMMAND = `claude mcp add --transport http registruti \\
-  ${MCP_ENDPOINT} \\
-  --header "Authorization: Bearer reg_tu_token_aca"`;
+const CLAUDE_CODE_COMMAND = `claude mcp add --transport http --scope user registruti ${MCP_ENDPOINT}`;
 
-const CONFIG_JSON = `{
+const CURSOR_JSON = `{
+  "mcpServers": {
+    "registruti": {
+      "url": "${MCP_ENDPOINT}"
+    }
+  }
+}`;
+
+const TOKEN_CONFIG_JSON = `{
   "mcpServers": {
     "registruti": {
       "command": "npx",
@@ -52,118 +57,101 @@ export default function McpArticle() {
       </blockquote>
 
       <p>
-        MCP es un <strong>estándar abierto</strong>, así que esto <strong>no es exclusivo de Claude
-        Desktop</strong>: funciona con cualquier cliente compatible con MCP que permita conectar un
-        servidor remoto con un header de autorización — por ejemplo <strong>Claude Code</strong>,{" "}
-        <strong>Cursor</strong> u otros. En esta guía usamos Claude Desktop como ejemplo porque es
-        el más común, pero la idea es la misma en todos: apuntás el cliente al endpoint de Registruti
-        con tu token. Lo único que cambia es <em>dónde</em> se pega la configuración (más abajo
-        tenés el ejemplo para otros clientes).
-      </p>
-      <p>
-        Toma unos 5 minutos. Todo lo que hagas queda scopeado a <strong>tu propia cuenta</strong>:
-        el token que generás identifica tu usuario y el asistente solo ve y toca tus datos.
+        La conexión es <strong>de un clic</strong>: pegás la URL del servidor en tu cliente, te pide
+        autorizar el acceso con tu cuenta de Registruti y listo. No hay que instalar nada ni copiar
+        tokens. Funciona en <strong>Claude</strong> (web, escritorio y celular),{" "}
+        <strong>Claude Code</strong>, <strong>Cursor</strong> y cualquier otro cliente MCP que
+        soporte servidores remotos con OAuth. Todo lo que hagas queda scopeado a{" "}
+        <strong>tu propia cuenta</strong>: el asistente solo ve y toca tus datos, y podés cortar el
+        acceso cuando quieras.
       </p>
 
       <h2 id="requisitos">Lo que necesitás</h2>
       <ul>
         <li>Una cuenta de Registruti (si no tenés, creala gratis primero).</li>
         <li>
-          <strong>Claude Desktop</strong> instalado (Mac o Windows).
+          Un cliente MCP: la app de Claude (en un plan que incluya conectores personalizados),
+          Claude Code, Cursor u otro.
         </li>
         <li>
-          <strong>Node.js</strong> instalado en tu compu — el puente de conexión corre con{" "}
-          <code>npx</code>. Si no lo tenés, bajalo de{" "}
-          <a href="https://nodejs.org" target="_blank" rel="noopener noreferrer">
-            nodejs.org
-          </a>{" "}
-          (versión LTS).
+          La URL del servidor, que es siempre la misma: <code>{MCP_ENDPOINT}</code> (también la
+          ves en <strong>Ajustes → Conexión con Claude</strong>).
         </li>
       </ul>
 
-      <h2 id="token">Paso 1 · Generar tu token</h2>
-      <p>
-        En Registruti, entrá a <strong>Ajustes → Conexión MCP</strong> y tocá{" "}
-        <strong>Generar token</strong>. Se muestra <strong>una sola vez</strong>, así que copialo en
-        el momento con el botón de copiar. Tiene esta pinta:
-      </p>
-      <CodeBlock code="reg_9f3a1c8e04b7…d2" />
-      <p>
-        Pensalo como una contraseña: cualquiera que lo tenga puede leer y cargar horas en tu cuenta.
-        Podés <strong>revocarlo</strong> cuando quieras desde la misma pantalla.
-      </p>
-
-      <h2 id="config">Paso 2 · Configurar Claude Desktop</h2>
-      <p>
-        Claude Desktop lee los servidores MCP de un archivo llamado{" "}
-        <code>claude_desktop_config.json</code>. La forma más segura de abrirlo es desde la app:{" "}
-        <strong>Settings → Developer → Edit Config</strong>.
-      </p>
-      <p>Si preferís ir al archivo a mano, está en:</p>
-      <ul>
+      <h2 id="claude">Opción 1 · Claude (web, escritorio o celular)</h2>
+      <ol>
         <li>
-          <strong>Mac:</strong>{" "}
-          <code>~/Library/Application Support/Claude/claude_desktop_config.json</code>
+          En Claude, abrí <strong>Ajustes → Conectores</strong> y tocá{" "}
+          <strong>Agregar conector personalizado</strong>.
         </li>
         <li>
-          <strong>Windows:</strong>{" "}
-          <code>%APPDATA%\\Claude\\claude_desktop_config.json</code>
-        </li>
-      </ul>
-
-      <blockquote>
-        <p>
-          <strong>Ojo:</strong> en esa carpeta también hay un <code>config.json</code> (sin el
-          prefijo <code>claude_desktop_</code>). Ese es el de preferencias de la app —{" "}
-          <strong>no</strong> es donde va el MCP. Asegurate de editar{" "}
-          <code>claude_desktop_config.json</code>.
-        </p>
-      </blockquote>
-
-      <p>
-        Pegá esta configuración (si el archivo ya tiene otros servidores, agregá solo la entrada{" "}
-        <code>&quot;registruti&quot;</code> dentro de tu <code>&quot;mcpServers&quot;</code>
-        existente):
-      </p>
-      <CodeBlock code={CONFIG_JSON} />
-
-      <p>
-        Reemplazá <code>reg_tu_token_aca</code> por el token que copiaste en el Paso 1 —{" "}
-        <strong>dejando el prefijo</strong> <code>Bearer </code> adelante.
-      </p>
-
-      <h3>¿Por qué el token va en “env” y no en el header directo?</h3>
-      <p>
-        Hay un detalle conocido de Claude Desktop: come los espacios dentro de los argumentos. Como
-        el header necesita el espacio de <code>&quot;Bearer &quot;</code>, lo pasamos por la variable{" "}
-        <code>AUTH_HEADER</code> (que sí admite espacios) y el argumento apunta a{" "}
-        <code>{"Authorization:${AUTH_HEADER}"}</code>. Así evitás un error silencioso de
-        autenticación.
-      </p>
-
-      <h2 id="reiniciar">Paso 3 · Reiniciar</h2>
-      <p>
-        Guardá el archivo y <strong>cerrá Claude Desktop del todo</strong> (en Mac es ⌘Q, no alcanza
-        con cerrar la ventana). Volvé a abrirlo: la primera vez, <code>npx</code> baja el puente{" "}
-        <code>mcp-remote</code> y puede tardar unos segundos.
-      </p>
-
-      <h2 id="probar">Paso 4 · Probar</h2>
-      <p>
-        Buscá el ícono de herramientas 🔌 en Claude Desktop; deberías ver las 4 tools de Registruti.
-        Probá con:
-      </p>
-      <ul>
-        <li>
-          <em>“¿Qué clientes tengo en Registruti?”</em>
+          Nombre: <code>Registruti</code>. URL: <code>{MCP_ENDPOINT}</code>. Los campos de OAuth
+          Client ID y Client Secret se dejan vacíos. Guardá.
         </li>
         <li>
-          <em>“Cargá 1 hora de hoy para [tu cliente], reunión de prueba.”</em>
+          Tocá <strong>Conectar</strong>. Se abre Registruti: si no tenés sesión, entrás con Google
+          y volvés solo a la pantalla de autorización. Ahí ves qué permisos pide Claude (ver tus
+          clientes, horas y reportes; cargar horas). Tocá <strong>Autorizar</strong>.
         </li>
         <li>
-          <em>“¿Cómo vengo este mes? Mostrame las horas facturables por cliente.”</em>
+          Volvés a Claude con el conector activo. En un chat nuevo, abrí el menú de herramientas,
+          asegurate de que Registruti esté habilitado y probá: <em>“¿Qué clientes tengo en
+          Registruti?”</em>.
         </li>
-      </ul>
+      </ol>
+      <p>
+        Como el conector queda ligado a tu cuenta de Claude, lo tenés en la web, en la app de
+        escritorio y en el celular sin repetir nada.
+      </p>
+
+      <h2 id="claude-code">Opción 2 · Claude Code</h2>
+      <p>Un comando en la terminal:</p>
+      <CodeBlock code={CLAUDE_CODE_COMMAND} />
+      <p>
+        Después, dentro de una sesión, escribí <code>/mcp</code>, elegí <strong>registruti</strong>{" "}
+        y <strong>Authenticate</strong>: se abre el browser con la pantalla de autorización de
+        Registruti. El <code>--scope user</code> lo deja disponible en todos tus proyectos.
+      </p>
+
+      <h2 id="cursor">Opción 3 · Cursor y otros clientes con OAuth</h2>
+      <p>
+        En Cursor, agregá un servidor MCP remoto desde{" "}
+        <strong>Settings → MCP → Add new MCP server</strong>, o pegá esto en tu{" "}
+        <code>mcp.json</code>:
+      </p>
+      <CodeBlock code={CURSOR_JSON} />
+      <p>
+        Al guardar, el servidor aparece como pendiente de login: hacé clic y autorizá en el
+        browser. La idea es la misma en cualquier cliente que soporte servidores MCP remotos con
+        OAuth: apuntás a <code>{MCP_ENDPOINT}</code> y autorizás.
+      </p>
+
+      <h2 id="token">Opción 4 · Token manual, para clientes sin OAuth</h2>
+      <p>
+        Algunos clientes no saben autorizar solos: por ejemplo el archivo{" "}
+        <code>claude_desktop_config.json</code> de Claude Desktop, que solo levanta servidores
+        locales, o un script tuyo. Para esos casos generás un{" "}
+        <strong>token personal</strong> en <strong>Ajustes → Conexión con Claude → Tokens
+        personales</strong> (se muestra una sola vez; tratalo como una contraseña) y lo mandás en
+        el header <code>Authorization: Bearer &lt;token&gt;</code>.
+      </p>
+      <p>
+        Para Claude Desktop vía archivo de configuración hace falta{" "}
+        <a href="https://nodejs.org" target="_blank" rel="noopener noreferrer">
+          Node.js
+        </a>{" "}
+        (el puente <code>mcp-remote</code> corre con <code>npx</code>). Abrí el archivo desde{" "}
+        <strong>Settings → Developer → Edit Config</strong> y agregá:
+      </p>
+      <CodeBlock code={TOKEN_CONFIG_JSON} />
+      <p>
+        Reemplazá <code>reg_tu_token_aca</code> por tu token, dejando el prefijo{" "}
+        <code>Bearer </code>. El header va por la variable <code>AUTH_HEADER</code> porque Claude
+        Desktop se come los espacios de los argumentos. Después cerrá Claude Desktop del todo (en
+        Mac es ⌘Q) y volvé a abrirlo. Si tenés la opción de conectores personalizados, preferí la
+        Opción 1: es más simple y los tokens se renuevan solos.
+      </p>
 
       <h2 id="tools">Qué le podés pedir</h2>
       <p>El servidor expone 4 herramientas:</p>
@@ -204,51 +192,62 @@ export default function McpArticle() {
           </tr>
         </tbody>
       </table>
+      <p>
+        “Hoy”, “esta semana” o “este mes” se interpretan en la zona horaria del país de tu perfil
+        (Ajustes), así que cargar horas a la noche no las manda al día siguiente.
+      </p>
+
+      <h2 id="permisos">Permisos, seguridad y cómo desconectar</h2>
+      <ul>
+        <li>
+          Al autorizar, la app recibe dos permisos: <strong>ver</strong> tus clientes, horas y
+          reportes, y <strong>cargar horas</strong>. Nada más: no puede borrar entradas, tocar
+          facturas ni ver otras cuentas.
+        </li>
+        <li>
+          Los accesos autorizados vencen cada hora y se renuevan solos; no tenés que hacer nada.
+        </li>
+        <li>
+          Para cortar el acceso, andá a <strong>Ajustes → Conexión con Claude → Apps
+          conectadas</strong> y tocá <strong>Desconectar</strong>. También podés quitar el conector
+          desde el propio cliente. Los tokens personales se revocan desde la misma pantalla.
+        </li>
+      </ul>
 
       <h2 id="problemas">Si algo no funciona</h2>
       <ul>
         <li>
-          <strong>No aparecen las herramientas.</strong> Casi siempre es Node.js: verificá que esté
-          instalado. La primera conexión también puede tardar mientras baja <code>mcp-remote</code>{" "}
-          — esperá unos segundos y reiniciá otra vez.
+          <strong>El cliente dice que no pudo conectar.</strong> Revisá que la URL sea exactamente{" "}
+          <code>{MCP_ENDPOINT}</code>: <strong>sin <code>www</code></strong> y sin barra al final.
+          El <code>www</code> redirige al dominio principal y ese salto borra la autorización, así
+          que la conexión falla aunque todo lo demás esté bien.
         </li>
         <li>
-          <strong>Error de conexión.</strong> Revisá que la URL sea exactamente{" "}
-          <code>{MCP_ENDPOINT}</code> —<strong>sin <code>www</code></strong>— y que el token esté
-          completo, con el <code>Bearer </code> adelante.
+          <strong>Se abrió Registruti pero volví al tracker en vez de a la autorización.</strong>{" "}
+          Pasa si la sesión venció en el medio. Volvé al cliente y tocá <strong>Conectar</strong> de
+          nuevo: ahora que ya estás logueado, la pantalla de autorización aparece directo.
         </li>
         <li>
-          <strong>Dice “no autorizado” (401).</strong> Primero fijate en la URL: si apunta a{" "}
-          <code>www.registruti.app</code>, cambiala por <code>{MCP_ENDPOINT}</code>. El{" "}
-          <code>www</code> redirige al dominio principal y ese salto borra el header{" "}
-          <code>Authorization</code>, así que el token nunca llega y el error aparece aunque sea
-          válido. Si la URL ya está bien, ahí sí el token fue revocado: generá uno nuevo en
-          Ajustes → Conexión MCP y actualizá el archivo.
+          <strong>No aparecen las herramientas en el chat.</strong> En Claude, abrí el menú de
+          herramientas del chat y habilitá Registruti. Si conectaste por archivo de configuración,
+          verificá que Node.js esté instalado y reiniciá Claude Desktop.
+        </li>
+        <li>
+          <strong>Dice “no autorizado” (401) con un token manual.</strong> Primero la URL (el{" "}
+          <code>www</code> de arriba). Si está bien, el token fue revocado: generá uno nuevo en
+          Ajustes y actualizá el archivo.
+        </li>
+        <li>
+          <strong>Me pide autorizar de nuevo.</strong> Pasa si desconectaste la app desde Ajustes o
+          si no la usaste en más de dos meses. Autorizá otra vez y listo.
         </li>
       </ul>
 
-      <h2 id="otros-clientes">En otros clientes MCP</h2>
-      <p>
-        La configuración de arriba es puntual de Claude Desktop, pero el servidor de Registruti es
-        un MCP remoto estándar, así que lo podés usar desde cualquier cliente compatible. Lo único
-        que cambia es cómo se declara. Por ejemplo, en <strong>Claude Code</strong> (la CLI) es un
-        solo comando:
-      </p>
-      <CodeBlock code={CLI_COMMAND} />
-      <p>
-        En otros clientes como <strong>Cursor</strong>, agregás un servidor MCP remoto de tipo HTTP
-        apuntando al mismo endpoint (<code>{MCP_ENDPOINT}</code>) y con el header{" "}
-        <code>Authorization: Bearer &lt;tu-token&gt;</code>. Si tu cliente solo soporta servidores
-        locales, podés usar el puente <code>mcp-remote</code> igual que en el ejemplo de Claude
-        Desktop.
-      </p>
-
       <hr />
       <p>
-        Esto es la primera versión de la integración: funciona con Claude Desktop, Claude Code,
-        Cursor y cualquier otro cliente MCP que acepte un token. Estamos trabajando en el login con
-        OAuth para sumar también Claude web y mobile. ¿Sugerencias o algo que no funcionó?
-        Escribinos.
+        MCP es un estándar abierto, así que esto no depende de Claude: cualquier asistente que lo
+        implemente puede hablar con Registruti. ¿Sugerencias o algo que no funcionó? Escribinos a{" "}
+        <a href="mailto:hola@registruti.app">hola@registruti.app</a>.
       </p>
     </>
   );

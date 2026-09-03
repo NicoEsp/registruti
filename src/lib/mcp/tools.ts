@@ -1,16 +1,21 @@
 import { getAdminClient } from "@/lib/supabaseAdmin";
 import { clampDuration, formatDuration, parseDuration } from "@/lib/format";
+import { timeZoneFor } from "@/lib/countries";
+import type { Scope } from "@/lib/mcp/config";
 import type { Client, TimeEntry } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
-// Definiciones de las tools (Fase 1: cargar horas + consultar).
+// Definiciones de las tools (cargar horas + consultar).
 // El `inputSchema` es JSON Schema estándar, que es lo que el cliente MCP le
-// pasa al LLM para que arme los argumentos.
+// pasa al LLM para que arme los argumentos. Las `annotations` le anticipan al
+// cliente qué tools solo leen (Claude las muestra distinto y pide menos
+// confirmaciones).
 // ---------------------------------------------------------------------------
 
 export const TOOLS = [
   {
     name: "list_clients",
+    title: "Listar clientes",
     description:
       "Lista los clientes del usuario con su tarifa por hora, moneda y color. Útil para saber a qué cliente imputar horas o para obtener su id.",
     inputSchema: {
@@ -22,9 +27,11 @@ export const TOOLS = [
         },
       },
     },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
   {
     name: "log_time",
+    title: "Cargar horas",
     description:
       "Registra una entrada de tiempo para un cliente. La duración acepta formato libre: '1:30', '1.5', '90m', '2h'. Se redondea al múltiplo de 15 minutos más cercano (mínimo 0:15, máximo 8:00).",
     inputSchema: {
@@ -40,7 +47,7 @@ export const TOOLS = [
         },
         date: {
           type: "string",
-          description: "Fecha en formato YYYY-MM-DD. Por defecto hoy (UTC).",
+          description: "Fecha en formato YYYY-MM-DD. Por defecto hoy, en la zona horaria del usuario.",
         },
         description: {
           type: "string",
@@ -53,9 +60,11 @@ export const TOOLS = [
       },
       required: ["client", "duration"],
     },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   },
   {
     name: "list_time_entries",
+    title: "Ver entradas de tiempo",
     description:
       "Lista las entradas de tiempo en un rango de fechas, opcionalmente filtradas por cliente. Por defecto los últimos 30 días.",
     inputSchema: {
@@ -66,9 +75,11 @@ export const TOOLS = [
         client: { type: "string", description: "Nombre o id del cliente para filtrar (opcional)." },
       },
     },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
   {
     name: "report_summary",
+    title: "Resumen de horas y montos",
     description:
       "Resumen de horas y montos facturables por cliente en un rango de fechas (como la pantalla de Reportes). Por defecto el mes actual. Sirve para responder 'cómo voy', 'cuántas horas llevo', etc.",
     inputSchema: {
@@ -79,29 +90,93 @@ export const TOOLS = [
         client: { type: "string", description: "Nombre o id del cliente para filtrar (opcional)." },
       },
     },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
 ] as const;
+
+export type ToolName = (typeof TOOLS)[number]["name"];
+
+const TOOL_SCOPE: Record<ToolName, Scope> = {
+  list_clients: "read",
+  log_time: "write",
+  list_time_entries: "read",
+  report_summary: "read",
+};
+
+/** Las tools que puede ver y usar una conexión con estos scopes. */
+export function toolsFor(scopes: Scope[]) {
+  return TOOLS.filter((t) => scopes.includes(TOOL_SCOPE[t.name]));
+}
+
+// ---------------------------------------------------------------------------
+// Contexto del usuario: zona horaria y "hoy"
+// ---------------------------------------------------------------------------
+
+const DEFAULT_TIME_ZONE = "America/Argentina/Buenos_Aires";
+
+export interface UserContext {
+  timeZone: string;
+  /** Fecha de hoy (YYYY-MM-DD) en la zona horaria del usuario. */
+  today: string;
+}
+
+/**
+ * "Hoy" depende de dónde está el usuario: a las 22:00 de Buenos Aires ya es
+ * mañana en UTC, y cargar "2 horas de hoy" con la fecha UTC las mandaba al
+ * día siguiente. La zona sale del país del perfil (Ajustes); sin perfil, la de
+ * Buenos Aires, igual que el locale por defecto de la app.
+ */
+export async function userContext(userId: string): Promise<UserContext> {
+  let timeZone = DEFAULT_TIME_ZONE;
+  try {
+    const { data } = await getAdminClient()
+      .from("profiles")
+      .select("country")
+      .eq("user_id", userId)
+      .maybeSingle();
+    timeZone = timeZoneFor(data?.country ?? null);
+  } catch {
+    /* sin perfil o tabla: zona por defecto */
+  }
+  return { timeZone, today: todayISO(timeZone) };
+}
+
+function localDateParts(timeZone: string, at = new Date()): { y: number; m: number; d: number } {
+  const options: Intl.DateTimeFormatOptions = { year: "numeric", month: "2-digit", day: "2-digit" };
+  let parts: Intl.DateTimeFormatPart[];
+  try {
+    parts = new Intl.DateTimeFormat("en-US", { ...options, timeZone }).formatToParts(at);
+  } catch {
+    parts = new Intl.DateTimeFormat("en-US", { ...options, timeZone: DEFAULT_TIME_ZONE }).formatToParts(at);
+  }
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  return { y: get("year"), m: get("month"), d: get("day") };
+}
+
+function isoDate(y: number, m: number, d: number): string {
+  return new Date(Date.UTC(y, m - 1, d)).toISOString().slice(0, 10);
+}
+
+function todayISO(timeZone: string): string {
+  const { y, m, d } = localDateParts(timeZone);
+  return isoDate(y, m, d);
+}
+
+function daysAgoISO(n: number, timeZone: string): string {
+  const { y, m, d } = localDateParts(timeZone);
+  return isoDate(y, m, d - n);
+}
+
+function monthStartISO(timeZone: string): string {
+  const { y, m } = localDateParts(timeZone);
+  return isoDate(y, m, 1);
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function daysAgoISO(n: number): string {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() - n);
-  return d.toISOString().slice(0, 10);
-}
-
-function monthStartISO(): string {
-  const d = new Date();
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-01`;
-}
 
 function validDate(s: string, label: string): string {
   if (!ISO_DATE.test(s)) throw new Error(`La fecha ${label} debe tener formato YYYY-MM-DD (recibí "${s}").`);
@@ -156,22 +231,35 @@ function amount(minutes: number, rate: number): number {
 // Ejecución
 // ---------------------------------------------------------------------------
 
+export interface ToolAccess {
+  userId: string;
+  scopes: Scope[];
+}
+
 export async function callTool(
-  userId: string,
+  access: ToolAccess,
   name: string,
   args: Record<string, unknown>
 ): Promise<string> {
-  switch (name) {
+  if (!(name in TOOL_SCOPE)) throw new Error(`Herramienta desconocida: ${name}`);
+  const needed = TOOL_SCOPE[name as ToolName];
+  if (!access.scopes.includes(needed)) {
+    throw new Error(
+      needed === "write"
+        ? "Esta conexión a Registruti es de solo lectura y no puede cargar horas. Desconectá la app y volvé a conectarla autorizando el permiso de escritura."
+        : "Esta conexión a Registruti no tiene permiso de lectura. Desconectá la app y volvé a conectarla."
+    );
+  }
+
+  switch (name as ToolName) {
     case "list_clients":
-      return listClients(userId, args);
+      return listClients(access.userId, args);
     case "log_time":
-      return logTime(userId, args);
+      return logTime(access.userId, args);
     case "list_time_entries":
-      return listTimeEntries(userId, args);
+      return listTimeEntries(access.userId, args);
     case "report_summary":
-      return reportSummary(userId, args);
-    default:
-      throw new Error(`Herramienta desconocida: ${name}`);
+      return reportSummary(access.userId, args);
   }
 }
 
@@ -201,7 +289,9 @@ async function logTime(userId: string, args: Record<string, unknown>): Promise<s
   }
   const minutes = clampDuration(parsed);
 
-  const date = args.date ? validDate(String(args.date), "de la entrada") : todayISO();
+  const date = args.date
+    ? validDate(String(args.date), "de la entrada")
+    : (await userContext(userId)).today;
   const billable = args.billable !== false;
   const description = args.description != null ? String(args.description) : "";
 
@@ -225,8 +315,9 @@ async function logTime(userId: string, args: Record<string, unknown>): Promise<s
 }
 
 async function listTimeEntries(userId: string, args: Record<string, unknown>): Promise<string> {
-  const from = args.from ? validDate(String(args.from), "desde") : daysAgoISO(30);
-  const to = args.to ? validDate(String(args.to), "hasta") : todayISO();
+  const ctx = args.from && args.to ? null : await userContext(userId);
+  const from = args.from ? validDate(String(args.from), "desde") : daysAgoISO(30, ctx!.timeZone);
+  const to = args.to ? validDate(String(args.to), "hasta") : ctx!.today;
   assertRange(from, to);
 
   const clients = await fetchClients(userId);
@@ -264,8 +355,9 @@ async function listTimeEntries(userId: string, args: Record<string, unknown>): P
 }
 
 async function reportSummary(userId: string, args: Record<string, unknown>): Promise<string> {
-  const from = args.from ? validDate(String(args.from), "desde") : monthStartISO();
-  const to = args.to ? validDate(String(args.to), "hasta") : todayISO();
+  const ctx = args.from && args.to ? null : await userContext(userId);
+  const from = args.from ? validDate(String(args.from), "desde") : monthStartISO(ctx!.timeZone);
+  const to = args.to ? validDate(String(args.to), "hasta") : ctx!.today;
   assertRange(from, to);
 
   const clients = await fetchClients(userId);

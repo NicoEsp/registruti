@@ -1,14 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { peekPostLoginNext } from "@/lib/postLogin";
 import Logo from "@/components/Logo";
 import Wordmark from "@/components/Wordmark";
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Si el login lo disparó la pantalla de autorización del MCP (Claude u otro
+  // cliente), avisamos que al entrar se retoma ahí.
+  const [connectingApp, setConnectingApp] = useState(false);
+
+  useEffect(() => {
+    setConnectingApp((peekPostLoginNext() ?? "").startsWith("/oauth/"));
+  }, []);
 
   async function handleGoogle() {
     setError(null);
@@ -36,6 +44,13 @@ export default function LoginPage() {
           <p className="mt-1 mb-5 text-sm text-slate-500">
             Trackeá tus horas y facturá a tus clientes. Gratis y en español.
           </p>
+
+          {connectingApp && (
+            <p className="mb-4 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs text-indigo-800">
+              Estás conectando una app a tu cuenta de Registruti. Entrá y seguís con la
+              autorización.
+            </p>
+          )}
 
           <button
             type="button"

@@ -51,47 +51,102 @@ expone una factura puntual en modo lectura a través de su token no adivinable.
 ## Servidor MCP
 
 Registruti expone un servidor [MCP](https://modelcontextprotocol.io/) en `POST /api/mcp`
-(transporte Streamable HTTP) para operar la app por lenguaje natural desde Claude Desktop
-u otro cliente MCP. Es la **Fase 1**: autenticación por token personal (sin OAuth).
+(transporte Streamable HTTP) para operar la app por lenguaje natural desde Claude (web,
+escritorio y celular), Claude Code, Cursor u otro cliente MCP. La conexión es de un clic: el
+servidor es a la vez un **authorization server OAuth 2.1**, así que el cliente descubre solo
+cómo autorizarse, manda al usuario a `/oauth/authorize`, y el usuario aprueba con su sesión de
+Registruti. Sin instalar nada ni copiar tokens. Para clientes sin OAuth sigue existiendo el
+token personal de Ajustes.
 
 ### Tools disponibles
 
-| Tool | Qué hace |
-| --- | --- |
-| `list_clients` | Lista los clientes con tarifa, moneda y color |
-| `log_time` | Registra una entrada de tiempo (cliente, fecha, duración libre, descripción, facturable) |
-| `list_time_entries` | Consulta entradas por rango de fechas y cliente |
-| `report_summary` | Resumen de horas y montos facturables por cliente y período |
+| Tool | Scope | Qué hace |
+| --- | --- | --- |
+| `list_clients` | `read` | Lista los clientes con tarifa, moneda y color |
+| `log_time` | `write` | Registra una entrada de tiempo (cliente, fecha, duración libre, descripción, facturable) |
+| `list_time_entries` | `read` | Consulta entradas por rango de fechas y cliente |
+| `report_summary` | `read` | Resumen de horas y montos facturables por cliente y período |
 
-Cada token resuelve un `user_id`; todas las tools quedan scopeadas a los datos de ese usuario.
+Cada token resuelve un `user_id` y un conjunto de scopes; todas las tools quedan scopeadas a
+los datos de ese usuario. "Hoy" y los rangos por defecto se calculan en la zona horaria del país
+del perfil (`countries.ts`), no en UTC. El `initialize` devuelve `instructions` con la fecha y la
+zona del usuario para que el modelo resuelva "ayer" o "este mes" sin adivinar.
 
 ### Cómo conectarlo
 
-1. En **Ajustes → Conexión MCP**, generá un token (se muestra una sola vez).
-2. Registralo en tu cliente MCP apuntando a `https://registruti.app/api/mcp` con el header
-   `Authorization: Bearer <token>`. En Claude Code, por ejemplo:
+- **Claude (web, escritorio, celular):** Ajustes → Conectores → Agregar conector personalizado,
+  con la URL `https://registruti.app/api/mcp`. Al tocar *Conectar* se abre la pantalla de
+  autorización de Registruti.
+- **Claude Code:** `claude mcp add --transport http --scope user registruti https://registruti.app/api/mcp`
+  y después `/mcp` → *Authenticate*.
+- **Cursor y otros clientes con OAuth:** servidor MCP remoto apuntando a la misma URL.
+- **Clientes sin OAuth** (archivo de configuración de Claude Desktop vía `mcp-remote`, scripts):
+  token personal de Ajustes en el header `Authorization: Bearer reg_…`.
 
-   ```bash
-   claude mcp add --transport http registruti https://registruti.app/api/mcp \
-     --header "Authorization: Bearer reg_xxxxxxxx"
-   ```
-
-3. Pedile cosas como *"cargá 2 horas de hoy para Acme, reunión de kickoff"* o
-   *"¿cuántas horas facturables llevo este mes?"*.
+La guía para usuarios está en [`/blog/mcp`](https://registruti.app/blog/mcp).
 
 > **Tiene que ser el apex, sin `www`.** `www.registruti.app` redirige a `registruti.app` y ese
-> salto es cross-origin: `fetch` (el que usan `mcp-remote` y los clientes MCP) borra el header
+> salto es cross-origin: `fetch` (el que usan todos los clientes MCP) borra el header
 > `Authorization` al seguir el redirect, la request llega sin token y el server contesta 401.
-> El síntoma es un cartel de error de conexión cada vez que se abre Claude, con un token válido.
+> Por eso todo el metadata OAuth se arma desde `MCP_BASE_URL`/`SITE_URL` y no desde el host de
+> la request.
+
+### Cómo funciona el OAuth (Fase 2)
+
+Implementado a mano en `src/lib/mcp/oauth.ts`, sin dependencias nuevas, siguiendo la
+[spec de autorización de MCP](https://modelcontextprotocol.io/specification/latest/basic/authorization):
+
+| Pieza | Ruta |
+| --- | --- |
+| Protected resource metadata (RFC 9728) | `/.well-known/oauth-protected-resource` y `/.well-known/oauth-protected-resource/api/mcp` |
+| Authorization server metadata (RFC 8414) | `/.well-known/oauth-authorization-server` |
+| Registro dinámico de clientes (RFC 7591) | `POST /api/oauth/register` |
+| Pantalla de autorización (consentimiento) | `GET /oauth/authorize` + `POST /api/oauth/authorize` |
+| Token endpoint (`authorization_code` + PKCE, `refresh_token`) | `POST /api/oauth/token` |
+| Revocación (RFC 7009) | `POST /api/oauth/revoke` |
+
+- El 401 de `/api/mcp` lleva `WWW-Authenticate: Bearer resource_metadata="…", scope="read write"`,
+  que es lo que dispara el flujo en el cliente.
+- Clientes: registro dinámico (públicos o con `client_secret`) o **Client ID Metadata Document**
+  (el `client_id` es una URL https con el metadata; se lee en el momento, sin registro).
+  `redirect_uri` solo https, loopback http (puerto libre, RFC 8252) o esquemas de apps nativas.
+- PKCE S256 obligatorio; `resource` (RFC 8707) validado contra el endpoint.
+- La sesión de Registruti vive en el browser (supabase-js), así que la pantalla de autorización
+  valida el pedido contra `/api/oauth/authorize` y aprueba con el JWT del usuario, que el server
+  verifica con Supabase Auth antes de emitir el code (de un solo uso, 10 minutos).
+- Access tokens de 1 hora (filas de `mcp_tokens` con `expires_at` y `grant_id`) y refresh tokens
+  de 60 días que rotan en cada uso, con 60 segundos de gracia para dos refresh concurrentes.
+  Reusar un code revoca lo que salió de él.
+- Cada autorización es una fila de `oauth_grants`, que el usuario ve y revoca en Ajustes →
+  *Apps conectadas*; borrarla borra en cascada sus tokens. Todo secreto se guarda como SHA-256.
+- Si el login hace falta en el medio, `/auth/callback` vuelve a la pantalla de autorización
+  (`src/lib/postLogin.ts`) en vez de al tracker.
 
 ### Configuración
 
 El endpoint usa la service role key de Supabase; hay que definir `SUPABASE_URL` y
 `SUPABASE_SERVICE_ROLE_KEY` como env vars en Vercel (ver [`supabase/README.md`](supabase/README.md))
-y aplicar la migración `20260721000005_mcp_tokens.sql`.
+y aplicar las migraciones `20260721000005_mcp_tokens.sql` y `20260903000007_mcp_oauth.sql`.
 
-> **Nota:** la app web/mobile de Claude.ai exige OAuth para conectar un MCP remoto; eso es la
-> Fase 2. La Fase 1 cubre Claude Desktop, Claude Code y clientes similares que aceptan un token.
+Opcionales:
+
+- `MCP_BASE_URL`: URL pública bajo la que se anuncian el servidor y sus endpoints OAuth
+  (default `SITE_URL`). Sirve para probar el flujo completo en un preview de Vercel.
+- `MCP_ALLOW_INSECURE_CLIENT_METADATA=1`: acepta Client ID Metadata Documents por http. Solo
+  para la prueba local; se ignora si `VERCEL_ENV=production`.
+
+### Prueba end-to-end
+
+```bash
+npm run test:mcp            # compila si hace falta, levanta un Supabase de mentira y next start
+npm run test:mcp -- --build # fuerza recompilar
+```
+
+`scripts/mcp-e2e/run.mjs` recorre con el SDK oficial de MCP el mismo camino que hace Claude
+(401 → descubrimiento → registro → autorización → canje → tools → refresh → revocación) y cubre a
+mano los casos de borde (consentimiento denegado, redirect_uri ajena, reuso de code, PKCE
+incorrecto, clientes confidenciales, scope de solo lectura, CIMD, token personal). Es lo que hay
+que correr antes de tocar cualquier cosa del MCP.
 
 ## SEO
 

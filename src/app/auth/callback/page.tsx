@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { consumePostLoginNext } from "@/lib/postLogin";
 import Logo from "@/components/Logo";
 import Wordmark from "@/components/Wordmark";
 
@@ -10,6 +11,8 @@ import Wordmark from "@/components/Wordmark";
  * Landing del OAuth de Google y del link de confirmación por email.
  * El cliente de Supabase (detectSessionInUrl) procesa los tokens de la URL;
  * acá esperamos la sesión y entramos a la app, o mostramos el error del provider.
+ * Si el login arrancó desde otro flujo (la autorización OAuth del MCP que abre
+ * Claude), volvemos a ese destino en vez de al tracker.
  */
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -20,7 +23,7 @@ export default function AuthCallbackPage() {
     const enter = () => {
       if (done) return;
       done = true;
-      router.replace("/tracker");
+      router.replace(consumePostLoginNext() ?? "/tracker");
     };
 
     supabase.auth.getSession().then(({ data }) => {

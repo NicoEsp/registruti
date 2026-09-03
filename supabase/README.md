@@ -46,6 +46,15 @@ supabase db push
    por la service role) que usa el webhook de pago para activar el acceso.
    **Requerida** por el paywall de Clientes/Facturas y la sección "Plan" de
    Ajustes.
+7. `20260903000007_mcp_oauth.sql` — OAuth 2.1 para el servidor MCP (Fase 2):
+   tablas `oauth_clients` (clientes registrados dinámicamente), `oauth_grants`
+   (autorizaciones que el usuario ve y revoca en Ajustes, con RLS de select y
+   delete por dueño), `oauth_codes` (authorization codes de un solo uso) y
+   `oauth_refresh_tokens` (rotativos), más las columnas `grant_id` y `scope` en
+   `mcp_tokens` para los access tokens emitidos por OAuth. **Requerida** por
+   la conexión con un clic desde Claude/Cursor y por "Apps conectadas" en
+   Ajustes; sin ella el flujo OAuth responde `server_error` y los tokens
+   personales siguen funcionando.
 
 ### Activar el lifetime access de un usuario
 
@@ -82,6 +91,12 @@ la URL equivocada leería/escribiría en el proyecto que no es. Toda query del
 servidor MCP filtra además por `user_id` (resuelto a partir del hash del token),
 porque la service role no aplica RLS por sí sola.
 
+El flujo OAuth (`/api/oauth/*`, `/oauth/authorize`) usa el mismo cliente admin
+para las tablas `oauth_*` (que no tienen policies para el usuario, salvo
+select/delete de `oauth_grants`) y para verificar el JWT del usuario al aprobar
+(`auth.getUser(jwt)`). Los secretos (codes, tokens, client secrets) se guardan
+solo como SHA-256.
+
 ## Auditar RLS
 
 Row Level Security debe estar **activo** en todas las tablas con datos de
@@ -101,6 +116,10 @@ order by t.tablename;
 ```
 
 Toda tabla con datos de usuario (`clients`, `time_entries`, `invoices`,
-`profiles`, `invoice_counters`, `mcp_tokens`) debe mostrar `rls_activo = true` y
+`profiles`, `invoice_counters`, `mcp_tokens`, `oauth_grants`) debe mostrar `rls_activo = true` y
+al menos una policy. Las tablas `oauth_clients`, `oauth_codes` y `oauth_refresh_tokens`
+tienen RLS activo y **cero** policies a propósito: solo las opera la service role.
+
+Toda tabla con datos de usuario debe mostrar `rls_activo = true` y
 al menos una policy. Si alguna aparece en `false`, hay una fuga de datos entre usuarios y hay
 que activar RLS y agregar policies antes de salir a producción.

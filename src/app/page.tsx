@@ -83,7 +83,7 @@ const COMPARISON: { criterio: string; diamble: string; toggl: string; wins: bool
   },
   {
     criterio: "Asistentes de IA (MCP)",
-    diamble: "Sí: servidor MCP integrado — cargá horas desde Claude o Cursor",
+    diamble: "Sí: servidor MCP integrado — conectalo a Claude o Cursor con un clic",
     toggl: "Sin soporte oficial",
     wins: true,
   },
@@ -146,7 +146,7 @@ const FAQS = [
   },
   {
     q: "¿Puedo cargar horas hablándole a Claude u otro asistente de IA?",
-    a: "Sí. Registruti tiene un servidor MCP (Model Context Protocol) integrado: generás un token en Ajustes, lo conectás a Claude Desktop, Claude Code, Cursor u otro cliente MCP, y le pedís cosas como “cargá 2 horas de hoy para Acme” o “¿cuántas horas facturables llevo este mes?”. En el blog hay un tutorial paso a paso.",
+    a: "Sí. Registruti tiene un servidor MCP (Model Context Protocol) integrado: lo agregás como conector en Claude (web, escritorio o celular), Claude Code, Cursor u otro cliente MCP, autorizás el acceso con tu cuenta y le pedís cosas como “cargá 2 horas de hoy para Acme” o “¿cuántas horas facturables llevo este mes?”. No hay que instalar nada. En el blog hay un tutorial paso a paso.",
   },
   {
     q: "¿Registruti sirve para equipos o empresas?",
@@ -441,9 +441,9 @@ export default function LandingPage() {
                 Cargá horas hablándole a Claude
               </h2>
               <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-600">
-                Registruti tiene servidor MCP integrado: conectala a Claude Desktop, Claude Code o
-                Cursor y pedile “cargá 2 horas de hoy para Acme” o “¿cuánto facturo este mes?” sin
-                abrir la app.
+                Registruti tiene servidor MCP integrado: conectala con un clic a Claude (web,
+                escritorio o celular), Claude Code o Cursor y pedile “cargá 2 horas de hoy para
+                Acme” o “¿cuánto facturo este mes?” sin abrir la app.
               </p>
             </div>
           </div>

@@ -18,7 +18,7 @@
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     },
     {
-      "source": "/(auth|i|api)/(.*)",
+      "source": "/(auth|i|api|oauth)/(.*)",
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     },
     {
