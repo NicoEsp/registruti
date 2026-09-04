@@ -19,6 +19,12 @@ export default function SiteHeader({ wide = false }: { wide?: boolean }) {
           <Wordmark className="text-lg text-slate-800" />
         </Link>
         <div className="flex items-center gap-4 text-sm">
+          <Link
+            href="/cuanto-cobrar-por-hora"
+            className="hidden font-medium text-slate-600 hover:text-slate-900 sm:block"
+          >
+            Calculadora
+          </Link>
           <Link href="/blog" className="font-medium text-slate-600 hover:text-slate-900">
             Blog
           </Link>

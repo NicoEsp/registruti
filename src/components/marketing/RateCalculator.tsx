@@ -117,7 +117,10 @@ export default function RateCalculator() {
     // La cuenta ingenua con la que casi todos arrancan: sueldo dividido por
     // las horas que estás sentado, sin gastos, impuestos ni tiempo no
     // facturable. Sirve para mostrar el tamaño del error.
-    const naiveRate = monthlyIncome / (daysPerWeek * 4.33 * 8);
+    // 4 semanas x 8 horas x días: las "160 horas al mes" con las que hace la
+    // cuenta el copy de la página (2.000 / 160 = 12,50). Tiene que dar lo
+    // mismo acá que en el texto, si no la comparación no se entiende.
+    const naiveRate = monthlyIncome / (daysPerWeek * 4 * 8);
 
     // Cuánto se queda corta la cuenta ingenua, expresado como "X% menos".
     // Ojo: es 1 − ingenua/objetivo, no objetivo/ingenua − 1. Lo segundo puede

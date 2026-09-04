@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { POSTS, getPost } from "@/lib/blog";
-import { SITE_NAME, SITE_OG_IMAGE, SITE_URL } from "@/lib/site";
+import { POSTS, formatDateES, getPost } from "@/lib/blog";
+import { SITE_AUTHOR, SITE_NAME, SITE_OG_IMAGE, SITE_URL } from "@/lib/site";
 import McpArticle from "@/components/blog/McpArticle";
 import TogglAlternativasArticle from "@/components/blog/TogglAlternativasArticle";
 import TimeTrackersArticle from "@/components/blog/TimeTrackersArticle";
 import ControlHorasArticle from "@/components/blog/ControlHorasArticle";
+import CobrarPorHoraOProyectoArticle from "@/components/blog/CobrarPorHoraOProyectoArticle";
 
 // Mapa slug → cuerpo del artículo. Al sumar un post: agregá su entrada en
 // src/lib/blog.ts y su componente acá.
@@ -16,6 +17,7 @@ const BODIES: Record<string, ReactNode> = {
   "mejores-alternativas-toggl-track": <TogglAlternativasArticle />,
   "mejores-time-trackers-freelancers": <TimeTrackersArticle />,
   "control-de-horas-trabajadas": <ControlHorasArticle />,
+  "cobrar-por-hora-o-por-proyecto": <CobrarPorHoraOProyectoArticle />,
 };
 
 export function generateStaticParams() {
@@ -40,7 +42,7 @@ export async function generateMetadata({
       types: { "application/rss+xml": `${SITE_URL}/blog/feed.xml` },
     },
     openGraph: {
-    images: [SITE_OG_IMAGE],
+      images: [SITE_OG_IMAGE],
       type: "article",
       url,
       title: post.title,
@@ -83,7 +85,14 @@ export default async function BlogPostPage({
         inLanguage: "es",
         keywords: post.keywords.join(", "),
         articleSection: post.tag,
-        author: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
+        // Persona, no organización: Google evalúa quién firma (E-E-A-T) y el
+        // byline visible de abajo tiene que coincidir con esto.
+        author: {
+          "@type": "Person",
+          name: SITE_AUTHOR.name,
+          url: SITE_AUTHOR.url,
+          sameAs: SITE_AUTHOR.sameAs,
+        },
         publisher: {
           "@type": "Organization",
           name: SITE_NAME,
@@ -121,13 +130,33 @@ export default async function BlogPostPage({
         ← Volver al blog
       </Link>
 
-      <div className="mt-6 flex items-center gap-3 text-xs text-slate-500">
+      <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-slate-500">
         <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 font-medium text-indigo-700">
           {post.tag}
         </span>
         <time dateTime={post.dateISO}>{post.date}</time>
+        {post.updatedISO ? (
+          <>
+            <span>·</span>
+            <span>
+              Actualizado el <time dateTime={post.updatedISO}>{formatDateES(post.updatedISO)}</time>
+            </span>
+          </>
+        ) : null}
         <span>·</span>
         <span>{post.readingMinutes} min de lectura</span>
+        <span>·</span>
+        <span>
+          Por{" "}
+          <a
+            href={SITE_AUTHOR.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-slate-700 hover:text-slate-900"
+          >
+            {SITE_AUTHOR.name}
+          </a>
+        </span>
       </div>
 
       <h1 className="mt-4 text-3xl font-bold leading-tight tracking-tight sm:text-4xl">

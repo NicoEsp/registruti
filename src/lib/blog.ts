@@ -23,12 +23,34 @@ export interface BlogPost {
 
 export const POSTS: BlogPost[] = [
   {
+    slug: "cobrar-por-hora-o-por-proyecto",
+    title: "¿Cobrar por hora o por proyecto? Cómo decidir y cotizar cada uno",
+    description:
+      "Cuándo conviene cobrar por hora, por proyecto o con un retainer mensual, y cómo cotizar un proyecto desde tu tarifa por hora sin regalar horas ni alcance.",
+    date: "4 de septiembre de 2026",
+    dateISO: "2026-09-04",
+    tag: "Guías",
+    readingMinutes: 8,
+    // Segunda pieza del cluster de tarifa: /cuanto-cobrar-por-hora responde
+    // "cuánto cobrar por hora" y este post, la pregunta que viene justo
+    // después. Se linkean entre sí y los dos terminan en el producto.
+    keywords: [
+      "cobrar por hora o por proyecto",
+      "precio por proyecto freelance",
+      "cómo cotizar un proyecto freelance",
+      "presupuesto freelance",
+      "tarifa por proyecto",
+      "retainer mensual freelance",
+    ],
+  },
+  {
     slug: "mejores-alternativas-toggl-track",
     title: "Las 6 mejores alternativas a Toggl Track en 2026 (gratis y pagas)",
     description:
       "Comparamos las mejores alternativas a Toggl Track para freelancers: precios reales por usuario, idioma, facturación incluida y para quién conviene cada una.",
     date: "22 de julio de 2026",
     dateISO: "2026-07-22",
+    updatedISO: "2026-09-04",
     tag: "Comparativas",
     readingMinutes: 9,
     // Intención de listicle/comparativa (plural). El término comercial en
@@ -51,6 +73,7 @@ export const POSTS: BlogPost[] = [
       "¿Qué time tracker te conviene si sos freelancer? Los comparamos según lo que necesitás: facturar tus horas, cronómetro automático, precio real y español.",
     date: "22 de julio de 2026",
     dateISO: "2026-07-22",
+    updatedISO: "2026-09-04",
     tag: "Comparativas",
     readingMinutes: 8,
     keywords: [
@@ -69,6 +92,7 @@ export const POSTS: BlogPost[] = [
       "Método simple para registrar tus horas por cliente sin que se te escape nada: qué anotar, cada cuánto, con qué herramienta y cómo convertirlas en facturas.",
     date: "22 de julio de 2026",
     dateISO: "2026-07-22",
+    updatedISO: "2026-09-04",
     tag: "Guías",
     readingMinutes: 7,
     keywords: [
@@ -103,4 +127,14 @@ export const POSTS: BlogPost[] = [
 
 export function getPost(slug: string): BlogPost | undefined {
   return POSTS.find((p) => p.slug === slug);
+}
+
+/** "2026-09-04" → "4 de septiembre de 2026". Mediodía UTC para que no retroceda un día. */
+export function formatDateES(iso: string): string {
+  return new Date(`${iso}T12:00:00Z`).toLocaleDateString("es-AR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 }

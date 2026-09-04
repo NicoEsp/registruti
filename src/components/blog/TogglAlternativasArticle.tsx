@@ -131,6 +131,9 @@ export default function TogglAlternativasArticle() {
         <li>
           <strong>Tarifa y moneda por cliente:</strong> le cobrás en pesos a un cliente local y en
           dólares a uno del exterior. Hay 9 monedas: ARS, USD, EUR, UYU, BRL, CLP, COP, MXN y GBP.
+          ¿No sabés qué tarifa poner? Hay una{" "}
+          <Link href="/cuanto-cobrar-por-hora">calculadora de cuánto cobrar por hora</Link> que
+          te la pasa al onboarding.
         </li>
         <li>
           <strong>De horas a factura en un clic:</strong> elegís cliente y período y la factura se

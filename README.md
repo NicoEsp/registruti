@@ -168,6 +168,11 @@ gratis/en español" y "control de horas" (long-tail). Estructura:
 
 - **`/alternativa-toggl-track`** — página de comparación dedicada (la "money page"):
   tabla completa, precios 2026, guía de migración y FAQ con schema propio.
+- **`/cuanto-cobrar-por-hora`** — calculadora de tarifa: la página con más impresiones
+  orgánicas del sitio ("cuánto cobrar por hora" y sus variantes por especialidad y por
+  país). Su artículo satélite es `/blog/cobrar-por-hora-o-por-proyecto`; se linkean entre
+  sí, todas las páginas de marketing la enlazan (header, footer, landing, índice del blog)
+  y el CTA del resultado pasa la tarifa al onboarding (`src/lib/calculatedRate.ts`).
 - **`/blog`** — artículos registrados en `src/lib/blog.ts` (metadata) con cuerpo en
   `src/components/blog/*` y mapeo por slug en `src/app/blog/[slug]/page.tsx`.
   Feed RSS en `/blog/feed.xml`.

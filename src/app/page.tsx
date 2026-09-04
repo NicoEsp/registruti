@@ -4,7 +4,7 @@ import Logo from "@/components/Logo";
 import Wordmark from "@/components/Wordmark";
 import MadeByBadge from "@/components/MadeByBadge";
 import LandingAuthRedirect from "@/components/LandingAuthRedirect";
-import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
+import { SITE_AUTHOR, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
@@ -119,7 +119,9 @@ const STEPS = [
   },
 ];
 
-const FAQS = [
+// `link` es opcional y solo para la UI: el JSON-LD FAQPage usa `a`, que tiene
+// que ser texto plano.
+const FAQS: { q: string; a: string; link?: { href: string; label: string } }[] = [
   {
     q: "¿Hay una alternativa gratis a Toggl Track?",
     a: "Sí. Registruti es una alternativa gratuita y en español a Toggl Track, pensada para freelancers. Incluye desde el inicio lo que en Toggl requiere el plan Starter (USD 9/usuario/mes con facturación anual): tarifas por cliente, montos facturables y generación de facturas. Empezá gratis hoy, sin tarjeta.",
@@ -131,6 +133,11 @@ const FAQS = [
   {
     q: "¿Cómo llevo el control de horas como freelancer?",
     a: "La clave es registrar las horas el mismo día, asociadas a un cliente y con una descripción corta de la tarea. En Registruti lo hacés en una vista semanal con bloques de 15 minutos a 8 horas, y los reportes te muestran automáticamente cuántas horas y cuánta plata acumulaste por cliente en la semana, el mes o el rango que elijas.",
+  },
+  {
+    q: "¿Cuánto debería cobrar por hora como freelance?",
+    a: "No sale de mirar lo que cobra el mercado: sale del ingreso que querés llevarte, más tus gastos e impuestos, dividido por las horas que realmente podés facturar, que son menos de las que pensás. Registruti tiene una calculadora gratis y sin registro que hace esa cuenta en 9 monedas, con rangos por especialidad y por país. Si después creás tu cuenta, tu primer cliente arranca con esa tarifa cargada.",
+    link: { href: "/cuanto-cobrar-por-hora", label: "Calcular cuánto cobrar por hora" },
   },
   {
     q: "¿Puedo facturar en pesos y en dólares a la vez?",
@@ -163,7 +170,13 @@ const JSON_LD = {
       name: SITE_NAME,
       url: SITE_URL,
       logo: { "@type": "ImageObject", url: `${SITE_URL}/icon-512.png` },
-      sameAs: ["https://x.com/nicoproducto"],
+      sameAs: SITE_AUTHOR.sameAs,
+      founder: {
+        "@type": "Person",
+        name: SITE_AUTHOR.name,
+        url: SITE_AUTHOR.url,
+        sameAs: SITE_AUTHOR.sameAs,
+      },
     },
     {
       "@type": "WebSite",
@@ -232,6 +245,9 @@ export default function LandingPage() {
             <a href="#vs-toggl" className="hover:text-slate-900">
               vs Toggl Track
             </a>
+            <Link href="/cuanto-cobrar-por-hora" className="hover:text-slate-900">
+              Calculadora
+            </Link>
             <Link href="/blog" className="hover:text-slate-900">
               Blog
             </Link>
@@ -456,6 +472,36 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Calculadora de tarifa: es la página con más impresiones orgánicas del
+          sitio. Desde acá le pasamos autoridad interna y le damos al visitante
+          nuevo el paso previo a cargar su primer cliente (la tarifa calculada
+          viaja al onboarding). */}
+      <section className="mx-auto max-w-6xl px-4 pt-6">
+        <div className="flex flex-col items-start gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-4">
+            <span className="text-3xl" aria-hidden>
+              🧮
+            </span>
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">
+                ¿Todavía no sabés cuánto cobrar por hora?
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-600">
+                Calculá tu tarifa freelance con la fórmula real: ingreso deseado, gastos,
+                impuestos y horas facturables, en 9 monedas. Gratis y sin registro. Cuando creás
+                tu cuenta, el primer cliente ya arranca con esa tarifa cargada.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/cuanto-cobrar-por-hora"
+            className="shrink-0 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-100"
+          >
+            Calcular mi tarifa →
+          </Link>
+        </div>
+      </section>
+
       {/* Precios */}
       <section id="precios" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-20">
         <h2 className="text-center text-2xl font-bold tracking-tight sm:text-3xl">
@@ -603,6 +649,16 @@ export default function LandingPage() {
                   </span>
                 </summary>
                 <p className="mt-3 text-sm leading-relaxed text-slate-600">{faq.a}</p>
+                {faq.link ? (
+                  <p className="mt-2 text-sm">
+                    <Link
+                      href={faq.link.href}
+                      className="font-medium text-indigo-600 underline-offset-2 hover:underline"
+                    >
+                      {faq.link.label} →
+                    </Link>
+                  </p>
+                ) : null}
               </details>
             ))}
           </div>

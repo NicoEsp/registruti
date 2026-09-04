@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { Analytics } from "@vercel/analytics/next";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
-import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
+import { SITE_AUTHOR, SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -32,15 +32,14 @@ export const metadata: Metadata = {
     "registro de horas trabajadas por cliente",
     "time tracker gratis en español",
     "facturación freelance en pesos y dólares",
-    "tarifa por hora freelance",
     "reporte de horas por cliente",
     "factura con detalle de horas",
     "Toggl Track en español",
     "control de horas consultores",
   ],
   applicationName: SITE_NAME,
-  authors: [{ name: "Nicolás Espíndola", url: "https://x.com/nicoproducto" }],
-  creator: "Nicolás Espíndola",
+  authors: [{ name: SITE_AUTHOR.name, url: SITE_AUTHOR.url }],
+  creator: SITE_AUTHOR.name,
   publisher: SITE_NAME,
   category: "technology",
   appleWebApp: {

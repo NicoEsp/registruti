@@ -50,7 +50,27 @@ export default function BlogIndexPage() {
         freelancers.
       </p>
 
-      <div className="mt-10 space-y-4">
+      {/* La calculadora no es un post pero es la pieza más buscada del sitio:
+          desde el índice tiene que estar a un clic. */}
+      <Link
+        href="/cuanto-cobrar-por-hora"
+        className="mt-10 block rounded-2xl border border-indigo-100 bg-indigo-50/50 p-6 transition hover:border-indigo-200 hover:shadow-md"
+      >
+        <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-indigo-700 shadow-sm">
+          Herramienta gratis
+        </span>
+        <h2 className="mt-3 text-xl font-semibold tracking-tight text-slate-900">
+          Calculadora: ¿cuánto cobrar por hora como freelance?
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-slate-600">
+          Tu tarifa a partir del ingreso que querés llevarte, tus gastos, tus impuestos y las
+          horas que realmente podés facturar. En 9 monedas, sin registro, con rangos por
+          especialidad y por país.
+        </p>
+        <span className="mt-3 inline-block text-sm font-medium text-indigo-600">Calcular →</span>
+      </Link>
+
+      <div className="mt-4 space-y-4">
         {POSTS.map((post) => (
           <Link
             key={post.slug}

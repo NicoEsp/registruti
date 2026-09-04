@@ -4,25 +4,37 @@ import Logo from "@/components/Logo";
 import SiteHeader from "@/components/marketing/SiteHeader";
 import SiteFooter from "@/components/marketing/SiteFooter";
 import RateCalculator from "@/components/marketing/RateCalculator";
-import { SITE_NAME, SITE_OG_IMAGE, SITE_URL } from "@/lib/site";
+import { SITE_NAME, SITE_URL } from "@/lib/site";
 
 const PAGE_URL = `${SITE_URL}/cuanto-cobrar-por-hora`;
-// datePublished no se toca al editar la página; solo se mueve UPDATED_ISO.
+// datePublished no se toca al editar la página; solo se mueve UPDATED_ISO
+// (y RATE_CALC_UPDATED en sitemap.ts, que tiene que coincidir).
 const PUBLISHED_ISO = "2026-07-31";
-const UPDATED_ISO = "2026-07-31";
+const UPDATED_ISO = "2026-09-04";
 
+// Es la página que más impresiones trae desde Google. La query principal es
+// "cuánto cobrar por hora" (+ freelance); el resto de las búsquedas que la
+// disparan son variantes por especialidad ("cuánto cobrar por hora como
+// diseñador / programador") y por país. Por eso el title arranca con la query
+// exacta, la descripción anticipa esas dos secciones, y el cuerpo las tiene
+// como H2 con su propia FAQ.
 export const metadata: Metadata = {
-  title: "¿Cuánto cobrar por hora? Calculadora de tarifa freelance",
+  title: "¿Cuánto cobrar por hora como freelance? Calculadora 2026",
   description:
-    "Calculá tu tarifa por hora como freelance en 9 monedas: partí del ingreso que querés llevarte, sumá gastos, impuestos y horas realmente facturables. Gratis y sin registro.",
+    "Calculadora gratis: cuánto cobrar por hora como freelance según ingreso deseado, gastos, impuestos y horas facturables. Rangos por especialidad y por país.",
   keywords: [
     "cuánto cobrar por hora",
     "cuánto cobrar por hora freelance",
+    "cuánto cobrar por hora de trabajo",
     "calculadora de tarifa freelance",
     "cómo calcular mi tarifa por hora",
+    "tarifa por hora freelance 2026",
     "precio hora freelance",
     "cuánto cobrar como freelance",
+    "cuánto cobrar por hora como diseñador",
+    "cuánto cobrar por hora como programador",
     "tarifa por hora consultor",
+    "cobrar por hora o por proyecto",
   ],
   alternates: { canonical: "/cuanto-cobrar-por-hora" },
   openGraph: {
@@ -42,10 +54,53 @@ export const metadata: Metadata = {
   },
 };
 
+// Rangos por hora en dólares para clientes que pagan en dólares (exterior).
+// Son los que se repiten en las guías de tarifas freelance en español; sirven
+// para ubicar el número de la calculadora en el mapa, no para reemplazarlo.
 const RANGES = [
-  { rol: "Redacción y contenido", rango: "USD 10 – 40" },
-  { rol: "Diseño", rango: "USD 15 – 60" },
-  { rol: "Desarrollo de software", rango: "USD 25 – 100" },
+  { rol: "Redacción y contenido", rango: "USD 10 – 40", nota: "Copys y blogs abajo; UX writing y contenido técnico arriba." },
+  { rol: "Diseño gráfico y UX/UI", rango: "USD 15 – 60", nota: "Piezas sueltas abajo; producto digital y sistemas de diseño arriba." },
+  { rol: "Desarrollo de software", rango: "USD 25 – 100", nota: "Sitios y WordPress abajo; backend, datos y arquitectura arriba." },
+  { rol: "Marketing digital y community management", rango: "USD 15 – 70", nota: "Gestión de redes abajo; paid media y estrategia arriba." },
+  { rol: "Traducción", rango: "USD 20 – 60", nota: "Se suele cotizar por palabra; la hora sirve para comparar." },
+  { rol: "Edición de video", rango: "USD 15 – 60", nota: "Cortes para redes abajo; motion graphics y color arriba." },
+  { rol: "Consultoría (negocio, producto, procesos)", rango: "USD 40 – 120", nota: "Depende más del resultado que del tiempo: acá conviene mirar por proyecto." },
+];
+
+// Lo que cambia por país es lo que va en el campo de impuestos y la moneda en
+// la que hacés la cuenta; la fórmula es la misma. Sin porcentajes exactos a
+// propósito: cambian cada año y el que decide es el contador de cada uno.
+const COUNTRIES = [
+  {
+    pais: "Argentina",
+    texto:
+      "Monotributo (cuota fija según la categoría) o responsable inscripto. Si cobrás en pesos, revisá la tarifa cada pocos meses: con inflación, una tarifa fija es una rebaja automática. Si cobrás del exterior, sumá comisiones de cobro y diferencia de cambio en el campo de impuestos.",
+  },
+  {
+    pais: "México",
+    texto:
+      "RESICO o actividad empresarial y profesional: ISR más las retenciones de ISR e IVA que te hacen las personas morales. Cotizá en pesos a clientes locales y en dólares a clientes del exterior, sin convertir la tarifa local.",
+  },
+  {
+    pais: "Colombia",
+    texto:
+      "Régimen simple u ordinario, más la retención en la fuente cuando le facturás a empresas. Es de los mercados donde más distancia hay entre la tarifa local en pesos y la tarifa en dólares para el exterior.",
+  },
+  {
+    pais: "Chile",
+    texto:
+      "Boleta de honorarios con retención, que además sube año a año. Ese porcentaje va directo al campo de impuestos de la calculadora; si no lo incluís, la tarifa te queda corta desde el primer mes.",
+  },
+  {
+    pais: "España",
+    texto:
+      "Cuota de autónomos por tramos de ingresos, IRPF e IVA. La cuota es un gasto fijo mensual: va en gastos, no en impuestos, porque la pagás aunque un mes no factures.",
+  },
+  {
+    pais: "Clientes del exterior en dólares",
+    texto:
+      "La tarifa se fija en el mercado del cliente, no en el tuyo: un freelancer en Latinoamérica que trabaja para una empresa de Estados Unidos cotiza en el rango de ese mercado, no en el local. Lo que sí es tuyo son las comisiones de la plataforma de cobro y la brecha cambiaria: sumalas como impuestos.",
+  },
 ];
 
 const FAQS = [
@@ -54,8 +109,16 @@ const FAQS = [
     a: "Sumá el ingreso neto anual que querés llevarte más tus gastos fijos anuales, dividí ese total por (1 menos tu carga impositiva) para llegar al monto que tenés que facturar, y dividí el resultado por las horas realmente facturables que tenés en el año. Esas horas son menos de las que pensás: si trabajás 5 días por semana con 5 horas facturables por día y te tomás 4 semanas al año, son 1.200 horas, no 2.080.",
   },
   {
+    q: "¿Cuánto cobrar por hora como diseñador, programador o redactor?",
+    a: "Para clientes que pagan en dólares, los rangos que se repiten en las guías en español son: redacción y contenido entre USD 10 y 40 la hora, diseño gráfico y UX/UI entre USD 15 y 60, desarrollo de software entre USD 25 y 100, marketing digital y community management entre USD 15 y 70, edición de video entre USD 15 y 60 y consultoría entre USD 40 y 120. Para clientes locales en moneda local suelen quedar por debajo. Son referencias amplias: tu número sale de tu ingreso deseado, tus gastos, tus impuestos y tus horas facturables, y la calculadora de esta página lo resuelve en 9 monedas.",
+  },
+  {
+    q: "¿Cuánto cobrar por hora en Argentina, México, Colombia o Chile?",
+    a: "La fórmula es la misma en todos los países; lo que cambia es la moneda en la que hacés la cuenta y lo que va en el campo de impuestos: monotributo o responsable inscripto en Argentina, RESICO o actividad profesional con retenciones en México, régimen simple u ordinario con retención en la fuente en Colombia, boleta de honorarios con retención en Chile. Para un cliente local, calculá en tu moneda con tu régimen; para un cliente del exterior, cotizá en dólares al precio del mercado del cliente y sumá las comisiones de cobro. Si cobrás en una moneda con inflación, revisá la tarifa cada pocos meses.",
+  },
+  {
     q: "¿Por qué no puedo dividir el sueldo que quiero por 160 horas?",
-    a: "Porque esa cuenta asume tres cosas falsas: que todas las horas que trabajás son facturables, que no tenés gastos y que no pagás impuestos. Vender, cotizar, facturar, responder mails y administrar tu negocio ocupa buena parte de la semana y no se le cobra a ningún cliente. Dividir por 160 suele dejar la tarifa entre un 30% y un 50% por debajo de lo que necesitás — o, dicho al revés, la tarifa correcta suele estar entre un 40% y un 100% por encima de esa cuenta.",
+    a: "Porque esa cuenta asume tres cosas falsas: que todas las horas que trabajás son facturables, que no tenés gastos y que no pagás impuestos. Vender, cotizar, facturar, responder mails y administrar tu negocio ocupa buena parte de la semana y no se le cobra a ningún cliente. Dividir por 160 suele dejar la tarifa entre un tercio y dos tercios por debajo de lo que necesitás; con los valores por defecto de la calculadora, la tarifa correcta casi triplica esa cuenta.",
   },
   {
     q: "¿Cuántas horas facturables tiene un día realista?",
@@ -63,7 +126,7 @@ const FAQS = [
   },
   {
     q: "¿Conviene cobrar por hora o por proyecto?",
-    a: "Por proyecto suele ser mejor negocio cuando podés estimar bien y mejorás tu velocidad con la experiencia: cobrás por el resultado, no por el tiempo. Pero incluso cotizando por proyecto necesitás tu tarifa por hora, porque es la base para estimar el precio y para saber después si el proyecto fue rentable. Por eso conviene trackear las horas aunque cobres un monto cerrado.",
+    a: "Por hora cuando el alcance es abierto (soporte, consultoría, mantenimiento, horas a demanda) o cuando recién empezás con un cliente. Por proyecto cuando el alcance está cerrado y ya hiciste ese tipo de trabajo antes: cobrás por el resultado, no por el tiempo, y tu eficiencia es tu ganancia. En los dos casos necesitás tu tarifa por hora, porque es la base para cotizar el proyecto y para saber después si fue rentable. Por eso conviene trackear las horas aunque cobres un monto cerrado.",
   },
   {
     q: "¿Cada cuánto tengo que subir mi tarifa?",
@@ -82,13 +145,14 @@ const JSON_LD = {
       "@type": "WebPage",
       "@id": PAGE_URL,
       url: PAGE_URL,
-      name: "¿Cuánto cobrar por hora? Calculadora de tarifa freelance",
+      name: "¿Cuánto cobrar por hora como freelance? Calculadora 2026",
       description:
-        "Calculadora gratuita de tarifa por hora para freelancers y consultores, con gastos, impuestos y horas facturables, en 9 monedas.",
+        "Calculadora gratuita de tarifa por hora para freelancers y consultores, con gastos, impuestos y horas facturables, en 9 monedas. Con rangos por especialidad y por país.",
       inLanguage: "es",
       datePublished: PUBLISHED_ISO,
       dateModified: UPDATED_ISO,
       isPartOf: { "@type": "WebSite", "@id": `${SITE_URL}/#website` },
+      publisher: { "@id": `${SITE_URL}/#organization` },
     },
     {
       "@type": "WebApplication",
@@ -134,7 +198,7 @@ export default function CuantoCobrarPorHoraPage() {
         {/* Hero */}
         <div className="mx-auto max-w-3xl text-center">
           <p className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
-            Calculadora gratis · sin registro
+            Calculadora gratis · sin registro · 9 monedas
           </p>
           <h1 className="mt-4 text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
             ¿Cuánto cobrar por hora{" "}
@@ -145,7 +209,8 @@ export default function CuantoCobrarPorHoraPage() {
           <p className="mx-auto mt-5 max-w-2xl text-lg text-slate-600">
             Tu tarifa no sale de mirar lo que cobra el mercado: sale del ingreso que querés
             llevarte, más lo que te cuesta trabajar, dividido por las horas que realmente podés
-            facturar. Movés los números y la ves cambiar.
+            facturar. Movés los números y la ves cambiar. Más abajo: rangos por especialidad, qué
+            cambia según tu país y cuándo conviene cobrar por proyecto.
           </p>
         </div>
 
@@ -155,7 +220,7 @@ export default function CuantoCobrarPorHoraPage() {
         </section>
 
         {/* La fórmula */}
-        <section className="mx-auto mt-16 max-w-3xl">
+        <section id="formula" className="mx-auto mt-16 max-w-3xl scroll-mt-20">
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">La fórmula, explicada</h2>
           <p className="mt-4 text-slate-600">
             Son cuatro pasos, y el orden importa. Los impuestos van sobre lo que facturás, no sobre
@@ -191,6 +256,13 @@ export default function CuantoCobrarPorHoraPage() {
               </li>
             ))}
           </ol>
+          <p className="mt-6 rounded-xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm leading-relaxed text-slate-700">
+            <strong>Ejemplo completo:</strong> 2.000 netos al mes, 200 de gastos, 25% de impuestos,
+            5 días por semana, 5 horas facturables por día y 4 semanas sin facturar. Hay que
+            facturar 35.200 al año en 1.200 horas: el mínimo para no perder plata es 29,33 la hora, y
+            la tarifa recomendada, con un 20% de margen para los huecos entre proyectos, 35,20. La
+            cuenta ingenua (2.000 ÷ 160) daba 12,50.
+          </p>
         </section>
 
         {/* El error clásico */}
@@ -229,34 +301,40 @@ export default function CuantoCobrarPorHoraPage() {
             </li>
           </ul>
           <p className="mt-5 text-slate-700">
-            Corregidas las tres, la tarifa real suele quedar entre un 40% y un 100% por encima de
-            la cuenta ingenua. La calculadora de arriba te muestra las dos, una al lado de la otra.
+            Corregidas las tres, la tarifa real suele quedar entre un 50% y un 200% por encima de
+            la cuenta ingenua (con los valores por defecto de la calculadora, casi el triple). La
+            calculadora de arriba te muestra las dos, una al lado de la otra.
           </p>
         </section>
 
-        {/* Rangos de referencia */}
-        <section className="mx-auto mt-16 max-w-3xl">
+        {/* Rangos por especialidad */}
+        <section id="por-especialidad" className="mx-auto mt-16 max-w-3xl scroll-mt-20">
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            Rangos de referencia por especialidad
+            Cuánto cobrar por hora según tu especialidad
           </h2>
           <p className="mt-4 text-slate-600">
-            Sirven para saber si tu número está en el mapa, no para fijar tu precio. Varían
-            muchísimo según país del cliente, seniority y tipo de proyecto: el mismo trabajo para un
-            cliente local y para uno de Estados Unidos no se cotiza igual.
+            Estos rangos sirven para saber si tu número está en el mapa, no para fijar tu precio.
+            Son tarifas en dólares para clientes que pagan en dólares; para clientes locales en
+            moneda local suelen quedar por debajo. Y dentro de cada rango, lo que te mueve hacia
+            arriba es lo de siempre: seniority, especialización y el tamaño del cliente.
           </p>
           <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200 shadow-sm">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                   <th className="px-5 py-4">Especialidad</th>
-                  <th className="px-5 py-4">Rango por hora habitual</th>
+                  <th className="px-5 py-4 whitespace-nowrap">Rango por hora</th>
+                  <th className="px-5 py-4">Qué mueve el número</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
                 {RANGES.map((row) => (
                   <tr key={row.rol}>
                     <td className="px-5 py-4 font-medium">{row.rol}</td>
-                    <td className="px-5 py-4 tabular-nums text-slate-600">{row.rango}</td>
+                    <td className="px-5 py-4 whitespace-nowrap tabular-nums text-slate-600">
+                      {row.rango}
+                    </td>
+                    <td className="px-5 py-4 text-slate-500">{row.nota}</td>
                   </tr>
                 ))}
               </tbody>
@@ -264,8 +342,61 @@ export default function CuantoCobrarPorHoraPage() {
           </div>
           <p className="mt-4 text-sm text-slate-500">
             Rangos orientativos que se repiten en las guías de tarifas freelance publicadas en
-            español. Tomalos como referencia amplia: tu número sale de la calculadora, no de esta
-            tabla.
+            español a 2026. Si tu resultado en la calculadora cae por debajo del piso de tu
+            especialidad, no bajes la tarifa: revisá las horas facturables que asumiste, que es
+            donde casi siempre está el error.
+          </p>
+        </section>
+
+        {/* Por país */}
+        <section id="por-pais" className="mx-auto mt-16 max-w-3xl scroll-mt-20">
+          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            Cuánto cobrar por hora según tu país (y el de tu cliente)
+          </h2>
+          <p className="mt-4 text-slate-600">
+            La fórmula es la misma en Argentina, México, Colombia, Chile, Uruguay o España. Lo que
+            cambia es la moneda en la que hacés la cuenta y lo que va en el campo de impuestos.
+            Elegí tu moneda en la calculadora, cargá tu régimen, y la tarifa sale en lo que
+            realmente cobrás.
+          </p>
+          <dl className="mt-6 space-y-4">
+            {COUNTRIES.map((item) => (
+              <div key={item.pais} className="rounded-2xl border border-slate-200 p-5">
+                <dt className="font-semibold text-slate-900">{item.pais}</dt>
+                <dd className="mt-1.5 text-sm leading-relaxed text-slate-600">{item.texto}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-4 text-sm text-slate-500">
+            Los porcentajes exactos de cada régimen cambian todos los años: el número que va en la
+            calculadora es el que te da tu contador, no el de una guía.
+          </p>
+        </section>
+
+        {/* Hora vs proyecto */}
+        <section id="hora-o-proyecto" className="mx-auto mt-16 max-w-3xl scroll-mt-20">
+          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            ¿Cobrar por hora o por proyecto?
+          </h2>
+          <p className="mt-4 text-slate-600">
+            Las dos cosas, según el trabajo. <strong>Por hora</strong> cuando el alcance es abierto
+            (soporte, consultoría, mantenimiento, horas a demanda) o cuando recién empezás con un
+            cliente y todavía no sabés cuánto te lleva lo que pide. <strong>Por proyecto</strong>{" "}
+            cuando el alcance está cerrado y ya hiciste ese tipo de trabajo antes: cobrás por el
+            resultado y tu eficiencia es tu ganancia, no la del cliente.
+          </p>
+          <p className="mt-4 text-slate-600">
+            En los dos casos necesitás la tarifa por hora que te dio la calculadora: es la base para
+            cotizar el proyecto (horas estimadas × tarifa + colchón de riesgo) y para saber después
+            si fue rentable. Cómo decidir en cada caso, cómo cotizar un proyecto sin regalar horas y
+            qué pasa con el trabajo que se sale del alcance, en{" "}
+            <Link
+              href="/blog/cobrar-por-hora-o-por-proyecto"
+              className="font-medium text-indigo-600 underline-offset-2 hover:underline"
+            >
+              ¿Cobrar por hora o por proyecto? Cómo decidir y cómo cotizar cada uno
+            </Link>
+            .
           </p>
         </section>
 
@@ -287,7 +418,8 @@ export default function CuantoCobrarPorHoraPage() {
             </Link>
             : cada cliente con su tarifa por hora y su moneda —las mismas 9 de la calculadora—, las
             horas cargadas en una vista semanal, y la factura en PDF generada desde esas horas con
-            un link público para que el cliente vea el detalle. Gratis para empezar, en español.
+            un link público para que el cliente vea el detalle. Gratis para empezar, en español. Y
+            si venís de la calculadora, tu primer cliente ya arranca con la tarifa que te dio.
           </p>
           <div className="mt-6 flex flex-wrap gap-4">
             <Link
@@ -336,6 +468,14 @@ export default function CuantoCobrarPorHoraPage() {
             Seguí leyendo
           </h2>
           <ul className="mt-3 space-y-2 text-sm">
+            <li>
+              <Link
+                href="/blog/cobrar-por-hora-o-por-proyecto"
+                className="font-medium text-indigo-600 underline-offset-2 hover:underline"
+              >
+                ¿Cobrar por hora o por proyecto? Cómo decidir y cómo cotizar cada uno
+              </Link>
+            </li>
             <li>
               <Link
                 href="/blog/control-de-horas-trabajadas"
