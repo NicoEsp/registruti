@@ -46,7 +46,7 @@ export interface AlternativePageProps {
 export default function AlternativePage(props: AlternativePageProps) {
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <SiteHeader wide />
+      <SiteHeader />
 
       <main className="mx-auto max-w-5xl px-4 py-14">
         {/* Hero */}
@@ -239,7 +239,7 @@ export default function AlternativePage(props: AlternativePageProps) {
         </section>
       </main>
 
-      <SiteFooter wide />
+      <SiteFooter />
     </div>
   );
 }

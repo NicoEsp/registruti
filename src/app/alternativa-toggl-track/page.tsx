@@ -158,7 +158,7 @@ export default function AlternativaTogglPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
       />
-      <SiteHeader wide />
+      <SiteHeader />
 
       <main className="mx-auto max-w-5xl px-4 py-14">
         {/* Hero */}
@@ -549,7 +549,7 @@ export default function AlternativaTogglPage() {
         </section>
       </main>
 
-      <SiteFooter wide />
+      <SiteFooter />
     </div>
   );
 }

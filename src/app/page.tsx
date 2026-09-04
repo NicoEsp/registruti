@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Logo from "@/components/Logo";
 import Wordmark from "@/components/Wordmark";
-import MadeByBadge from "@/components/MadeByBadge";
 import LandingAuthRedirect from "@/components/LandingAuthRedirect";
+import SiteHeader from "@/components/marketing/SiteHeader";
+import SiteFooter from "@/components/marketing/SiteFooter";
 import { SITE_AUTHOR, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -228,52 +229,7 @@ export default function LandingPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
       />
 
-      {/* Navbar */}
-      <header className="sticky top-0 z-40 border-b border-slate-100 bg-white/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <Link href="/" className="flex items-center gap-2">
-            <Logo size={30} />
-            <Wordmark className="text-lg text-slate-800" />
-          </Link>
-          <nav className="hidden items-center gap-6 text-sm text-slate-600 md:flex">
-            <a href="#funcionalidades" className="hover:text-slate-900">
-              Funcionalidades
-            </a>
-            <a href="#precios" className="hover:text-slate-900">
-              Precios
-            </a>
-            <a href="#vs-toggl" className="hover:text-slate-900">
-              vs Toggl Track
-            </a>
-            <Link href="/cuanto-cobrar-por-hora" className="hover:text-slate-900">
-              Calculadora
-            </Link>
-            <Link href="/blog" className="hover:text-slate-900">
-              Blog
-            </Link>
-            <a href="#faq" className="hover:text-slate-900">
-              Preguntas
-            </a>
-          </nav>
-          <div className="flex items-center gap-3">
-            <div className="hidden xl:block">
-              <MadeByBadge />
-            </div>
-            <Link
-              href="/login"
-              className="hidden text-sm font-medium text-slate-600 hover:text-slate-900 sm:block"
-            >
-              Iniciar sesión
-            </Link>
-            <Link
-              href="/login"
-              className="rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:from-indigo-700 hover:to-indigo-600"
-            >
-              Empezá gratis
-            </Link>
-          </div>
-        </div>
-      </header>
+      <SiteHeader />
 
       {/* Hero */}
       <section className="relative overflow-hidden">
@@ -682,52 +638,7 @@ export default function LandingPage() {
         </Link>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-100">
-        <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-4 py-10 text-center">
-          <div className="flex items-center gap-2">
-            <Logo size={22} />
-            <Wordmark className="text-slate-800" />
-          </div>
-          <p className="text-sm text-slate-500">
-            Registrá cada hora que trabajás y convertila en factura. Sin vueltas.
-          </p>
-          <nav className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-slate-500">
-            <a href="#funcionalidades" className="hover:text-slate-900">
-              Funcionalidades
-            </a>
-            <a href="#precios" className="hover:text-slate-900">
-              Precios
-            </a>
-            <Link href="/alternativa-toggl-track" className="hover:text-slate-900">
-              Alternativa a Toggl Track
-            </Link>
-            <Link href="/cuanto-cobrar-por-hora" className="hover:text-slate-900">
-              Cuánto cobrar por hora
-            </Link>
-            <a href="#faq" className="hover:text-slate-900">
-              Preguntas
-            </a>
-            <Link href="/blog" className="hover:text-slate-900">
-              Blog
-            </Link>
-            <Link href="/login" className="hover:text-slate-900">
-              Iniciar sesión
-            </Link>
-            <Link href="/terms" className="hover:text-slate-900">
-              Términos
-            </Link>
-            <Link href="/privacy" className="hover:text-slate-900">
-              Privacidad
-            </Link>
-          </nav>
-          <MadeByBadge />
-          <p className="text-xs text-slate-400">
-            © {new Date().getFullYear()} Registruti — Control de horas y facturación para
-            freelancers.
-          </p>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
