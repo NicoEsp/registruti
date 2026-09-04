@@ -10,11 +10,11 @@ import { POSTS } from "@/lib/blog";
 // cambiaron. Google descarta el <lastmod> de los sitios que lo reportan mal, y
 // las URLs quedan dando vueltas en "detectada / pendiente" sin terminar de
 // indexarse. Al editar de verdad una de estas páginas, actualizá su fecha acá.
-const HOME_UPDATED = "2026-09-03";
+const HOME_UPDATED = "2026-09-04";
 const TOGGL_UPDATED = "2026-07-31";
 const CLOCKIFY_UPDATED = "2026-07-31";
 const HARVEST_UPDATED = "2026-07-31";
-const RATE_CALC_UPDATED = "2026-07-31";
+const RATE_CALC_UPDATED = "2026-09-04";
 // Coincide con el "Última actualización" que muestran las páginas legales.
 const LEGAL_UPDATED = "2026-07-02";
 

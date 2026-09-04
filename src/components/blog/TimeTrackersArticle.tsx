@@ -31,7 +31,9 @@ export default function TimeTrackersArticle() {
         <li>
           <strong>Tarifa por cliente, no global.</strong> Un freelancer real cobra distinto a cada
           cliente, a veces en monedas distintas. Si la herramienta solo permite una tarifa única, ya
-          te quedó chica.
+          te quedó chica. Y si todavía no tenés una tarifa definida, arrancá por{" "}
+          <Link href="/cuanto-cobrar-por-hora">calcular cuánto cobrar por hora</Link>: sin ese
+          número, ningún reporte te dice cuánto facturás.
         </li>
         <li>
           <strong>Reportes que respondan “¿cuánto facturo este mes?”</strong> Horas por cliente por

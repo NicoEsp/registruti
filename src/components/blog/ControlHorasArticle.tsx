@@ -42,6 +42,12 @@ export default function ControlHorasArticle() {
           = tu tarifa efectiva real. A veces el cliente “grande” es el que peor paga la hora.
         </li>
       </ul>
+      <p>
+        ¿Todavía no definiste el modelo de cobro? En la guía sobre{" "}
+        <Link href="/blog/cobrar-por-hora-o-por-proyecto">cobrar por hora o por proyecto</Link>{" "}
+        está cuándo conviene cada uno y cómo cotizar un proyecto sin regalar horas. En los dos
+        casos, las horas se registran igual.
+      </p>
 
       <h2 id="metodo">El método: 5 reglas</h2>
 
@@ -202,7 +208,11 @@ export default function ControlHorasArticle() {
       <h2 id="empezar">Empezá hoy: checklist de 10 minutos</h2>
       <ol>
         <li>Elegí la herramienta (planilla o app — decidido en 2 minutos, sin parálisis).</li>
-        <li>Cargá tus clientes con su tarifa por hora y su moneda.</li>
+        <li>
+          Cargá tus clientes con su tarifa por hora y su moneda. Si todavía no tenés tarifa,{" "}
+          <Link href="/cuanto-cobrar-por-hora">calculá cuánto cobrar por hora</Link> antes de
+          cargar el primero: son dos minutos y evita arrancar con un número inventado.
+        </li>
         <li>Registrá lo que hiciste hoy, en bloques de 15 minutos, con verbo + entregable.</li>
         <li>Definí tu ancla diaria (ej.: al cerrar la compu).</li>
         <li>Agendá la revisión semanal de 5 minutos.</li>
