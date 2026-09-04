@@ -1,5 +1,4 @@
-const X_URL = "https://x.com/nicoproducto";
-const LINKEDIN_URL = "https://www.linkedin.com/in/nicolas-espindola/";
+import { SITE_AUTHOR } from "@/lib/site";
 
 function XIcon({ className }: { className?: string }) {
   return (
@@ -34,23 +33,24 @@ export default function MadeByBadge({ variant = "card" }: { variant?: "card" | "
       }
     >
       <span className={`text-slate-500 ${compact ? "text-[11px] leading-tight" : "text-sm"}`}>
-        Un producto por <span className="font-medium text-slate-900">NicoProducto</span>
+        Un producto por{" "}
+        <span className="font-medium text-slate-900">{SITE_AUTHOR.name}</span>
       </span>
       <span className="flex items-center gap-1.5">
         <a
-          href={X_URL}
+          href={SITE_AUTHOR.x}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="NicoProducto en X (Twitter)"
+          aria-label={`${SITE_AUTHOR.name} en X (Twitter)`}
           className="text-slate-500 transition-colors hover:text-slate-900"
         >
           <XIcon className={iconSize} />
         </a>
         <a
-          href={LINKEDIN_URL}
+          href={SITE_AUTHOR.linkedin}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="NicoProducto en LinkedIn"
+          aria-label={`${SITE_AUTHOR.name} en LinkedIn`}
           className="text-slate-500 transition-colors hover:text-slate-900"
         >
           <LinkedInIcon className={iconSize} />

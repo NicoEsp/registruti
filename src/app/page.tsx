@@ -170,7 +170,7 @@ const JSON_LD = {
       name: SITE_NAME,
       url: SITE_URL,
       logo: { "@type": "ImageObject", url: `${SITE_URL}/icon-512.png` },
-      sameAs: ["https://x.com/nicoproducto"],
+      sameAs: SITE_AUTHOR.sameAs,
       founder: {
         "@type": "Person",
         name: SITE_AUTHOR.name,

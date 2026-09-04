@@ -15,14 +15,22 @@ export const SITE_DESCRIPTION =
  */
 export const SITE_OG_IMAGE = "/opengraph-image.jpg";
 
+const AUTHOR_X = "https://x.com/nicoproducto";
+const AUTHOR_LINKEDIN = "https://www.linkedin.com/in/nicolas-espindola/";
+
 /**
- * Quien firma el contenido (landing, blog). Google evalúa E-E-A-T: un post
- * firmado por una persona identificable, con perfiles públicos, pesa más que
- * uno firmado por "la organización". Se usa en el byline visible y en el
- * `author` de los BlogPosting.
+ * Quien firma el contenido: NicoProducto, la marca personal bajo la que salen
+ * todos los productos (es el mismo nombre del badge "Un producto por
+ * NicoProducto"). Google evalúa E-E-A-T: un post firmado por alguien
+ * identificable, con perfiles públicos, pesa más que uno firmado por "la
+ * organización". Se usa en el byline visible, en el `author` de los
+ * BlogPosting, en el `founder` de la Organization y en el badge, así que el
+ * nombre y los perfiles no pueden divergir entre productos ni entre páginas.
  */
 export const SITE_AUTHOR = {
-  name: "Nicolás Espíndola",
-  url: "https://x.com/nicoproducto",
-  sameAs: ["https://x.com/nicoproducto", "https://www.linkedin.com/in/nicolas-espindola/"],
+  name: "NicoProducto",
+  url: AUTHOR_X,
+  x: AUTHOR_X,
+  linkedin: AUTHOR_LINKEDIN,
+  sameAs: [AUTHOR_X, AUTHOR_LINKEDIN],
 };
