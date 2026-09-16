@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import InvoiceDocument from "@/components/InvoiceDocument";
 import InvoiceActions from "@/components/InvoiceActions";
 import { supabase } from "@/lib/supabase";
+import { capture } from "@/lib/analytics";
 import type { PublicInvoice } from "@/lib/types";
 import { invoiceStatusLabel, invoiceStatusStyle } from "@/lib/invoiceStatus";
 
@@ -24,6 +25,14 @@ export default function PublicInvoicePage() {
         setLoading(false);
       });
   }, [token]);
+
+  // Quien abre el enlace es el cliente del usuario, no el usuario: es la única
+  // vez que Registruti se muestra a alguien que no se registró. Sin nombres ni
+  // montos, igual que el resto de los eventos.
+  useEffect(() => {
+    if (!data) return;
+    capture("invoice_viewed", { status: data.invoice.status, currency: data.invoice.currency });
+  }, [data]);
 
   if (loading) {
     return (
