@@ -66,7 +66,9 @@ export default function Onboarding() {
     // temprana. Es la diferencia entre "el onboarding es largo" y "no engancha".
     capture("onboarding_completed", {
       last_step: step,
-      created_client: changed,
+      // Al paso 3 solo se llega con el insert del cliente hecho. `changed`
+      // no sirve acá: también lo prende guardar los datos de facturación.
+      created_client: step === 3,
       // Si la tarifa vino de /cuanto-cobrar-por-hora. Es lo que dice si la
       // calculadora trae gente que se queda o solo visitas.
       rate_from_calculator: rateFromCalculator,
