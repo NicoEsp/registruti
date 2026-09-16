@@ -64,7 +64,13 @@ export default function Onboarding() {
   function finish() {
     // `step` dice hasta dónde llegó: 3 es el wizard completo, menos es salida
     // temprana. Es la diferencia entre "el onboarding es largo" y "no engancha".
-    capture("onboarding_completed", { last_step: step, created_client: changed });
+    capture("onboarding_completed", {
+      last_step: step,
+      created_client: changed,
+      // Si la tarifa vino de /cuanto-cobrar-por-hora. Es lo que dice si la
+      // calculadora trae gente que se queda o solo visitas.
+      rate_from_calculator: rateFromCalculator,
+    });
     if (typeof window !== "undefined") localStorage.setItem(ONBOARDED_KEY, "1");
     setShow(false);
     if (changed) window.location.reload();
@@ -113,6 +119,11 @@ export default function Onboarding() {
       setNote(error.message);
       return;
     }
+    capture("client_created", {
+      source: "onboarding",
+      currency,
+      has_rate: Number(rate) > 0,
+    });
     setChanged(true);
     setStep(3);
   }

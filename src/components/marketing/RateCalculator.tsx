@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { saveCalculatedRate } from "@/lib/calculatedRate";
+import { capture } from "@/lib/analytics";
 
 /**
  * Calculadora de tarifa por hora freelance.
@@ -291,7 +292,13 @@ export default function RateCalculator() {
               dato fresco: nos la llevamos al producto con la tarifa puesta. */}
           <Link
             href="/login"
-            onClick={() => saveCalculatedRate(roundedRate, selected.code)}
+            onClick={() => {
+              saveCalculatedRate(roundedRate, selected.code);
+              // Sin propiedades a propósito: la página promete que lo que se
+              // carga en la calculadora no sale del navegador. El clic solo
+              // mide cuántos pasan de la calculadora al registro.
+              capture("calculator_cta_clicked");
+            }}
             className="mt-6 block rounded-xl bg-white px-5 py-3 text-center text-sm font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-50"
           >
             Empezá a cobrar {money(result.targetRate)} la hora

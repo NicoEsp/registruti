@@ -53,6 +53,9 @@ export const ANALYTICS_ENABLED = POSTHOG_KEY.length > 0;
  * - `invoice_created` — se generó una factura (el momento de valor real).
  * - `paywall_shown` — se topó un límite del plan gratis y se abrió el modal.
  * - `checkout_clicked` — clic en "Desbloquear lifetime access" (salida a LemonSqueezy).
+ * - `calculator_cta_clicked` — clic en el CTA de la calculadora pública (salida a /login).
+ * - `client_created` — se creó un cliente, desde el wizard o desde Clientes.
+ * - `invoice_viewed` — alguien abrió el enlace público de una factura.
  */
 export type AnalyticsEvent =
   | "signed_up"
@@ -60,7 +63,10 @@ export type AnalyticsEvent =
   | "time_entry_created"
   | "invoice_created"
   | "paywall_shown"
-  | "checkout_clicked";
+  | "checkout_clicked"
+  | "calculator_cta_clicked"
+  | "client_created"
+  | "invoice_viewed";
 
 type Props = Record<string, unknown>;
 

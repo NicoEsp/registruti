@@ -217,11 +217,14 @@ no está en esa unión, no compila.
 | Evento | Dónde | Propiedades |
 | --- | --- | --- |
 | `signed_up` | vuelta del OAuth (`/auth/callback` y la landing) | — |
-| `onboarding_completed` | fin del wizard, salteado o no | `last_step`, `created_client` |
+| `onboarding_completed` | fin del wizard, salteado o no | `last_step`, `created_client`, `rate_from_calculator` |
 | `time_entry_created` | tracker, registro rápido y repetir entrada | `source`, `duration_minutes`, `billable` |
 | `invoice_created` | alta de factura | `currency`, `total_minutes`, `entries` |
 | `paywall_shown` | se abre `UpgradeModal` | `reason` (`clients` / `invoices` / `general`) |
 | `checkout_clicked` | clic en "Desbloquear lifetime access" | `reason` |
+| `calculator_cta_clicked` | CTA de `/cuanto-cobrar-por-hora` (salida a `/login`) | — (a propósito: la página promete que lo calculado no sale del navegador) |
+| `client_created` | wizard de bienvenida y alta en Clientes | `source` (`onboarding` / `clients`), `currency`, `has_rate` |
+| `invoice_viewed` | enlace público `/i/[token]`, lo abre el cliente del usuario | `status`, `currency` |
 
 Más `$pageview` por navegación (a mano: con el App Router el automático solo
 contaría la primera vista) y autocapture de clics en links y botones.
@@ -229,6 +232,22 @@ contaría la primera vista) y autocapture de clics en links y botones.
 Las horas se pueden cargar también por el servidor MCP, y eso **no** genera
 eventos: `log_time` corre server-side y `posthog-js` es del browser. Si el uso
 por MCP crece, hay que sumar `posthog-node` en `src/lib/mcp/tools.ts`.
+
+### Links con UTM
+
+`posthog-js` lee los `utm_*` de la URL solo: quedan en cada evento y, como
+`$initial_utm_source`, en la persona. Sin ellos, Instagram, X y
+nicoproducto.work aparecen como referrers sueltos, y un link pegado en
+WhatsApp directamente como `$direct`. Convención para lo que se comparte a
+mano (no hay que tocar la app: el parámetro no afecta el canonical ni el
+prerender):
+
+| Dónde | Link |
+| --- | --- |
+| Bio de Instagram | `https://registruti.app/?utm_source=instagram&utm_medium=social&utm_campaign=bio` |
+| Posts y stories | `…?utm_source=instagram&utm_medium=social&utm_campaign=<nombre-del-post>` |
+| X / Twitter | `…?utm_source=x&utm_medium=social` |
+| nicoproducto.work | `…?utm_source=nicoproducto&utm_medium=referral` |
 
 ### Decisiones que conviene no deshacer sin pensarlo
 

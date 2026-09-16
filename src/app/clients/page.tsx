@@ -12,6 +12,7 @@ import { fetchProfile } from "@/lib/profile";
 import { FREE_CLIENT_LIMIT, fetchIsPro, isClientLimitError } from "@/lib/plan";
 import { CLIENT_COLORS, CURRENCIES, type Client } from "@/lib/types";
 import { formatDuration, formatMoney } from "@/lib/format";
+import { capture } from "@/lib/analytics";
 
 export default function ClientsPage() {
   return (
@@ -384,7 +385,17 @@ function ClientFormModal({
       // en vez de mostrar el error crudo.
       if (isClientLimitError(err.message)) onLimit();
       else setError(err.message);
-    } else onSaved();
+      return;
+    }
+    // Solo el alta: editar un cliente no es activación.
+    if (!client) {
+      capture("client_created", {
+        source: "clients",
+        currency,
+        has_rate: payload.hourly_rate > 0,
+      });
+    }
+    onSaved();
   }
 
   return (
