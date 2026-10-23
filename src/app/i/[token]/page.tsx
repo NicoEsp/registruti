@@ -21,7 +21,7 @@ export default function PublicInvoicePage() {
       .rpc("get_public_invoice", { p_token: token })
       .then(({ data: result, error: err }) => {
         if (err) setError(err.message);
-        else if (!result) setError("Factura no encontrada");
+        else if (!result) setError("Invoice no encontrado");
         else setData(result as PublicInvoice);
         setLoading(false);
       });
@@ -47,14 +47,14 @@ export default function PublicInvoicePage() {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
         <p className="rounded-lg bg-red-50 px-6 py-4 text-sm text-red-700">
-          {error ?? "Factura no encontrada"}
+          {error ?? "Invoice no encontrado"}
         </p>
       </div>
     );
   }
 
   // El RPC trae el perfil del emisor a partir de la migración 20261023000010;
-  // antes de aplicarla la clave no viene y la factura sale sin "De:", como
+  // antes de aplicarla la clave no viene y el invoice sale sin "De:", como
   // hasta ahora.
   const issuer = issuerFromProfile(data.issuer);
 

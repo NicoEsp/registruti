@@ -10,9 +10,9 @@ import {
 } from "@/lib/sampleInvoice";
 
 /**
- * La factura de muestra tal como la vería el cliente, con el PDF descargable:
+ * El invoice de muestra tal como lo vería el cliente, con el PDF descargable:
  * ver el documento real es lo que le permite a alguien que viene de Toggl (o
- * de armar la factura a mano) decidir si esto le sirve.
+ * de armar el invoice a mano) decidir si esto le sirve.
  */
 export default function SampleInvoicePreview() {
   return (

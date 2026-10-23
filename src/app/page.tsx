@@ -32,15 +32,15 @@ const FEATURES = [
   },
   {
     icon: "🧾",
-    title: "Facturas que se arman solas",
+    title: "Invoices que se arman solos",
     description:
-      "Elegí cliente y período, y la factura se genera desde tus horas trackeadas: numeración automática, estados (borrador, enviada, pagada) y exportación a PDF lista para imprimir o mandar.",
+      "Elegí cliente y período, y el invoice se genera desde tus horas trackeadas: numeración automática, estados (borrador, enviado, pagado) y exportación a PDF lista para imprimir o mandar.",
   },
   {
     icon: "🔗",
     title: "Un link y tu cliente ve todo",
     description:
-      "Cada factura tiene un link público con el detalle de horas y montos. Tu cliente lo abre sin crear cuenta: trazabilidad total, cero idas y vueltas por mail.",
+      "Cada invoice tiene un link público con el detalle de horas y montos. Tu cliente lo abre sin crear cuenta: trazabilidad total, cero idas y vueltas por mail.",
   },
   {
     icon: "🇦🇷",
@@ -116,7 +116,7 @@ const STEPS = [
   {
     title: "Facturá en un clic",
     description:
-      "Generá la factura del período con numeración automática, exportala a PDF y compartile a tu cliente el link público con todo el detalle.",
+      "Generá el invoice del período con numeración automática, exportalo a PDF y compartile a tu cliente el link público con todo el detalle.",
   },
 ];
 
@@ -129,7 +129,7 @@ const FAQS: { q: string; a: string; link?: { href: string; label: string } }[] =
   },
   {
     q: "¿Cuánto cuesta Registruti?",
-    a: "El plan gratis no vence nunca e incluye todas las funcionalidades —tracker, reportes, facturas en PDF con link público y conexión MCP— con un tope de 3 clientes activos y 4 facturas. Si necesitás más, el lifetime access desbloquea clientes y facturas ilimitados con un único pago de por vida: no hay suscripción mensual ni anual.",
+    a: "El plan gratis no vence nunca e incluye todas las funcionalidades —tracker, reportes, invoices en PDF con link público y conexión MCP— con un tope de 3 clientes activos y 4 invoices. Si necesitás más, el lifetime access desbloquea clientes e invoices ilimitados con un único pago de por vida: no hay suscripción mensual ni anual.",
   },
   {
     q: "¿Cómo llevo el control de horas como freelancer?",
@@ -150,13 +150,13 @@ const FAQS: { q: string; a: string; link?: { href: string; label: string } }[] =
   },
   {
     q: "¿Cómo genero la factura desde mis horas trackeadas?",
-    a: "Elegís el cliente y el período, y Registruti arma la factura automáticamente con todas las horas registradas, la tarifa del cliente y la numeración correlativa. Después la gestionás por estados (borrador, enviada, pagada) y la exportás a PDF para imprimir o enviar.",
-    link: { href: "/factura-de-ejemplo", label: "Ver una factura de ejemplo" },
+    a: "Elegís el cliente y el período, y Registruti arma el invoice automáticamente con todas las horas registradas, la tarifa del cliente y la numeración correlativa. Después lo gestionás por estados (borrador, enviado, pagado) y lo exportás a PDF para imprimir o enviar.",
+    link: { href: "/invoice-de-ejemplo", label: "Ver un invoice de ejemplo" },
   },
   {
-    q: "¿La factura de Registruti tiene validez fiscal?",
-    a: "No. Es un documento comercial, lo que en inglés se llama invoice: el detalle de horas, la tarifa y el monto a cobrar, con tus datos de pago, para que tu cliente lo revise y apruebe. No reemplaza la factura electrónica de ARCA (ex AFIP), DGI, SII, SAT o el organismo de tu país, que la seguís emitiendo como siempre. Lo habitual es usar las dos: la de Registruti para justificar el monto, la fiscal para cobrarlo.",
-    link: { href: "/factura-de-ejemplo", label: "Ver cómo queda" },
+    q: "¿El invoice de Registruti es una factura con validez fiscal?",
+    a: "No, y por eso en la app lo llamamos invoice y no factura. Es un documento comercial: el detalle de horas, la tarifa y el monto a cobrar, con tus datos de pago, para que tu cliente lo revise y apruebe. No reemplaza la factura electrónica de ARCA (ex AFIP), DGI, SII, SAT o el organismo de tu país, que la seguís emitiendo como siempre. Lo habitual es usar los dos: el invoice para justificar el monto, la factura fiscal para cobrarlo.",
+    link: { href: "/invoice-de-ejemplo", label: "Ver cómo queda" },
   },
   {
     q: "¿Puedo cargar horas hablándole a Claude u otro asistente de IA?",
@@ -277,7 +277,7 @@ export default function LandingPage() {
           </div>
 
           {/* Mock del producto */}
-          {/* El mock es decorativo (aria-hidden), pero el link a la factura
+          {/* El mock es decorativo (aria-hidden), pero el link al invoice
               de ejemplo de abajo es real: el aria-hidden va por partes, para
               no esconder un elemento enfocable. */}
           <div className="relative">
@@ -335,14 +335,14 @@ export default function LandingPage() {
                 ))}
               </div>
               </div>
-              {/* La factura es lo que diferencia a Registruti de un tracker:
-                  se puede ver entera (y bajar el PDF) antes de registrarse. */}
+              {/* El invoice es lo que diferencia a Registruti de un tracker:
+                  se puede ver entero (y bajar el PDF) antes de registrarse. */}
               <Link
-                href="/factura-de-ejemplo"
+                href="/invoice-de-ejemplo"
                 className="mt-4 flex items-center justify-between rounded-lg bg-gradient-to-r from-indigo-50 to-violet-50 px-3 py-2.5 transition hover:from-indigo-100 hover:to-violet-100"
               >
                 <span className="text-xs font-medium text-indigo-800">
-                  Factura INV-0007 · Estudio Galley
+                  Invoice INV-0007 · Estudio Galley
                 </span>
                 <span className="rounded bg-white px-2 py-0.5 text-[10px] font-semibold text-indigo-700 shadow-sm">
                   Ver ejemplo →
@@ -490,11 +490,11 @@ export default function LandingPage() {
             <p className="text-sm text-slate-500">para siempre, sin tarjeta</p>
             <ul className="mt-5 space-y-2.5 text-sm text-slate-600">
               {[
-                "Hasta 3 clientes activos y 4 facturas",
+                "Hasta 3 clientes activos y 4 invoices",
                 "Tracker semanal en bloques de 15 minutos",
                 "Tarifa y moneda por cliente (9 monedas)",
                 "Reportes de horas y montos + export CSV",
-                "Facturas en PDF con link público",
+                "Invoices en PDF con link público",
                 "Conexión MCP (Claude, Cursor)",
               ].map((item) => (
                 <li key={item} className="flex gap-2">
@@ -523,7 +523,7 @@ export default function LandingPage() {
               {[
                 "Todo lo del plan gratis",
                 "Clientes activos ilimitados",
-                "Facturas ilimitadas",
+                "Invoices ilimitados",
                 "Todas las funcionalidades futuras",
                 "Sin mensualidad, sin renovaciones",
               ].map((item) => (

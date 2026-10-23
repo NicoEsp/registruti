@@ -23,7 +23,7 @@ const INPUT_CLASS =
  * cliente de paso) y listo. La versión anterior pedía país, razón social y
  * CUIT antes del primer proyecto, y el proyecto antes de la primera hora: 3
  * de 5 registros se fueron en ese paso. Los datos de facturación ahora se
- * piden recién al armar la primera factura (NewInvoiceModal). Todo es
+ * piden recién al armar el primer invoice (NewInvoiceModal). Todo es
  * salteable.
  */
 export default function Onboarding() {
@@ -168,7 +168,7 @@ export default function Onboarding() {
             <h2 className="text-xl font-semibold tracking-tight">Bienvenido/a a Registruti 👋</h2>
             <p className="mt-2 text-sm text-slate-600">
               Registruti te muestra <strong>cuánto tiempo le dedicás a cada cliente</strong> y, si
-              querés, convierte esas horas en una factura lista para enviar.
+              querés, convierte esas horas en un invoice listo para enviar.
             </p>
             <p className="mt-2 text-sm text-slate-600">
               Lo único que hace falta para empezar es cargar tu primera hora. Lleva menos de un
@@ -305,7 +305,7 @@ export default function Onboarding() {
             </p>
             <ul className="mt-3 space-y-1.5 text-sm text-slate-600">
               <li>· Repetilo cada día: con la tecla T lo cargás desde cualquier pantalla.</li>
-              <li>· Cuando quieras cobrar esas horas, armás la factura en Facturas. Tus datos de
+              <li>· Cuando quieras cobrar esas horas, armás el invoice en Invoices. Tus datos de
                 emisor te los pedimos recién ahí.</li>
             </ul>
             <div className="mt-6 flex justify-end">

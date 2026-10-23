@@ -58,8 +58,8 @@ function formatAmount(amount: number): string {
 }
 
 /**
- * Construye el PDF de la factura replicando el layout de la factura de referencia:
- * título "Factura", metadatos, "Facturado a", tabla DESCRIPCIÓN/CANTIDAD/IMPORTE
+ * Construye el PDF del invoice replicando el layout de la factura de referencia:
+ * título "Invoice", metadatos, "Facturado a", tabla DESCRIPCIÓN/CANTIDAD/IMPORTE
  * con el detalle de lo trabajado, y SUBTOTAL + TOTAL.
  */
 export function buildInvoicePdf({
@@ -84,12 +84,12 @@ export function buildInvoicePdf({
 
   doc.setFontSize(30);
   doc.setTextColor(...NAVY);
-  doc.text("Factura", marginX, y + 4);
+  doc.text("Invoice", marginX, y + 4);
   y += 16;
 
   // Metadatos (labels en negrita + valores)
   const meta: [string, string][] = [
-    ["N° de factura:", invoice.invoice_number],
+    ["N° de invoice:", invoice.invoice_number],
     ["Fecha de emisión:", formatDashDate(invoice.issue_date)],
   ];
   if (invoice.due_date) meta.push(["Vencimiento:", formatDashDate(invoice.due_date)]);
@@ -274,9 +274,9 @@ export function buildInvoicePdf({
     doc.text(paymentLines, marginX, ty);
   }
 
-  // Pie. La aclaración fiscal va en el documento porque "factura" acá, en
-  // Argentina y en el resto de la región, es un comprobante de ARCA/DGI/SII:
-  // sin ella, el que la recibe (o el que la emite) puede creer que lo es.
+  // Pie. El documento se llama Invoice justamente porque "factura", en
+  // Argentina y en el resto de la región, es un comprobante de ARCA/DGI/SII.
+  // La aclaración va igual: quien lo recibe puede no conocer la diferencia.
   const footerY = pageHeight - 12;
   doc.setFont("helvetica", "italic");
   doc.setFontSize(9);
@@ -293,7 +293,7 @@ export function buildInvoicePdf({
   return doc;
 }
 
-/** Genera y descarga el PDF de la factura. */
+/** Genera y descarga el PDF del invoice. */
 export function downloadInvoicePdf(data: InvoicePdfData): void {
   const doc = buildInvoicePdf(data);
   doc.save(`${data.invoice.invoice_number}.pdf`);

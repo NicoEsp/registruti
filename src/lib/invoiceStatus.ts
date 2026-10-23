@@ -3,8 +3,8 @@ import { toISODate } from "./format";
 
 export const STATUS_LABELS: Record<InvoiceStatus, string> = {
   draft: "Borrador",
-  sent: "Enviada",
-  paid: "Pagada",
+  sent: "Enviado",
+  paid: "Pagado",
 };
 
 export const STATUS_STYLES: Record<InvoiceStatus, string> = {
@@ -16,8 +16,8 @@ export const STATUS_STYLES: Record<InvoiceStatus, string> = {
 type StatusFields = Pick<Invoice, "status" | "due_date">;
 
 /**
- * "Vencida" es un estado derivado, no persistido: una factura enviada cuyo
- * vencimiento ya pasó. Al marcarla pagada deja de estarlo sola.
+ * "Vencido" es un estado derivado, no persistido: un invoice enviado cuyo
+ * vencimiento ya pasó. Al marcarlo pagado deja de estarlo solo.
  */
 export function isInvoiceOverdue(invoice: StatusFields): boolean {
   return (
@@ -26,7 +26,7 @@ export function isInvoiceOverdue(invoice: StatusFields): boolean {
 }
 
 export function invoiceStatusLabel(invoice: StatusFields): string {
-  return isInvoiceOverdue(invoice) ? "Vencida" : STATUS_LABELS[invoice.status];
+  return isInvoiceOverdue(invoice) ? "Vencido" : STATUS_LABELS[invoice.status];
 }
 
 export function invoiceStatusStyle(invoice: StatusFields): string {

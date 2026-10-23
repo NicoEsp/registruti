@@ -103,7 +103,7 @@ function Invoices() {
     fetchIsPro().then(setPro);
   }, []);
 
-  // Plan gratis: hasta FREE_INVOICE_LIMIT facturas en total.
+  // Plan gratis: hasta FREE_INVOICE_LIMIT invoices en total.
   const atInvoiceLimit = !pro && invoices.length >= FREE_INVOICE_LIMIT;
   const openNew = useCallback(() => {
     if (atInvoiceLimit) setShowUpgrade(true);
@@ -132,7 +132,7 @@ function Invoices() {
   async function handleDownloadPdf(inv: Invoice) {
     const client = clientById.get(inv.client_id);
     if (!client) {
-      setError("No se encontró el cliente de la factura.");
+      setError("No se encontró el cliente del invoice.");
       return;
     }
     setPdfBusyId(inv.id);
@@ -166,7 +166,7 @@ function Invoices() {
   return (
     <div className="mx-auto max-w-4xl">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Facturas</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Invoices</h1>
         <div className="flex items-center gap-3">
           {!pro && (
             <span className="hidden text-xs text-slate-400 sm:inline">
@@ -177,7 +177,7 @@ function Invoices() {
             onClick={openNew}
             className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
           >
-            + Nueva factura
+            + Nuevo invoice
           </button>
         </div>
       </div>
@@ -211,7 +211,7 @@ function Invoices() {
             }}
             className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
           >
-            Armar factura
+            Armar invoice
           </button>
         </div>
       )}
@@ -219,11 +219,11 @@ function Invoices() {
       {loading ? (
         <p className="text-sm text-slate-400">Cargando…</p>
       ) : invoices.length === 0 ? (
-        // Sin facturas todavía: en vez de un hueco, la factura de muestra. Es
+        // Sin invoices todavía: en vez de un hueco, el invoice de muestra. Es
         // lo que la persona vino a ver y lo último que llegaba a ver.
         <div>
           <p className="py-6 text-center text-sm text-slate-400">
-            Todavía no generaste facturas. La primera sale de tus horas cargadas, y queda así:
+            Todavía no generaste invoices. El primero sale de tus horas cargadas, y queda así:
           </p>
           <SampleInvoicePreview />
         </div>
@@ -515,7 +515,7 @@ function NewInvoiceModal({
       // El límite del plan gratis lo aplica un trigger de la base: si saltó,
       // abrimos el paywall en vez de mostrar el error crudo.
       if (isInvoiceLimitError(invErr?.message)) onLimit();
-      else setError(invErr?.message ?? "No se pudo crear la factura");
+      else setError(invErr?.message ?? "No se pudo crear el invoice");
       return;
     }
     const { error: updErr } = await supabase
@@ -545,10 +545,10 @@ function NewInvoiceModal({
   }
 
   return (
-    <Modal title="Nueva factura" onClose={onClose}>
+    <Modal title="Nuevo invoice" onClose={onClose}>
       <div className="space-y-3">
-        {/* "Factura" acá es un invoice, no un comprobante de ARCA/DGI/SII. Se
-            dice en el momento de armarla, que es cuando aparece la duda. */}
+        {/* Un invoice no es un comprobante de ARCA/DGI/SII. Se dice en el
+            momento de armarlo, que es cuando aparece la duda. */}
         <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs leading-relaxed text-slate-500">
           Es un documento comercial con el detalle de horas y el monto a cobrar: no tiene validez
           fiscal. Tu factura electrónica la seguís emitiendo como siempre.
@@ -556,7 +556,7 @@ function NewInvoiceModal({
 
         {noClients && (
           <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
-            Todavía no tenés horas cargadas, y la factura sale de las horas. Cargá la primera en
+            Todavía no tenés horas cargadas, y el invoice sale de las horas. Cargá la primera en
             el{" "}
             <Link href="/tracker" onClick={onClose} className="font-medium underline">
               Tracker
@@ -612,13 +612,13 @@ function NewInvoiceModal({
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
           />
           <p className="mt-1 text-xs text-slate-400">
-            Pasada esta fecha, la factura enviada se marca como vencida.
+            Pasada esta fecha, el invoice enviado se marca como vencido.
           </p>
         </div>
 
         {askIssuer && (
           <div className="space-y-2 rounded-lg border border-slate-200 p-3">
-            <p className="text-sm font-medium text-slate-700">Tus datos en la factura</p>
+            <p className="text-sm font-medium text-slate-700">Tus datos en el invoice</p>
             <p className="text-xs text-slate-500">
               Opcional. Aparecen como “De:” en el PDF y quedan guardados en Ajustes para las
               próximas.
@@ -698,7 +698,7 @@ function NewInvoiceModal({
             disabled={busy || !client || !preview || preview.length === 0}
             className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
           >
-            {busy ? "Creando…" : "Crear factura"}
+            {busy ? "Creando…" : "Crear invoice"}
           </button>
         </div>
       </div>

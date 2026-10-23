@@ -122,7 +122,7 @@ function Settings() {
       <h1 className="mb-1 text-2xl font-semibold tracking-tight">Ajustes</h1>
       <p className="mb-6 text-sm text-slate-500">
         Datos del emisor que aparecen como <span className="font-medium">“De:”</span> en tus
-        facturas, y cómo querés cobrarlas.
+        invoices, y cómo querés cobrarlos.
       </p>
 
       {error && (
@@ -209,7 +209,7 @@ function Settings() {
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
             />
             <p className="mt-1 text-xs text-slate-400">
-              Van al pie de cada factura (PDF y link público): alias o CBU, PayPal, Wise,
+              Van al pie de cada invoice (PDF y link público): alias o CBU, PayPal, Wise,
               Payoneer, cripto… lo que uses para cobrar. Una línea por medio.
             </p>
           </div>
@@ -255,7 +255,7 @@ function PlanSection() {
               ★ Lifetime access
             </span>
             <p className="text-sm text-slate-500">
-              Tenés clientes y facturas ilimitados. Gracias por bancar el proyecto.
+              Tenés clientes e invoices ilimitados. Gracias por bancar el proyecto.
             </p>
           </div>
         ) : (
@@ -271,7 +271,7 @@ function PlanSection() {
                 <span className="font-medium text-slate-700">
                   {status.invoices}/{FREE_INVOICE_LIMIT}
                 </span>{" "}
-                facturas.
+                invoices.
               </p>
             </div>
             <button

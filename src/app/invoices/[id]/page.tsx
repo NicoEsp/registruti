@@ -44,7 +44,7 @@ function InvoiceDetail() {
       .eq("id", id)
       .single();
     if (invErr || !inv) {
-      setError(invErr?.message ?? "Factura no encontrada");
+      setError(invErr?.message ?? "Invoice no encontrado");
       setLoading(false);
       return;
     }
@@ -114,7 +114,7 @@ function InvoiceDetail() {
     return (
       <div className="mx-auto max-w-3xl">
         <p className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">
-          {error ?? "Factura no encontrada"}
+          {error ?? "Invoice no encontrado"}
         </p>
       </div>
     );
@@ -123,7 +123,7 @@ function InvoiceDetail() {
     <div className="mx-auto max-w-3xl">
       <div className="no-print mb-6 flex flex-wrap items-center gap-3">
         <Link href="/invoices" className="text-sm text-slate-500 hover:text-slate-800">
-          ← Facturas
+          ← Invoices
         </Link>
         <span
           className={`rounded px-2 py-0.5 text-xs font-medium ${invoiceStatusStyle(invoice)}`}
@@ -136,7 +136,7 @@ function InvoiceDetail() {
               onClick={() => updateStatus("sent")}
               className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50"
             >
-              Marcar enviada
+              Marcar enviado
             </button>
           )}
           {invoice.status === "sent" && (
@@ -144,7 +144,7 @@ function InvoiceDetail() {
               onClick={() => updateStatus("paid")}
               className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm text-emerald-700 hover:bg-emerald-100"
             >
-              Marcar pagada
+              Marcar pagado
             </button>
           )}
           <button
@@ -188,8 +188,8 @@ function InvoiceDetail() {
 
       {confirmingDelete && (
         <ConfirmDialog
-          title="Eliminar factura"
-          message={`Se va a eliminar la factura ${invoice.invoice_number}. Las horas asociadas vuelven a quedar disponibles para facturar.`}
+          title="Eliminar invoice"
+          message={`Se va a eliminar el invoice ${invoice.invoice_number}. Las horas asociadas vuelven a quedar disponibles para facturar.`}
           confirmLabel="Eliminar"
           danger
           onConfirm={handleDelete}

@@ -26,7 +26,7 @@ export function showToast(message: string): void {
   window.dispatchEvent(new CustomEvent<string>(TOAST_EVENT, { detail: message }));
 }
 
-/** Abre el modal de nueva factura: dispara el evento si ya estamos en /invoices, si no navega. */
+/** Abre el modal de nuevo invoice: dispara el evento si ya estamos en /invoices, si no navega. */
 export function openNewInvoice(pathname: string, push: (href: string) => void): void {
   if (pathname === "/invoices") window.dispatchEvent(new CustomEvent(NEW_INVOICE_EVENT));
   else push(`/invoices?${NEW_INVOICE_PARAM}=1`);

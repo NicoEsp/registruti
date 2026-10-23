@@ -2,10 +2,10 @@ import type { Invoice, TimeEntry } from "@/lib/types";
 import type { InvoiceIssuer } from "@/lib/invoiceIssuer";
 
 /**
- * Factura de muestra. Se ve en la vista vacía de Facturas y en la página
- * pública /factura-de-ejemplo: la factura es lo que diferencia a Registruti
+ * Invoice de muestra. Se ve en la vista vacía de Invoices y en la página
+ * pública /invoice-de-ejemplo: el invoice es lo que diferencia a Registruti
  * de un tracker, y era lo último que un usuario nuevo llegaba a ver (había
- * que registrarse, crear un cliente, cargar horas y recién ahí generarla).
+ * que registrarse, crear un cliente, cargar horas y recién ahí generarlo).
  *
  * Fechas fijas a propósito: lo que importa es la forma del documento, no que
  * parezca de hoy. El cliente y el número son los mismos del mock de la landing.

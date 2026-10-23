@@ -52,16 +52,16 @@ export const ANALYTICS_ENABLED = POSTHOG_KEY.length > 0;
  * - `time_entry_created` — se registró tiempo (activación). `source` dice desde
  *   dónde: tracker, registro rápido, repetir, wizard o MCP (ese último sale del
  *   servidor, ver analyticsServer.ts).
- * - `invoice_created` — se generó una factura (el momento de valor real).
- * - `invoice_blocked` — se abrió "Nueva factura" y no había nada para facturar
+ * - `invoice_created` — se generó un invoice (el momento de valor real).
+ * - `invoice_blocked` — se abrió "Nuevo invoice" y no había nada para facturar
  *   (`reason`: sin clientes, o sin horas facturables en el período). Es la
- *   gente que llega a la factura antes que a las horas.
+ *   gente que llega al invoice antes que a las horas.
  * - `paywall_shown` — se topó un límite del plan gratis y se abrió el modal.
  * - `checkout_clicked` — clic en "Desbloquear lifetime access" (salida a LemonSqueezy).
  * - `calculator_cta_clicked` — clic en el CTA de la calculadora pública (salida a /login).
  * - `client_created` — se creó un cliente: desde el wizard, desde Clientes o
  *   al vuelo desde el tracker / registro rápido.
- * - `invoice_viewed` — alguien abrió el enlace público de una factura.
+ * - `invoice_viewed` — alguien abrió el enlace público de un invoice.
  */
 export type AnalyticsEvent =
   | "signed_up"

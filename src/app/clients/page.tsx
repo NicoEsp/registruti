@@ -339,7 +339,7 @@ function Clients() {
             (totals.get(deleting.id) ?? 0) > 0
               ? `"${deleting.name}" tiene ${formatDuration(
                   totals.get(deleting.id) ?? 0
-                )} horas trackeadas. Se eliminan también sus entradas y facturas.`
+                )} horas trackeadas. Se eliminan también sus entradas e invoices.`
               : `Se va a eliminar a "${deleting.name}".`
           }
           confirmLabel="Eliminar"

@@ -1,12 +1,12 @@
 import type { Profile } from "@/lib/types";
 
-/** Datos del emisor (el usuario) que van en la factura: el "De:" y cómo cobrar. */
+/** Datos del emisor (el usuario) que van en el invoice: el "De:" y cómo cobrar. */
 export interface InvoiceIssuer {
   businessName?: string | null;
   taxId?: string | null;
   email?: string | null;
   address?: string | null;
-  /** Alias/CBU, PayPal, Wise, cripto… texto libre, al pie de la factura. */
+  /** Alias/CBU, PayPal, Wise, cripto… texto libre, al pie del invoice. */
   paymentDetails?: string | null;
 }
 
@@ -17,7 +17,7 @@ export function hasIssuerData(issuer?: InvoiceIssuer | null): issuer is InvoiceI
 
 /**
  * Del perfil (snake_case, tal como sale de la base o del RPC del link público)
- * al emisor de la factura. Null si no hay perfil.
+ * al emisor del invoice. Null si no hay perfil.
  */
 export function issuerFromProfile(
   profile:

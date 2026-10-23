@@ -30,7 +30,7 @@ export default function InvoiceDocument({
     <div className="print-page rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
       <div className="mb-8 flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Factura</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Invoice</h1>
           <p className="mt-1 font-mono text-sm text-slate-500">{invoice.invoice_number}</p>
         </div>
         <div className="text-right text-sm text-slate-500">
@@ -131,7 +131,7 @@ export default function InvoiceDocument({
         </div>
       )}
 
-      {/* Acá "factura" no es un comprobante de ARCA/DGI/SII: conviene que lo
+      {/* Un invoice no es un comprobante de ARCA/DGI/SII: conviene que lo
           diga el propio documento, para quien lo emite y para quien lo recibe. */}
       <p className="mt-8 text-[11px] text-slate-400">
         Detalle de horas y monto a cobrar. No es un comprobante fiscal.

@@ -56,7 +56,7 @@ export default function CommandPalette({
       },
       {
         id: "new-invoice",
-        label: "Nueva factura",
+        label: "Nuevo invoice",
         section: "Acciones",
         keywords: "nueva factura crear generar invoice facturar",
         kbd: "F",
@@ -78,7 +78,7 @@ export default function CommandPalette({
       { id: "go-tracker", label: "Tracker", section: "Ir a", keywords: "tracker horas semana tiempo", run: go("/tracker") },
       { id: "go-clients", label: "Clientes", section: "Ir a", keywords: "clientes proyectos tarifas", run: go("/clients") },
       { id: "go-reports", label: "Reportes", section: "Ir a", keywords: "reportes graficos resumen montos", run: go("/reports") },
-      { id: "go-invoices", label: "Facturas", section: "Ir a", keywords: "facturas invoices pdf cobrar", run: go("/invoices") },
+      { id: "go-invoices", label: "Invoices", section: "Ir a", keywords: "invoices facturas pdf cobrar", run: go("/invoices") },
       { id: "go-settings", label: "Ajustes", section: "Ir a", keywords: "ajustes configuracion emisor cuit perfil cuenta", run: go("/settings") },
     ];
   }, [onClose, onQuickAdd, pathname, router]);

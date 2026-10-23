@@ -16,7 +16,7 @@ export async function fetchProfile(): Promise<Partial<Profile> | null> {
   return data as Partial<Profile>;
 }
 
-/** Datos del emisor (perfil del usuario) para incluir en las facturas. */
+/** Datos del emisor (perfil del usuario) para incluir en los invoices. */
 export async function fetchIssuer(): Promise<InvoiceIssuer | null> {
   return issuerFromProfile(await fetchProfile());
 }

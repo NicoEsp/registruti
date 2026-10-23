@@ -30,7 +30,7 @@ export interface Profile {
   email: string | null;
   address: string | null;
   country: string | null; // código de countries.ts (AR, UY, ..., OTRO)
-  payment_details: string | null; // cómo cobrar (alias/CBU, PayPal, Wise…), al pie de la factura
+  payment_details: string | null; // cómo cobrar (alias/CBU, PayPal, Wise…), al pie del invoice
   pro: boolean; // lifetime access: desbloquea los límites del plan gratis
   pro_since: string | null;
   created_at: string;
