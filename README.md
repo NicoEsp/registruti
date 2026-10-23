@@ -6,10 +6,11 @@ Aplicación de seguimiento de horas de consultoría y facturación por cliente, 
 
 ## Funcionalidades
 
-- **Tracker semanal**: registro de horas por día con duración de escritura libre ("1:30", "1.5", "90m"), en intervalos de 15 minutos (mínimo 0:15, máximo 8:00 por entrada), con descripción, cliente, marca de facturable y repetición de entradas con un click.
+- **Tracker semanal**: registro de horas por día con duración de escritura libre ("1:30", "1.5", "90m"), en intervalos de 15 minutos (mínimo 0:15, máximo 8:00 por entrada), con descripción, cliente, marca de facturable y repetición de entradas con un click. El cliente se puede crear desde el mismo formulario (y desde el registro rápido): la primera hora no espera a que exista.
+- **Onboarding**: el wizard de bienvenida pide una sola cosa, la primera entrada de tiempo (crea el cliente de paso, con tarifa opcional). Los datos del emisor se piden recién al armar la primera factura.
 - **Clientes**: alta, edición, archivado y eliminación de clientes, cada uno con tarifa por hora, moneda y color propio.
 - **Reportes**: horas y montos facturables por cliente y por día, con filtros por período (semana, mes, mes pasado o rango personalizado) y exportación a CSV.
-- **Facturas**: generación de facturas por cliente y período a partir de las horas no facturadas, con estados (borrador → enviada → pagada), vencimiento opcional con marca de vencida, descarga de PDF con el detalle del trabajo y numeración automática.
+- **Facturas**: generación de facturas por cliente y período a partir de las horas no facturadas, con estados (borrador → enviada → pagada), vencimiento opcional con marca de vencida, descarga de PDF con el detalle del trabajo, los datos de pago del emisor (alias/CBU, PayPal, Wise…) y numeración automática. Es un documento comercial (invoice), no un comprobante fiscal, y lo dice en el pie. Hay una factura de ejemplo en `/factura-de-ejemplo` y en la vista vacía de Facturas.
 - **Link público por factura**: cada factura tiene un link compartible (`/i/<token>`, con token de 128 bits regenerable si se filtra) para que el cliente vea el detalle de horas sin necesidad de cuenta — trazabilidad externa.
 - **Por país**: el perfil guarda el país del emisor (Argentina, Uruguay, Chile, México, ... ) y con eso se adaptan el tipo de ID fiscal (CUIT, RUT, RFC, ...), la moneda sugerida y el formato de los montos.
 - **Conexión MCP**: cada usuario puede generar un token en Ajustes y conectar Registruti a Claude Desktop (o cualquier cliente MCP con header de autorización) para cargar horas y consultar cómo va por lenguaje natural. Ver [Servidor MCP](#servidor-mcp) más abajo.
@@ -217,21 +218,23 @@ no está en esa unión, no compila.
 | Evento | Dónde | Propiedades |
 | --- | --- | --- |
 | `signed_up` | vuelta del OAuth (`/auth/callback` y la landing) | — |
-| `onboarding_completed` | fin del wizard, salteado o no | `last_step`, `created_client`, `rate_from_calculator` |
-| `time_entry_created` | tracker, registro rápido y repetir entrada | `source`, `duration_minutes`, `billable` |
+| `onboarding_completed` | fin del wizard, salteado o no | `last_step` (0 bienvenida, 1 primera entrada, 2 listo), `created_client`, `rate_from_calculator` |
+| `time_entry_created` | tracker, registro rápido, repetir entrada, wizard y servidor MCP | `source` (`tracker` / `quick_add` / `repeat` / `onboarding` / `mcp`), `duration_minutes`, `billable` |
 | `invoice_created` | alta de factura | `currency`, `total_minutes`, `entries` |
+| `invoice_blocked` | se abrió "Nueva factura" sin nada que facturar (una vez por apertura) | `reason` (`no_clients` / `no_billable_hours`) |
 | `paywall_shown` | se abre `UpgradeModal` | `reason` (`clients` / `invoices` / `general`) |
 | `checkout_clicked` | clic en "Desbloquear lifetime access" | `reason` |
 | `calculator_cta_clicked` | CTA de `/cuanto-cobrar-por-hora` (salida a `/login`) | — (a propósito: la página promete que lo calculado no sale del navegador) |
-| `client_created` | wizard de bienvenida y alta en Clientes | `source` (`onboarding` / `clients`), `currency`, `has_rate` |
+| `client_created` | wizard de bienvenida, alta en Clientes y alta al vuelo desde el tracker o el registro rápido | `source` (`onboarding` / `clients` / `tracker` / `quick_add`), `currency`, `has_rate` |
 | `invoice_viewed` | enlace público `/i/[token]`, lo abre el cliente del usuario | `status`, `currency` |
 
 Más `$pageview` por navegación (a mano: con el App Router el automático solo
 contaría la primera vista) y autocapture de clics en links y botones.
 
-Las horas se pueden cargar también por el servidor MCP, y eso **no** genera
-eventos: `log_time` corre server-side y `posthog-js` es del browser. Si el uso
-por MCP crece, hay que sumar `posthog-node` en `src/lib/mcp/tools.ts`.
+Las horas cargadas por el servidor MCP también cuentan: `log_time` corre
+server-side, así que el evento sale por HTTP desde `src/lib/analyticsServer.ts`
+(misma key pública, sin SDK) después de responder la tool, con `distinct_id`
+= `user_id`, el mismo con el que el browser identifica a la persona.
 
 ### Links con UTM
 

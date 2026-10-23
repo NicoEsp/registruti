@@ -1,11 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import Modal from "@/components/Modal";
+import SampleInvoicePreview from "@/components/SampleInvoicePreview";
 import UpgradeModal from "@/components/UpgradeModal";
 import { supabase } from "@/lib/supabase";
+import { hasIssuerData } from "@/lib/invoiceIssuer";
+import { COUNTRIES, countryFor, localeFor } from "@/lib/countries";
+import { setUserProperties } from "@/lib/analytics";
 import {
   ENTRY_ADDED_EVENT,
   NEW_INVOICE_EVENT,
@@ -18,8 +22,17 @@ import { fetchIssuer } from "@/lib/profile";
 import { FREE_INVOICE_LIMIT, fetchIsPro, isInvoiceLimitError } from "@/lib/plan";
 import { capture } from "@/lib/analytics";
 import type { Client, Invoice, TimeEntry } from "@/lib/types";
-import { formatDuration, formatMoney, formatShortDate, toISODate } from "@/lib/format";
+import {
+  formatDuration,
+  formatMoney,
+  formatShortDate,
+  setMoneyLocale,
+  toISODate,
+} from "@/lib/format";
 import { invoiceStatusLabel, invoiceStatusStyle } from "@/lib/invoiceStatus";
+
+const INPUT_CLASS =
+  "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none";
 
 export default function InvoicesPage() {
   return (
@@ -206,9 +219,14 @@ function Invoices() {
       {loading ? (
         <p className="text-sm text-slate-400">Cargando…</p>
       ) : invoices.length === 0 ? (
-        <p className="py-12 text-center text-sm text-slate-400">
-          Todavía no generaste facturas. Creá la primera a partir de tus horas trackeadas.
-        </p>
+        // Sin facturas todavía: en vez de un hueco, la factura de muestra. Es
+        // lo que la persona vino a ver y lo último que llegaba a ver.
+        <div>
+          <p className="py-6 text-center text-sm text-slate-400">
+            Todavía no generaste facturas. La primera sale de tus horas cargadas, y queda así:
+          </p>
+          <SampleInvoicePreview />
+        </div>
       ) : (
         <>
         {/* Mobile: tarjetas */}
@@ -328,6 +346,7 @@ function Invoices() {
         <NewInvoiceModal
           clients={clients.filter((c) => !c.archived)}
           invoiceCount={invoices.length}
+          issuer={issuer}
           initialClientId={newClientId}
           initialFrom={newFrom}
           onClose={() => {
@@ -358,6 +377,7 @@ function Invoices() {
 function NewInvoiceModal({
   clients,
   invoiceCount,
+  issuer,
   initialClientId,
   initialFrom,
   onClose,
@@ -366,6 +386,7 @@ function NewInvoiceModal({
 }: {
   clients: Client[];
   invoiceCount: number;
+  issuer: InvoiceIssuer | null;
   initialClientId?: string | null;
   initialFrom?: string | null;
   onClose: () => void;
@@ -382,6 +403,27 @@ function NewInvoiceModal({
   const [preview, setPreview] = useState<TimeEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // Datos del emisor. Se piden acá y no en el wizard de bienvenida porque
+  // este es el primer momento en que hacen falta; solo si el perfil está
+  // vacío, y siguen siendo opcionales.
+  const askIssuer = !hasIssuerData(issuer);
+  const [country, setCountry] = useState("");
+  const [businessName, setBusinessName] = useState("");
+  const [taxId, setTaxId] = useState("");
+
+  // Una vez por apertura del modal: quien llega a la factura sin nada que
+  // facturar es la señal de que el orden del producto no le cerró.
+  const blockedRef = useRef(false);
+  function captureBlocked(reason: "no_clients" | "no_billable_hours") {
+    if (blockedRef.current) return;
+    blockedRef.current = true;
+    capture("invoice_blocked", { reason });
+  }
+  const noClients = clients.length === 0;
+  useEffect(() => {
+    if (noClients) captureBlocked("no_clients");
+  }, [noClients]);
 
   const client = clients.find((c) => c.id === clientId);
 
@@ -406,6 +448,7 @@ function NewInvoiceModal({
         else {
           setPreview(data);
           setError(null);
+          if (data.length === 0) captureBlocked("no_billable_hours");
         }
       });
     return () => {
@@ -420,6 +463,31 @@ function NewInvoiceModal({
     if (!client || !preview || preview.length === 0) return;
     setBusy(true);
     setError(null);
+    // Los datos del emisor van a Ajustes (el perfil), no a la factura: la
+    // próxima ya los tiene. Solo las columnas cargadas acá: un upsert no pisa
+    // las demás.
+    if (askIssuer && (country || businessName.trim() || taxId.trim())) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        const { error: profileErr } = await supabase.from("profiles").upsert({
+          user_id: user.id,
+          business_name: businessName.trim() || null,
+          tax_id: taxId.trim() || null,
+          country: country || null,
+        });
+        if (profileErr) {
+          setBusy(false);
+          setError(`No se pudieron guardar tus datos de emisor: ${profileErr.message}`);
+          return;
+        }
+        if (country) {
+          setMoneyLocale(localeFor(country));
+          setUserProperties({ country });
+        }
+      }
+    }
     // Numeración atómica por usuario (evita duplicados). Si la RPC todavía no
     // fue creada (migración sin aplicar), caemos al conteo local como respaldo.
     const { data: rpcNumber } = await supabase.rpc("next_invoice_number");
@@ -479,12 +547,30 @@ function NewInvoiceModal({
   return (
     <Modal title="Nueva factura" onClose={onClose}>
       <div className="space-y-3">
+        {/* "Factura" acá es un invoice, no un comprobante de ARCA/DGI/SII. Se
+            dice en el momento de armarla, que es cuando aparece la duda. */}
+        <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs leading-relaxed text-slate-500">
+          Es un documento comercial con el detalle de horas y el monto a cobrar: no tiene validez
+          fiscal. Tu factura electrónica la seguís emitiendo como siempre.
+        </p>
+
+        {noClients && (
+          <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            Todavía no tenés horas cargadas, y la factura sale de las horas. Cargá la primera en
+            el{" "}
+            <Link href="/tracker" onClick={onClose} className="font-medium underline">
+              Tracker
+            </Link>{" "}
+            y volvé acá.
+          </p>
+        )}
+
         <div>
           <label className="mb-1 block text-xs font-medium text-slate-500">Cliente</label>
           <select
             value={clientId}
             onChange={(e) => setClientId(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            className={`${INPUT_CLASS} bg-white`}
           >
             <option value="">Elegir…</option>
             {clients.map((c) => (
@@ -529,6 +615,45 @@ function NewInvoiceModal({
             Pasada esta fecha, la factura enviada se marca como vencida.
           </p>
         </div>
+
+        {askIssuer && (
+          <div className="space-y-2 rounded-lg border border-slate-200 p-3">
+            <p className="text-sm font-medium text-slate-700">Tus datos en la factura</p>
+            <p className="text-xs text-slate-500">
+              Opcional. Aparecen como “De:” en el PDF y quedan guardados en Ajustes para las
+              próximas.
+            </p>
+            <select
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+              aria-label="País"
+              className={`${INPUT_CLASS} bg-white`}
+            >
+              <option value="">País…</option>
+              {COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.flag} {c.name}
+                </option>
+              ))}
+            </select>
+            <input
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+              placeholder="Tu nombre o razón social"
+              aria-label="Nombre o razón social"
+              className={INPUT_CLASS}
+            />
+            <input
+              value={taxId}
+              onChange={(e) => setTaxId(e.target.value)}
+              placeholder={`${countryFor(country)?.taxIdLabel ?? "CUIT / ID fiscal"} (ej. ${
+                countryFor(country)?.taxIdPlaceholder ?? "20-12345678-9"
+              })`}
+              aria-label={countryFor(country)?.taxIdLabel ?? "CUIT / ID fiscal"}
+              className={INPUT_CLASS}
+            />
+          </div>
+        )}
 
         {client && preview && (
           <div className="rounded-lg bg-slate-50 p-3 text-sm">

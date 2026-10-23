@@ -69,6 +69,12 @@ supabase db push
    conservar los refresh tokens rotados hasta que venzan (hacen falta para
    detectar un reuso tardío y revocar la autorización). **Requerida** por
    `/api/oauth/register`.
+10. `20261023000010_payment_details.sql` — columna `profiles.payment_details`
+    (cómo cobrar: alias/CBU, PayPal, Wise…, al pie de la factura) y
+    `get_public_invoice` devolviendo además el perfil del emisor (`issuer`),
+    para que el link público y su PDF salgan con "De:" y datos de pago.
+    **Requerida** por el campo "Datos de pago" de Ajustes (sin ella, Ajustes
+    guarda el resto y avisa); el link público tolera que falte.
 
 ### Activar el lifetime access de un usuario
 

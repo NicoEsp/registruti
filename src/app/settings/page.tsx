@@ -34,6 +34,7 @@ function Settings() {
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
   const [country, setCountry] = useState("");
+  const [paymentDetails, setPaymentDetails] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,6 +53,7 @@ function Settings() {
       setEmail(data.email ?? "");
       setAddress(data.address ?? "");
       setCountry(data.country ?? "");
+      setPaymentDetails(data.payment_details ?? "");
       setError(null);
     }
     setLoading(false);
@@ -79,18 +81,33 @@ function Settings() {
       setBusy(false);
       return;
     }
-    const { error: err } = await supabase.from("profiles").upsert({
+    const payload: Record<string, unknown> = {
       user_id: user.id,
       business_name: businessName.trim() || null,
       tax_id: taxId.trim() || null,
       email: email.trim() || null,
       address: address.trim() || null,
       country: country || null,
-    });
+      payment_details: paymentDetails.trim() || null,
+    };
+    let { error: err } = await supabase.from("profiles").upsert(payload);
+    // Migración 20261023000010 sin aplicar: la columna no existe todavía. Se
+    // guarda el resto y se avisa, en vez de dejar Ajustes sin poder guardar.
+    let pendingMigration = false;
+    if (err && err.message.includes("payment_details")) {
+      delete payload.payment_details;
+      ({ error: err } = await supabase.from("profiles").upsert(payload));
+      pendingMigration = !err;
+    }
     setBusy(false);
     if (err) {
       setError(err.message);
       return;
+    }
+    if (pendingMigration) {
+      setError(
+        "Los datos de pago no se guardaron: falta aplicar la migración 20261023000010 en Supabase. El resto sí."
+      );
     }
     // Los montos de toda la app pasan a formatearse con el locale del país.
     setMoneyLocale(localeFor(country || null));
@@ -105,7 +122,7 @@ function Settings() {
       <h1 className="mb-1 text-2xl font-semibold tracking-tight">Ajustes</h1>
       <p className="mb-6 text-sm text-slate-500">
         Datos del emisor que aparecen como <span className="font-medium">“De:”</span> en tus
-        facturas en PDF.
+        facturas, y cómo querés cobrarlas.
       </p>
 
       {error && (
@@ -181,6 +198,20 @@ function Settings() {
               placeholder="Calle 123, Ciudad, País"
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
             />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">Datos de pago</label>
+            <textarea
+              value={paymentDetails}
+              onChange={(e) => setPaymentDetails(e.target.value)}
+              rows={3}
+              placeholder={"Alias: mi.alias.mp\nPayPal: hola@tunegocio.com\nWise: @usuario"}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              Van al pie de cada factura (PDF y link público): alias o CBU, PayPal, Wise,
+              Payoneer, cripto… lo que uses para cobrar. Una línea por medio.
+            </p>
           </div>
           <div className="flex items-center gap-3 pt-1">
             <button

@@ -104,14 +104,14 @@ const COMPARISON: { criterio: string; diamble: string; toggl: string; wins: bool
 
 const STEPS = [
   {
-    title: "Creá tus clientes",
+    title: "Cargá tu primera hora",
     description:
-      "Cargá cada cliente con su tarifa por hora, su moneda y un color para identificarlo de un vistazo.",
+      "Escribí qué hiciste, para quién y cuánto tardaste. El cliente se crea en el mismo paso; la tarifa y la moneda las ponés cuando quieras.",
   },
   {
-    title: "Trackeá tu semana",
+    title: "Mirá tu semana",
     description:
-      "Registrá tus horas por día en bloques de 15 minutos, con descripción y cliente, desde la vista semanal.",
+      "Tus horas por día en bloques de 15 minutos, con descripción y cliente, y los reportes de cuánto llevás por cliente en la semana o el mes.",
   },
   {
     title: "Facturá en un clic",
@@ -151,6 +151,12 @@ const FAQS: { q: string; a: string; link?: { href: string; label: string } }[] =
   {
     q: "¿Cómo genero la factura desde mis horas trackeadas?",
     a: "Elegís el cliente y el período, y Registruti arma la factura automáticamente con todas las horas registradas, la tarifa del cliente y la numeración correlativa. Después la gestionás por estados (borrador, enviada, pagada) y la exportás a PDF para imprimir o enviar.",
+    link: { href: "/factura-de-ejemplo", label: "Ver una factura de ejemplo" },
+  },
+  {
+    q: "¿La factura de Registruti tiene validez fiscal?",
+    a: "No. Es un documento comercial, lo que en inglés se llama invoice: el detalle de horas, la tarifa y el monto a cobrar, con tus datos de pago, para que tu cliente lo revise y apruebe. No reemplaza la factura electrónica de ARCA (ex AFIP), DGI, SII, SAT o el organismo de tu país, que la seguís emitiendo como siempre. Lo habitual es usar las dos: la de Registruti para justificar el monto, la fiscal para cobrarlo.",
+    link: { href: "/factura-de-ejemplo", label: "Ver cómo queda" },
   },
   {
     q: "¿Puedo cargar horas hablándole a Claude u otro asistente de IA?",
@@ -271,8 +277,12 @@ export default function LandingPage() {
           </div>
 
           {/* Mock del producto */}
-          <div className="relative" aria-hidden>
+          {/* El mock es decorativo (aria-hidden), pero el link a la factura
+              de ejemplo de abajo es real: el aria-hidden va por partes, para
+              no esconder un elemento enfocable. */}
+          <div className="relative">
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
+              <div aria-hidden>
               <div className="mb-4 flex items-center justify-between">
                 <span className="text-sm font-semibold">Tracker</span>
                 <span className="text-xs text-slate-500">
@@ -324,14 +334,20 @@ export default function LandingPage() {
                   </div>
                 ))}
               </div>
-              <div className="mt-4 flex items-center justify-between rounded-lg bg-gradient-to-r from-indigo-50 to-violet-50 px-3 py-2.5">
+              </div>
+              {/* La factura es lo que diferencia a Registruti de un tracker:
+                  se puede ver entera (y bajar el PDF) antes de registrarse. */}
+              <Link
+                href="/factura-de-ejemplo"
+                className="mt-4 flex items-center justify-between rounded-lg bg-gradient-to-r from-indigo-50 to-violet-50 px-3 py-2.5 transition hover:from-indigo-100 hover:to-violet-100"
+              >
                 <span className="text-xs font-medium text-indigo-800">
                   Factura INV-0007 · Estudio Galley
                 </span>
                 <span className="rounded bg-white px-2 py-0.5 text-[10px] font-semibold text-indigo-700 shadow-sm">
-                  PDF + link público
+                  Ver ejemplo →
                 </span>
-              </div>
+              </Link>
             </div>
             <div
               className="absolute -bottom-6 -right-6 -z-10 h-40 w-40 rounded-full bg-gradient-to-br from-indigo-300/40 to-violet-400/40 blur-2xl"
@@ -628,7 +644,8 @@ export default function LandingPage() {
           Tu próxima factura empieza con la próxima hora trackeada
         </h2>
         <p className="mx-auto mt-3 max-w-xl text-slate-600">
-          Creá tu cuenta, cargá tu primer cliente y empezá a trackear en menos de dos minutos.
+          Creá tu cuenta y cargá tu primera hora en menos de un minuto. El cliente se crea en el
+          mismo paso.
         </p>
         <Link
           href="/login"

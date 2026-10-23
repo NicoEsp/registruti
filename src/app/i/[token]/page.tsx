@@ -6,6 +6,7 @@ import InvoiceDocument from "@/components/InvoiceDocument";
 import InvoiceActions from "@/components/InvoiceActions";
 import { supabase } from "@/lib/supabase";
 import { capture } from "@/lib/analytics";
+import { issuerFromProfile } from "@/lib/invoiceIssuer";
 import type { PublicInvoice } from "@/lib/types";
 import { invoiceStatusLabel, invoiceStatusStyle } from "@/lib/invoiceStatus";
 
@@ -52,6 +53,11 @@ export default function PublicInvoicePage() {
     );
   }
 
+  // El RPC trae el perfil del emisor a partir de la migración 20261023000010;
+  // antes de aplicarla la clave no viene y la factura sale sin "De:", como
+  // hasta ahora.
+  const issuer = issuerFromProfile(data.issuer);
+
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-10 print:bg-white print:p-0">
       <div className="mx-auto max-w-3xl">
@@ -68,6 +74,7 @@ export default function PublicInvoicePage() {
               clientContact={data.client.contact_name}
               clientEmail={data.client.email}
               entries={data.entries}
+              issuer={issuer}
             />
           </div>
         </div>
@@ -77,6 +84,7 @@ export default function PublicInvoicePage() {
           clientContact={data.client.contact_name}
           clientEmail={data.client.email}
           entries={data.entries}
+          issuer={issuer}
         />
       </div>
     </div>

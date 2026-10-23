@@ -183,6 +183,7 @@ function InvoiceDetail() {
         clientContact={client.contact_name}
         clientEmail={client.email}
         entries={entries}
+        issuer={issuer}
       />
 
       {confirmingDelete && (
