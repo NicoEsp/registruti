@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabase";
 import { setMoneyLocale } from "@/lib/format";
 import { localeFor } from "@/lib/countries";
 import type { Profile } from "@/lib/types";
-import type { InvoiceIssuer } from "@/lib/invoicePdf";
+import { issuerFromProfile, type InvoiceIssuer } from "@/lib/invoiceIssuer";
 
 /**
  * Perfil del usuario (datos del emisor + país). Devuelve null si no hay perfil
@@ -16,16 +16,9 @@ export async function fetchProfile(): Promise<Partial<Profile> | null> {
   return data as Partial<Profile>;
 }
 
-/** Datos del emisor (perfil del usuario) para incluir en las facturas. */
+/** Datos del emisor (perfil del usuario) para incluir en los invoices. */
 export async function fetchIssuer(): Promise<InvoiceIssuer | null> {
-  const profile = await fetchProfile();
-  if (!profile) return null;
-  return {
-    businessName: profile.business_name ?? null,
-    taxId: profile.tax_id ?? null,
-    email: profile.email ?? null,
-    address: profile.address ?? null,
-  };
+  return issuerFromProfile(await fetchProfile());
 }
 
 /** Ajusta el locale de formateo de montos al país del perfil. */

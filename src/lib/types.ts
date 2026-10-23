@@ -30,6 +30,7 @@ export interface Profile {
   email: string | null;
   address: string | null;
   country: string | null; // código de countries.ts (AR, UY, ..., OTRO)
+  payment_details: string | null; // cómo cobrar (alias/CBU, PayPal, Wise…), al pie del invoice
   pro: boolean; // lifetime access: desbloquea los límites del plan gratis
   pro_since: string | null;
   created_at: string;
@@ -60,6 +61,14 @@ export interface Invoice {
 export interface PublicInvoice {
   invoice: Omit<Invoice, "user_id">;
   client: { name: string; email: string | null; contact_name: string | null };
+  /**
+   * Perfil del emisor. Falta la clave si la migración 20261023000010 no está
+   * aplicada; es null si el usuario nunca cargó Ajustes. La página tolera las dos.
+   */
+  issuer?: Pick<
+    Profile,
+    "business_name" | "tax_id" | "email" | "address" | "payment_details"
+  > | null;
   entries: Pick<TimeEntry, "entry_date" | "duration_minutes" | "description">[];
 }
 

@@ -1,14 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AppShell from "@/components/AppShell";
 import Modal from "@/components/Modal";
 import BillableCheckbox from "@/components/BillableCheckbox";
+import ClientSelect, { NEW_CLIENT_VALUE } from "@/components/ClientSelect";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import DurationInput from "@/components/DurationInput";
+import UpgradeModal from "@/components/UpgradeModal";
 import { supabase } from "@/lib/supabase";
 import { capture } from "@/lib/analytics";
-import { ENTRY_ADDED_EVENT, showToast, useAppEvent } from "@/lib/appEvents";
+import { createClientQuick } from "@/lib/clients";
+import {
+  ENTRY_ADDED_EVENT,
+  TRACKER_CLIENT_PARAM,
+  consumeParam,
+  showToast,
+  useAppEvent,
+} from "@/lib/appEvents";
 import type { Client, TimeEntry } from "@/lib/types";
 import {
   DAY_ABBREV,
@@ -42,10 +51,20 @@ function Tracker() {
   // New entry form
   const [description, setDescription] = useState("");
   const [clientId, setClientId] = useState("");
+  // Nombre del cliente a crear junto con la entrada (sin clientes, o con la
+  // opción "crear nuevo" elegida en el select).
+  const [newClientName, setNewClientName] = useState("");
   const [date, setDate] = useState(toISODate(new Date()));
   const [duration, setDuration] = useState<number | null>(60);
   const [billable, setBillable] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  // `clients` arranca en [] y eso se parece a "no tiene clientes": hasta la
+  // primera carga no se ofrece crear uno (ni se deja enviar), para no mostrar
+  // el campo de nombre a quien ya tiene clientes ni crearle uno repetido.
+  const [clientsLoaded, setClientsLoaded] = useState(false);
+  // Cliente pedido por URL (?cliente=<id>), pendiente hasta que carguen los clientes.
+  const pendingClientRef = useRef<string | null>(null);
 
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => toISODate(addDays(weekStart, i))),
@@ -69,11 +88,30 @@ function Tracker() {
       setError(clientsRes.error?.message ?? entriesRes.error?.message ?? null);
     } else {
       setClients(clientsRes.data);
+      setClientsLoaded(true);
       setEntries(entriesRes.data);
       setError(null);
+      const active = (clientsRes.data as Client[]).filter((c) => !c.archived);
+      const wanted = pendingClientRef.current;
+      pendingClientRef.current = null;
+      const landed = wanted !== null && active.some((c) => c.id === wanted);
+      setClientId((cur) => {
+        // Viene de crear su primer cliente en Clientes: queda elegido.
+        if (landed) return wanted;
+        // Con un solo cliente no hay nada que elegir.
+        if (!cur && active.length === 1) return active[0].id;
+        return cur;
+      });
+      if (landed) showToast("✓ Cliente creado. Ahora cargá tu primera hora.");
     }
     setLoading(false);
   }, [weekStart]);
+
+  // Se lee antes de la primera carga (los efectos corren en orden) y se
+  // aplica cuando los clientes resuelven.
+  useEffect(() => {
+    pendingClientRef.current = consumeParam(TRACKER_CLIENT_PARAM);
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -86,12 +124,33 @@ function Tracker() {
   const clientById = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
   const weekTotal = entries.reduce((sum, e) => sum + e.duration_minutes, 0);
 
+  // La primera hora no espera a que exista un cliente: si no hay ninguno, o
+  // se eligió "crear nuevo", el cliente se crea en el mismo clic que la entrada.
+  const creatingClient =
+    clientsLoaded && (activeClients.length === 0 || clientId === NEW_CLIENT_VALUE);
+  const canSubmit =
+    clientsLoaded &&
+    duration != null &&
+    (creatingClient ? newClientName.trim().length > 0 : clientId !== "");
+
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
-    if (!clientId || duration == null) return;
+    if (!canSubmit || duration == null) return;
     setSaving(true);
+    setError(null);
+    let targetClientId = clientId;
+    if (creatingClient) {
+      const created = await createClientQuick({ name: newClientName, source: "tracker" });
+      if (!created.ok) {
+        setSaving(false);
+        if (created.limit) setShowUpgrade(true);
+        else setError(created.message);
+        return;
+      }
+      targetClientId = created.client.id;
+    }
     const { error: err } = await supabase.from("time_entries").insert({
-      client_id: clientId,
+      client_id: targetClientId,
       entry_date: date,
       duration_minutes: duration,
       description,
@@ -100,6 +159,12 @@ function Tracker() {
     setSaving(false);
     if (err) {
       setError(err.message);
+      // El cliente ya existe: que el select lo muestre y no se cree otro al reintentar.
+      if (creatingClient) {
+        setNewClientName("");
+        setClientId(targetClientId);
+        loadData();
+      }
       return;
     }
     capture("time_entry_created", {
@@ -108,6 +173,10 @@ function Tracker() {
       billable,
     });
     setDescription("");
+    if (creatingClient) {
+      setNewClientName("");
+      setClientId(targetClientId);
+    }
     loadData();
   }
 
@@ -260,20 +329,26 @@ function Tracker() {
           />
         </div>
         <div className="w-full sm:w-auto">
-          <label className="mb-1 block text-xs font-medium text-slate-500">Cliente</label>
-          <select
-            required
-            value={clientId}
-            onChange={(e) => setClientId(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none sm:w-auto"
-          >
-            <option value="">Elegir…</option>
-            {activeClients.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+          <label className="mb-1 block text-xs font-medium text-slate-500">
+            {clientsLoaded && activeClients.length === 0 ? "Cliente o proyecto" : "Cliente"}
+          </label>
+          {clientsLoaded ? (
+            <ClientSelect
+              compact
+              clients={activeClients}
+              value={clientId}
+              onChange={setClientId}
+              newName={newClientName}
+              onNewNameChange={setNewClientName}
+            />
+          ) : (
+            <select
+              disabled
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-400 sm:w-auto"
+            >
+              <option>Cargando…</option>
+            </select>
+          )}
         </div>
         <div className="flex w-full gap-3 sm:w-auto">
           <div className="flex-1 sm:flex-none">
@@ -297,23 +372,13 @@ function Tracker() {
           <BillableCheckbox checked={billable} onChange={setBillable} compact />
           <button
             type="submit"
-            disabled={saving || !clientId || duration == null}
+            disabled={saving || !canSubmit}
             className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 active:scale-[0.98] disabled:opacity-50 sm:py-2"
           >
-            Agregar
+            {saving ? "Guardando…" : "Agregar"}
           </button>
         </div>
       </form>
-
-      {activeClients.length === 0 && !loading && (
-        <p className="mb-6 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Todavía no tenés clientes. Creá uno en la sección{" "}
-          <a href="/clients" className="font-medium underline">
-            Clientes
-          </a>{" "}
-          para empezar a trackear.
-        </p>
-      )}
 
       {loading ? (
         <p className="text-sm text-slate-400">Cargando…</p>
@@ -394,11 +459,15 @@ function Tracker() {
           })}
           {entries.length === 0 && (
             <p className="py-12 text-center text-sm text-slate-400">
-              No hay entradas esta semana.
+              {activeClients.length === 0
+                ? "Cargá arriba lo que hiciste hoy: el cliente se crea en el mismo paso."
+                : "No hay entradas esta semana."}
             </p>
           )}
         </div>
       )}
+
+      {showUpgrade && <UpgradeModal reason="clients" onClose={() => setShowUpgrade(false)} />}
 
       {editing && (
         <EditEntryModal

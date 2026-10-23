@@ -1,4 +1,6 @@
+import { after } from "next/server";
 import { getAdminClient } from "@/lib/supabaseAdmin";
+import { captureServer } from "@/lib/analyticsServer";
 import { clampDuration, formatDuration, parseDuration } from "@/lib/format";
 import { timeZoneFor } from "@/lib/countries";
 import type { Scope } from "@/lib/mcp/config";
@@ -308,6 +310,22 @@ async function logTime(userId: string, args: Record<string, unknown>): Promise<s
     billable,
   });
   if (error) throw new Error(`No pude registrar la entrada: ${error.message}`);
+
+  // Mismo evento que el tracker, para que el embudo cuente también a quien
+  // carga todo por Claude. Va después de responder: la latencia de PostHog no
+  // tiene por qué sumarse a la tool. Fuera de una request (no debería pasar)
+  // `after` tira, y entonces se manda sin esperar.
+  const event = () =>
+    captureServer(userId, "time_entry_created", {
+      source: "mcp",
+      duration_minutes: minutes,
+      billable,
+    });
+  try {
+    after(event);
+  } catch {
+    void event();
+  }
 
   const flags = billable ? "" : " (no facturable)";
   const desc = description ? `: ${description}` : "";

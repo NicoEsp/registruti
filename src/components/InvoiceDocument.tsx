@@ -1,4 +1,5 @@
 import type { Invoice, TimeEntry } from "@/lib/types";
+import { hasIssuerData, type InvoiceIssuer } from "@/lib/invoiceIssuer";
 import {
   formatDuration,
   formatMoney,
@@ -13,18 +14,23 @@ export default function InvoiceDocument({
   clientContact,
   clientEmail,
   entries,
+  issuer,
 }: {
   invoice: Omit<Invoice, "user_id"> | Invoice;
   clientName: string;
   clientContact?: string | null;
   clientEmail?: string | null;
   entries: EntryRow[];
+  issuer?: InvoiceIssuer | null;
 }) {
+  const showIssuer = hasIssuerData(issuer);
+  const paymentDetails = issuer?.paymentDetails?.trim();
+
   return (
     <div className="print-page rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
       <div className="mb-8 flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Factura</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Invoice</h1>
           <p className="mt-1 font-mono text-sm text-slate-500">{invoice.invoice_number}</p>
         </div>
         <div className="text-right text-sm text-slate-500">
@@ -46,11 +52,24 @@ export default function InvoiceDocument({
         </div>
       </div>
 
-      <div className="mb-8">
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Facturar a</p>
-        <p className="mt-1 font-medium">{clientName}</p>
-        {clientContact && <p className="text-sm text-slate-500">{clientContact}</p>}
-        {clientEmail && <p className="text-sm text-slate-500">{clientEmail}</p>}
+      <div className={`mb-8 grid gap-6 ${showIssuer ? "sm:grid-cols-2" : ""}`}>
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Facturar a</p>
+          <p className="mt-1 font-medium">{clientName}</p>
+          {clientContact && <p className="text-sm text-slate-500">{clientContact}</p>}
+          {clientEmail && <p className="text-sm text-slate-500">{clientEmail}</p>}
+        </div>
+        {showIssuer && (
+          <div className="sm:text-right">
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">De</p>
+            {issuer.businessName && <p className="mt-1 font-medium">{issuer.businessName}</p>}
+            {issuer.taxId && <p className="text-sm text-slate-500">CUIT/ID: {issuer.taxId}</p>}
+            {issuer.email && <p className="text-sm text-slate-500">{issuer.email}</p>}
+            {issuer.address && (
+              <p className="whitespace-pre-line text-sm text-slate-500">{issuer.address}</p>
+            )}
+          </div>
+        )}
       </div>
 
       <table className="mb-6 w-full text-sm">
@@ -102,6 +121,21 @@ export default function InvoiceDocument({
           {invoice.notes}
         </p>
       )}
+
+      {paymentDetails && (
+        <div className="mt-8 border-t border-slate-100 pt-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+            Datos de pago
+          </p>
+          <p className="mt-1 whitespace-pre-line text-sm text-slate-700">{paymentDetails}</p>
+        </div>
+      )}
+
+      {/* Un invoice no es un comprobante de ARCA/DGI/SII: conviene que lo
+          diga el propio documento, para quien lo emite y para quien lo recibe. */}
+      <p className="mt-8 text-[11px] text-slate-400">
+        Detalle de horas y monto a cobrar. No es un comprobante fiscal.
+      </p>
     </div>
   );
 }

@@ -1,11 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import Modal from "@/components/Modal";
+import SampleInvoicePreview from "@/components/SampleInvoicePreview";
 import UpgradeModal from "@/components/UpgradeModal";
 import { supabase } from "@/lib/supabase";
+import { hasIssuerData } from "@/lib/invoiceIssuer";
+import { COUNTRIES, countryFor, localeFor } from "@/lib/countries";
+import { setUserProperties } from "@/lib/analytics";
 import {
   ENTRY_ADDED_EVENT,
   NEW_INVOICE_EVENT,
@@ -18,8 +22,17 @@ import { fetchIssuer } from "@/lib/profile";
 import { FREE_INVOICE_LIMIT, fetchIsPro, isInvoiceLimitError } from "@/lib/plan";
 import { capture } from "@/lib/analytics";
 import type { Client, Invoice, TimeEntry } from "@/lib/types";
-import { formatDuration, formatMoney, formatShortDate, toISODate } from "@/lib/format";
+import {
+  formatDuration,
+  formatMoney,
+  formatShortDate,
+  setMoneyLocale,
+  toISODate,
+} from "@/lib/format";
 import { invoiceStatusLabel, invoiceStatusStyle } from "@/lib/invoiceStatus";
+
+const INPUT_CLASS =
+  "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none";
 
 export default function InvoicesPage() {
   return (
@@ -33,6 +46,10 @@ function Invoices() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
+  // Distinto de `loading`, que vuelve a true en cada recarga: esto dice si la
+  // lista de clientes ya llegó al menos una vez. El modal lo necesita para no
+  // confundir el [] inicial con "no tiene clientes".
+  const [clientsLoaded, setClientsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
@@ -62,6 +79,7 @@ function Invoices() {
     } else {
       setInvoices(invoicesRes.data);
       setClients(clientsRes.data);
+      setClientsLoaded(true);
       setIssuer(issuerData);
       const map = new Map<string, { minutes: number; earliest: string }>();
       for (const e of unbilledRes.data ?? []) {
@@ -90,7 +108,7 @@ function Invoices() {
     fetchIsPro().then(setPro);
   }, []);
 
-  // Plan gratis: hasta FREE_INVOICE_LIMIT facturas en total.
+  // Plan gratis: hasta FREE_INVOICE_LIMIT invoices en total.
   const atInvoiceLimit = !pro && invoices.length >= FREE_INVOICE_LIMIT;
   const openNew = useCallback(() => {
     if (atInvoiceLimit) setShowUpgrade(true);
@@ -119,7 +137,7 @@ function Invoices() {
   async function handleDownloadPdf(inv: Invoice) {
     const client = clientById.get(inv.client_id);
     if (!client) {
-      setError("No se encontró el cliente de la factura.");
+      setError("No se encontró el cliente del invoice.");
       return;
     }
     setPdfBusyId(inv.id);
@@ -153,7 +171,7 @@ function Invoices() {
   return (
     <div className="mx-auto max-w-4xl">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Facturas</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Invoices</h1>
         <div className="flex items-center gap-3">
           {!pro && (
             <span className="hidden text-xs text-slate-400 sm:inline">
@@ -164,7 +182,7 @@ function Invoices() {
             onClick={openNew}
             className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
           >
-            + Nueva factura
+            + Nuevo invoice
           </button>
         </div>
       </div>
@@ -198,7 +216,7 @@ function Invoices() {
             }}
             className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
           >
-            Armar factura
+            Armar invoice
           </button>
         </div>
       )}
@@ -206,9 +224,14 @@ function Invoices() {
       {loading ? (
         <p className="text-sm text-slate-400">Cargando…</p>
       ) : invoices.length === 0 ? (
-        <p className="py-12 text-center text-sm text-slate-400">
-          Todavía no generaste facturas. Creá la primera a partir de tus horas trackeadas.
-        </p>
+        // Sin invoices todavía: en vez de un hueco, el invoice de muestra. Es
+        // lo que la persona vino a ver y lo último que llegaba a ver.
+        <div>
+          <p className="py-6 text-center text-sm text-slate-400">
+            Todavía no generaste invoices. El primero sale de tus horas cargadas, y queda así:
+          </p>
+          <SampleInvoicePreview />
+        </div>
       ) : (
         <>
         {/* Mobile: tarjetas */}
@@ -327,7 +350,9 @@ function Invoices() {
       {showNew && (
         <NewInvoiceModal
           clients={clients.filter((c) => !c.archived)}
+          clientsLoaded={clientsLoaded}
           invoiceCount={invoices.length}
+          issuer={issuer}
           initialClientId={newClientId}
           initialFrom={newFrom}
           onClose={() => {
@@ -357,7 +382,9 @@ function Invoices() {
 
 function NewInvoiceModal({
   clients,
+  clientsLoaded,
   invoiceCount,
+  issuer,
   initialClientId,
   initialFrom,
   onClose,
@@ -365,7 +392,9 @@ function NewInvoiceModal({
   onCreated,
 }: {
   clients: Client[];
+  clientsLoaded: boolean;
   invoiceCount: number;
+  issuer: InvoiceIssuer | null;
   initialClientId?: string | null;
   initialFrom?: string | null;
   onClose: () => void;
@@ -382,6 +411,30 @@ function NewInvoiceModal({
   const [preview, setPreview] = useState<TimeEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // Datos del emisor. Se piden acá y no en el wizard de bienvenida porque
+  // este es el primer momento en que hacen falta; solo si el perfil está
+  // vacío, y siguen siendo opcionales.
+  const askIssuer = !hasIssuerData(issuer);
+  const [country, setCountry] = useState("");
+  const [businessName, setBusinessName] = useState("");
+  const [taxId, setTaxId] = useState("");
+
+  // Una vez por apertura del modal: quien llega a la factura sin nada que
+  // facturar es la señal de que el orden del producto no le cerró.
+  const blockedRef = useRef(false);
+  function captureBlocked(reason: "no_clients" | "no_billable_hours") {
+    if (blockedRef.current) return;
+    blockedRef.current = true;
+    capture("invoice_blocked", { reason });
+  }
+  // Recién cuando la lista cargó: el modal puede abrirse con la query en vuelo
+  // (?nueva=1 desde la paleta o la PWA, el atajo F) y `clients` ser el []
+  // inicial de alguien que sí tiene clientes.
+  const noClients = clientsLoaded && clients.length === 0;
+  useEffect(() => {
+    if (noClients) captureBlocked("no_clients");
+  }, [noClients]);
 
   const client = clients.find((c) => c.id === clientId);
 
@@ -406,6 +459,7 @@ function NewInvoiceModal({
         else {
           setPreview(data);
           setError(null);
+          if (data.length === 0) captureBlocked("no_billable_hours");
         }
       });
     return () => {
@@ -420,6 +474,32 @@ function NewInvoiceModal({
     if (!client || !preview || preview.length === 0) return;
     setBusy(true);
     setError(null);
+    // Los datos del emisor van a Ajustes (el perfil), no al invoice: el
+    // próximo ya los tiene. Solo los campos que se cargaron: un vacío no debe
+    // pisar con null lo que ya hay en el perfil (el país, por ejemplo, que
+    // puede estar aunque hasIssuerData no lo mire).
+    if (askIssuer && (country || businessName.trim() || taxId.trim())) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        const { error: profileErr } = await supabase.from("profiles").upsert({
+          user_id: user.id,
+          ...(businessName.trim() ? { business_name: businessName.trim() } : {}),
+          ...(taxId.trim() ? { tax_id: taxId.trim() } : {}),
+          ...(country ? { country } : {}),
+        });
+        if (profileErr) {
+          setBusy(false);
+          setError(`No se pudieron guardar tus datos de emisor: ${profileErr.message}`);
+          return;
+        }
+        if (country) {
+          setMoneyLocale(localeFor(country));
+          setUserProperties({ country });
+        }
+      }
+    }
     // Numeración atómica por usuario (evita duplicados). Si la RPC todavía no
     // fue creada (migración sin aplicar), caemos al conteo local como respaldo.
     const { data: rpcNumber } = await supabase.rpc("next_invoice_number");
@@ -447,7 +527,7 @@ function NewInvoiceModal({
       // El límite del plan gratis lo aplica un trigger de la base: si saltó,
       // abrimos el paywall en vez de mostrar el error crudo.
       if (isInvoiceLimitError(invErr?.message)) onLimit();
-      else setError(invErr?.message ?? "No se pudo crear la factura");
+      else setError(invErr?.message ?? "No se pudo crear el invoice");
       return;
     }
     const { error: updErr } = await supabase
@@ -477,14 +557,32 @@ function NewInvoiceModal({
   }
 
   return (
-    <Modal title="Nueva factura" onClose={onClose}>
+    <Modal title="Nuevo invoice" onClose={onClose}>
       <div className="space-y-3">
+        {/* Un invoice no es un comprobante de ARCA/DGI/SII. Se dice en el
+            momento de armarlo, que es cuando aparece la duda. */}
+        <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs leading-relaxed text-slate-500">
+          Es un documento comercial con el detalle de horas y el monto a cobrar: no tiene validez
+          fiscal. Tu factura electrónica la seguís emitiendo como siempre.
+        </p>
+
+        {noClients && (
+          <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            Todavía no tenés horas cargadas, y el invoice sale de las horas. Cargá la primera en
+            el{" "}
+            <Link href="/tracker" onClick={onClose} className="font-medium underline">
+              Tracker
+            </Link>{" "}
+            y volvé acá.
+          </p>
+        )}
+
         <div>
           <label className="mb-1 block text-xs font-medium text-slate-500">Cliente</label>
           <select
             value={clientId}
             onChange={(e) => setClientId(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            className={`${INPUT_CLASS} bg-white`}
           >
             <option value="">Elegir…</option>
             {clients.map((c) => (
@@ -526,9 +624,48 @@ function NewInvoiceModal({
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
           />
           <p className="mt-1 text-xs text-slate-400">
-            Pasada esta fecha, la factura enviada se marca como vencida.
+            Pasada esta fecha, el invoice enviado se marca como vencido.
           </p>
         </div>
+
+        {askIssuer && (
+          <div className="space-y-2 rounded-lg border border-slate-200 p-3">
+            <p className="text-sm font-medium text-slate-700">Tus datos en el invoice</p>
+            <p className="text-xs text-slate-500">
+              Opcional. Aparecen como “De:” en el PDF y quedan guardados en Ajustes para las
+              próximas.
+            </p>
+            <select
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+              aria-label="País"
+              className={`${INPUT_CLASS} bg-white`}
+            >
+              <option value="">País…</option>
+              {COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.flag} {c.name}
+                </option>
+              ))}
+            </select>
+            <input
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+              placeholder="Tu nombre o razón social"
+              aria-label="Nombre o razón social"
+              className={INPUT_CLASS}
+            />
+            <input
+              value={taxId}
+              onChange={(e) => setTaxId(e.target.value)}
+              placeholder={`${countryFor(country)?.taxIdLabel ?? "CUIT / ID fiscal"} (ej. ${
+                countryFor(country)?.taxIdPlaceholder ?? "20-12345678-9"
+              })`}
+              aria-label={countryFor(country)?.taxIdLabel ?? "CUIT / ID fiscal"}
+              className={INPUT_CLASS}
+            />
+          </div>
+        )}
 
         {client && preview && (
           <div className="rounded-lg bg-slate-50 p-3 text-sm">
@@ -573,7 +710,7 @@ function NewInvoiceModal({
             disabled={busy || !client || !preview || preview.length === 0}
             className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
           >
-            {busy ? "Creando…" : "Crear factura"}
+            {busy ? "Creando…" : "Crear invoice"}
           </button>
         </div>
       </div>

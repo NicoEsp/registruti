@@ -19,18 +19,18 @@ const COPY: Record<Reason, { title: string; blocked: string }> = {
     blocked: `El plan gratis incluye hasta ${FREE_CLIENT_LIMIT} clientes activos. Podés archivar uno para liberar lugar, o desbloquear clientes ilimitados de por vida.`,
   },
   invoices: {
-    title: "Llegaste al límite de facturas",
-    blocked: `El plan gratis incluye hasta ${FREE_INVOICE_LIMIT} facturas. Desbloqueá facturas ilimitadas de por vida con un único pago.`,
+    title: "Llegaste al límite de invoices",
+    blocked: `El plan gratis incluye hasta ${FREE_INVOICE_LIMIT} invoices. Desbloqueá invoices ilimitados de por vida con un único pago.`,
   },
   general: {
     title: "Registruti, para siempre",
-    blocked: `El plan gratis incluye hasta ${FREE_CLIENT_LIMIT} clientes y ${FREE_INVOICE_LIMIT} facturas. Desbloqueá todo de por vida con un único pago.`,
+    blocked: `El plan gratis incluye hasta ${FREE_CLIENT_LIMIT} clientes y ${FREE_INVOICE_LIMIT} invoices. Desbloqueá todo de por vida con un único pago.`,
   },
 };
 
 const BENEFITS = [
   "Clientes ilimitados",
-  "Facturas ilimitadas",
+  "Invoices ilimitados",
   "Un único pago, acceso para siempre — sin suscripción",
   "Todas las funciones futuras incluidas",
 ];

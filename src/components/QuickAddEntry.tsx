@@ -1,30 +1,35 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import Modal from "@/components/Modal";
 import BillableCheckbox from "@/components/BillableCheckbox";
+import ClientSelect, { NEW_CLIENT_VALUE } from "@/components/ClientSelect";
 import DurationInput from "@/components/DurationInput";
+import UpgradeModal from "@/components/UpgradeModal";
 import { supabase } from "@/lib/supabase";
 import type { Client } from "@/lib/types";
 import { formatDuration, toISODate } from "@/lib/format";
 import { emitEntryAdded, showToast } from "@/lib/appEvents";
 import { capture } from "@/lib/analytics";
+import { createClientQuick } from "@/lib/clients";
 
 /**
  * Registro rápido de tiempo, invocable desde cualquier pantalla (atajo T,
  * command palette o el botón + en mobile). Al guardar emite un evento para
- * que el tracker se refresque si está abierto, y muestra un toast.
+ * que el tracker se refresque si está abierto, y muestra un toast. Si no hay
+ * cliente, se crea con la entrada (ver ClientSelect).
  */
 export default function QuickAddEntry({ onClose }: { onClose: () => void }) {
   const [clients, setClients] = useState<Client[] | null>(null);
   const [clientId, setClientId] = useState("");
+  const [newClientName, setNewClientName] = useState("");
   const [description, setDescription] = useState("");
   const [date, setDate] = useState(() => toISODate(new Date()));
   const [duration, setDuration] = useState<number | null>(60);
   const [billable, setBillable] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showUpgrade, setShowUpgrade] = useState(false);
 
   useEffect(() => {
     supabase
@@ -43,13 +48,36 @@ export default function QuickAddEntry({ onClose }: { onClose: () => void }) {
       });
   }, []);
 
+  const creatingClient = clients !== null && (clients.length === 0 || clientId === NEW_CLIENT_VALUE);
+  const canSubmit =
+    clients !== null &&
+    duration != null &&
+    (creatingClient ? newClientName.trim().length > 0 : clientId !== "");
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!clientId || duration == null) return;
+    if (!canSubmit || duration == null) return;
     setSaving(true);
     setError(null);
+    let targetClientId = clientId;
+    let clientName = clients?.find((c) => c.id === clientId)?.name ?? "";
+    if (creatingClient) {
+      const created = await createClientQuick({ name: newClientName, source: "quick_add" });
+      if (!created.ok) {
+        setSaving(false);
+        if (created.limit) setShowUpgrade(true);
+        else setError(created.message);
+        return;
+      }
+      targetClientId = created.client.id;
+      clientName = created.client.name;
+      // Si la entrada falla, que el reintento use este cliente y no cree otro.
+      setClients((cur) => [...(cur ?? []), created.client]);
+      setClientId(created.client.id);
+      setNewClientName("");
+    }
     const { error: err } = await supabase.from("time_entries").insert({
-      client_id: clientId,
+      client_id: targetClientId,
       entry_date: date,
       duration_minutes: duration,
       description,
@@ -61,23 +89,14 @@ export default function QuickAddEntry({ onClose }: { onClose: () => void }) {
       return;
     }
     capture("time_entry_created", { source: "quick_add", duration_minutes: duration, billable });
-    const clientName = clients?.find((c) => c.id === clientId)?.name ?? "";
     emitEntryAdded();
     showToast(`✓ ${formatDuration(duration)} registradas a ${clientName}`);
     onClose();
   }
 
   return (
-    <Modal title="Registrar tiempo" onClose={onClose}>
-      {clients !== null && clients.length === 0 ? (
-        <p className="text-sm text-slate-500">
-          Todavía no tenés clientes activos.{" "}
-          <Link href="/clients" onClick={onClose} className="font-medium text-indigo-600 hover:underline">
-            Creá el primero
-          </Link>{" "}
-          para empezar a registrar tiempo.
-        </p>
-      ) : (
+    <>
+      <Modal title="Registrar tiempo" onClose={onClose}>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-500">
@@ -92,20 +111,25 @@ export default function QuickAddEntry({ onClose }: { onClose: () => void }) {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Cliente</label>
-            <select
-              required
-              value={clientId}
-              onChange={(e) => setClientId(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-            >
-              <option value="">Elegir…</option>
-              {(clients ?? []).map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+            <label className="mb-1 block text-xs font-medium text-slate-500">
+              {clients !== null && clients.length === 0 ? "Cliente o proyecto" : "Cliente"}
+            </label>
+            {clients === null ? (
+              <select
+                disabled
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-400"
+              >
+                <option>Cargando…</option>
+              </select>
+            ) : (
+              <ClientSelect
+                clients={clients}
+                value={clientId}
+                onChange={setClientId}
+                newName={newClientName}
+                onNewNameChange={setNewClientName}
+              />
+            )}
           </div>
           <div className="flex gap-3">
             <div className="flex-1">
@@ -139,7 +163,7 @@ export default function QuickAddEntry({ onClose }: { onClose: () => void }) {
               </button>
               <button
                 type="submit"
-                disabled={saving || !clientId || duration == null}
+                disabled={saving || !canSubmit}
                 className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
               >
                 {saving ? "Guardando…" : "Registrar"}
@@ -147,7 +171,8 @@ export default function QuickAddEntry({ onClose }: { onClose: () => void }) {
             </div>
           </div>
         </form>
-      )}
-    </Modal>
+      </Modal>
+      {showUpgrade && <UpgradeModal reason="clients" onClose={() => setShowUpgrade(false)} />}
+    </>
   );
 }

@@ -3,6 +3,7 @@ import { autoTable } from "jspdf-autotable";
 import type { Invoice, TimeEntry } from "@/lib/types";
 import { SITE_NAME } from "@/lib/site";
 import { parseISODate } from "@/lib/format";
+import { hasIssuerData, type InvoiceIssuer } from "@/lib/invoiceIssuer";
 
 // jspdf-autotable adjunta `lastAutoTable` a la instancia de jsPDF pero no la
 // declara en sus tipos; la exponemos de forma tipada para evitar casts frágiles.
@@ -14,12 +15,10 @@ declare module "jspdf" {
 
 type EntryRow = Pick<TimeEntry, "entry_date" | "duration_minutes" | "description">;
 
-export interface InvoiceIssuer {
-  businessName?: string | null;
-  taxId?: string | null;
-  email?: string | null;
-  address?: string | null;
-}
+// El tipo vive en invoiceIssuer.ts (sin jspdf) para que InvoiceDocument y el
+// link público lo usen sin arrastrar la librería; acá se re-exporta porque
+// las páginas lo importan de este módulo.
+export type { InvoiceIssuer };
 
 export interface InvoicePdfData {
   invoice: Omit<Invoice, "user_id"> | Invoice;
@@ -28,10 +27,6 @@ export interface InvoicePdfData {
   clientEmail?: string | null;
   entries: EntryRow[];
   issuer?: InvoiceIssuer | null;
-}
-
-function hasIssuerData(issuer?: InvoiceIssuer | null): issuer is InvoiceIssuer {
-  return !!issuer && !!(issuer.businessName || issuer.taxId || issuer.email || issuer.address);
 }
 
 // Paleta inspirada en la factura de referencia: azul oscuro para títulos/total,
@@ -63,8 +58,8 @@ function formatAmount(amount: number): string {
 }
 
 /**
- * Construye el PDF de la factura replicando el layout de la factura de referencia:
- * título "Factura", metadatos, "Facturado a", tabla DESCRIPCIÓN/CANTIDAD/IMPORTE
+ * Construye el PDF del invoice replicando el layout de la factura de referencia:
+ * título "Invoice", metadatos, "Facturado a", tabla DESCRIPCIÓN/CANTIDAD/IMPORTE
  * con el detalle de lo trabajado, y SUBTOTAL + TOTAL.
  */
 export function buildInvoicePdf({
@@ -89,12 +84,12 @@ export function buildInvoicePdf({
 
   doc.setFontSize(30);
   doc.setTextColor(...NAVY);
-  doc.text("Factura", marginX, y + 4);
+  doc.text("Invoice", marginX, y + 4);
   y += 16;
 
   // Metadatos (labels en negrita + valores)
   const meta: [string, string][] = [
-    ["N° de factura:", invoice.invoice_number],
+    ["N° de invoice:", invoice.invoice_number],
     ["Fecha de emisión:", formatDashDate(invoice.issue_date)],
   ];
   if (invoice.due_date) meta.push(["Vencimiento:", formatDashDate(invoice.due_date)]);
@@ -221,11 +216,16 @@ export function buildInvoicePdf({
   const code = invoice.currency;
   const pageHeight = doc.internal.pageSize.getHeight();
 
-  // Si el bloque de totales/notas no entra en lo que queda de página
-  // (facturas con muchas entradas), lo pasamos a una hoja nueva para que no
-  // se dibuje fuera del área imprimible.
+  // Si el bloque de totales/notas/datos de pago no entra en lo que queda de
+  // página (facturas con muchas entradas), lo pasamos a una hoja nueva para
+  // que no se dibuje fuera del área imprimible.
   const noteLines = invoice.notes ? doc.splitTextToSize(invoice.notes, rightX - marginX) : [];
-  const totalsBlockHeight = 25 + (invoice.notes ? 14 + noteLines.length * 4 : 0);
+  const paymentDetails = issuer?.paymentDetails?.trim() ?? "";
+  const paymentLines = paymentDetails ? doc.splitTextToSize(paymentDetails, rightX - marginX) : [];
+  const totalsBlockHeight =
+    25 +
+    (invoice.notes ? 14 + noteLines.length * 4 : 0) +
+    (paymentLines.length ? 14 + 5 + paymentLines.length * 4 : 0);
   let ty = afterTable + 9;
   if (ty + totalsBlockHeight > pageHeight - 20) {
     doc.addPage();
@@ -257,9 +257,26 @@ export function buildInvoicePdf({
     doc.setFontSize(9);
     doc.setTextColor(...MUTED);
     doc.text(noteLines, marginX, ty);
+    ty += noteLines.length * 4;
   }
 
-  // Pie
+  // Datos de pago (alias/CBU, PayPal, Wise...): lo que el cliente necesita
+  // para pagar sin pedirlo aparte.
+  if (paymentLines.length) {
+    ty += 14;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(...NAVY);
+    doc.text("Datos de pago", marginX, ty);
+    ty += 5;
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...INK);
+    doc.text(paymentLines, marginX, ty);
+  }
+
+  // Pie. El documento se llama Invoice justamente porque "factura", en
+  // Argentina y en el resto de la región, es un comprobante de ARCA/DGI/SII.
+  // La aclaración va igual: quien lo recibe puede no conocer la diferencia.
   const footerY = pageHeight - 12;
   doc.setFont("helvetica", "italic");
   doc.setFontSize(9);
@@ -267,12 +284,16 @@ export function buildInvoicePdf({
   doc.text("Gracias por confiar en mi laburo.", marginX, footerY - 6);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
-  doc.text(`Generado con ${SITE_NAME} · registruti.app`, marginX, footerY);
+  doc.text(
+    `Detalle de horas y monto a cobrar, sin validez fiscal. Generado con ${SITE_NAME} · registruti.app`,
+    marginX,
+    footerY
+  );
 
   return doc;
 }
 
-/** Genera y descarga el PDF de la factura. */
+/** Genera y descarga el PDF del invoice. */
 export function downloadInvoicePdf(data: InvoicePdfData): void {
   const doc = buildInvoicePdf(data);
   doc.save(`${data.invoice.invoice_number}.pdf`);

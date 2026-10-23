@@ -3,7 +3,7 @@
 import InfoTip from "@/components/InfoTip";
 
 const BILLABLE_TIP =
-  "Una hora facturable es trabajo que le cobrás al cliente: suma al monto de los reportes y entra al generar la factura. Desmarcala para lo que no vas a cobrar — reuniones internas, aprendizaje, retrabajos o cortesías. Sigue contando en tus horas, pero no en la plata.";
+  "Una hora facturable es trabajo que le cobrás al cliente: suma al monto de los reportes y entra al generar el invoice. Desmarcala para lo que no vas a cobrar — reuniones internas, aprendizaje, retrabajos o cortesías. Sigue contando en tus horas, pero no en la plata.";
 
 /**
  * Checkbox de "Facturable" con su tooltip de contexto, compartido por los

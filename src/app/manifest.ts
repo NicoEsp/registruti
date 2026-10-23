@@ -30,9 +30,9 @@ export default function manifest(): MetadataRoute.Manifest {
         icons: [{ src: "/icon-192.png", sizes: "192x192", type: "image/png" }],
       },
       {
-        name: "Nueva factura",
-        short_name: "Factura",
-        description: "Crear una factura a partir de tus horas",
+        name: "Nuevo invoice",
+        short_name: "Invoice",
+        description: "Crear un invoice a partir de tus horas",
         url: "/invoices?nueva=1",
         icons: [{ src: "/icon-192.png", sizes: "192x192", type: "image/png" }],
       },

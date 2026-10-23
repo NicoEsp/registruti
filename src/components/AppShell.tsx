@@ -18,7 +18,7 @@ const NAV_ITEMS = [
   { href: "/tracker", label: "Tracker", icon: "clock" },
   { href: "/clients", label: "Clientes", icon: "users" },
   { href: "/reports", label: "Reportes", icon: "chart" },
-  { href: "/invoices", label: "Facturas", icon: "invoice" },
+  { href: "/invoices", label: "Invoices", icon: "invoice" },
   { href: "/settings", label: "Ajustes", icon: "settings" },
 ] as const;
 
@@ -128,7 +128,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // Atajo del ícono de la PWA instalada ("Registrar tiempo" → /tracker?registrar=1).
   useOpenParam(QUICK_ADD_PARAM, () => setQuickAddOpen(true));
 
-  // Atajos globales: ⌘K/Ctrl+K abre la paleta; T registra tiempo; F nueva factura.
+  // Atajos globales: ⌘K/Ctrl+K abre la paleta; T registra tiempo; F nuevo invoice.
   // Todo overlay (modales de página, onboarding, palette, quick-add) marca su
   // backdrop con data-overlay: mientras haya uno abierto, los atajos no disparan
   // acciones que puedan pisar o desmontar trabajo a medio hacer.
