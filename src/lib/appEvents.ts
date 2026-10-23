@@ -15,6 +15,8 @@ export const TOAST_EVENT = "registruti:toast";
 export const NEW_INVOICE_PARAM = "nueva";
 export const NEW_CLIENT_PARAM = "nuevo";
 export const QUICK_ADD_PARAM = "registrar";
+/** `/tracker?cliente=<id>`: abrir el tracker con ese cliente ya elegido. */
+export const TRACKER_CLIENT_PARAM = "cliente";
 
 export function emitEntryAdded(): void {
   window.dispatchEvent(new CustomEvent(ENTRY_ADDED_EVENT));
@@ -48,6 +50,19 @@ export function useAppEvent(name: string, handler: () => void): void {
     window.addEventListener(name, h);
     return () => window.removeEventListener(name, h);
   }, [name]);
+}
+
+/**
+ * Lee un query param con valor libre (ej. ?cliente=<id>) y lo saca de la URL,
+ * para que un refresh o un "atrás" no lo vuelvan a aplicar. Null si no está.
+ */
+export function consumeParam(param: string): string | null {
+  const url = new URL(window.location.href);
+  const value = url.searchParams.get(param);
+  if (value === null) return null;
+  url.searchParams.delete(param);
+  window.history.replaceState(null, "", url.pathname + url.search);
+  return value;
 }
 
 /**

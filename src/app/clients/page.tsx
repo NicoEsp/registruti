@@ -1,12 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import Modal from "@/components/Modal";
 import UpgradeModal from "@/components/UpgradeModal";
 import { supabase } from "@/lib/supabase";
-import { NEW_CLIENT_EVENT, NEW_CLIENT_PARAM, useAppEvent, useOpenParam } from "@/lib/appEvents";
+import {
+  NEW_CLIENT_EVENT,
+  NEW_CLIENT_PARAM,
+  TRACKER_CLIENT_PARAM,
+  useAppEvent,
+  useOpenParam,
+} from "@/lib/appEvents";
 import { countryFor } from "@/lib/countries";
 import { fetchProfile } from "@/lib/profile";
 import { FREE_CLIENT_LIMIT, fetchIsPro, isClientLimitError } from "@/lib/plan";
@@ -23,6 +31,7 @@ export default function ClientsPage() {
 }
 
 function Clients() {
+  const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
   const [totals, setTotals] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -136,7 +145,11 @@ function Clients() {
         <p className="text-sm text-slate-400">Cargando…</p>
       ) : visible.length === 0 ? (
         <p className="py-12 text-center text-sm text-slate-400">
-          Todavía no tenés clientes. Agregá el primero para empezar a trackear.
+          Todavía no tenés clientes. Agregá el primero, o cargá tu primera hora directo en el{" "}
+          <Link href="/tracker" className="font-medium text-indigo-600 hover:underline">
+            Tracker
+          </Link>
+          : el cliente se crea en el mismo paso.
         </p>
       ) : (
         <>
@@ -303,9 +316,15 @@ function Clients() {
             setEditing(null);
             setShowUpgrade(true);
           }}
-          onSaved={() => {
+          onSaved={(createdClient) => {
             setShowForm(false);
             setEditing(null);
+            // Primer cliente: lo que sigue es cargar horas, no mirar la lista.
+            // Al tracker con ese cliente ya elegido.
+            if (createdClient && clients.length === 0) {
+              router.push(`/tracker?${TRACKER_CLIENT_PARAM}=${createdClient.id}`);
+              return;
+            }
             loadData();
           }}
         />
@@ -344,7 +363,8 @@ function ClientFormModal({
   defaultCurrency: string;
   onClose: () => void;
   onLimit: () => void;
-  onSaved: () => void;
+  /** Recibe el cliente recién creado; null si fue una edición. */
+  onSaved: (createdClient: Client | null) => void;
 }) {
   const [name, setName] = useState(client?.name ?? "");
   const [contactName, setContactName] = useState(client?.contact_name ?? "");
@@ -375,10 +395,9 @@ function ClientFormModal({
       currency,
       color,
     };
-    const query = client
-      ? supabase.from("clients").update(payload).eq("id", client.id)
-      : supabase.from("clients").insert(payload);
-    const { error: err } = await query;
+    const { data, error: err } = client
+      ? await supabase.from("clients").update(payload).eq("id", client.id).select().single()
+      : await supabase.from("clients").insert(payload).select().single();
     setSaving(false);
     if (err) {
       // El límite lo aplica un trigger de la base: si saltó, abrimos el paywall
@@ -395,7 +414,7 @@ function ClientFormModal({
         has_rate: payload.hourly_rate > 0,
       });
     }
-    onSaved();
+    onSaved(client ? null : (data as Client));
   }
 
   return (
