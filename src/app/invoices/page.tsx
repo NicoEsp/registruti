@@ -46,6 +46,10 @@ function Invoices() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
+  // Distinto de `loading`, que vuelve a true en cada recarga: esto dice si la
+  // lista de clientes ya llegó al menos una vez. El modal lo necesita para no
+  // confundir el [] inicial con "no tiene clientes".
+  const [clientsLoaded, setClientsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
@@ -75,6 +79,7 @@ function Invoices() {
     } else {
       setInvoices(invoicesRes.data);
       setClients(clientsRes.data);
+      setClientsLoaded(true);
       setIssuer(issuerData);
       const map = new Map<string, { minutes: number; earliest: string }>();
       for (const e of unbilledRes.data ?? []) {
@@ -345,6 +350,7 @@ function Invoices() {
       {showNew && (
         <NewInvoiceModal
           clients={clients.filter((c) => !c.archived)}
+          clientsLoaded={clientsLoaded}
           invoiceCount={invoices.length}
           issuer={issuer}
           initialClientId={newClientId}
@@ -376,6 +382,7 @@ function Invoices() {
 
 function NewInvoiceModal({
   clients,
+  clientsLoaded,
   invoiceCount,
   issuer,
   initialClientId,
@@ -385,6 +392,7 @@ function NewInvoiceModal({
   onCreated,
 }: {
   clients: Client[];
+  clientsLoaded: boolean;
   invoiceCount: number;
   issuer: InvoiceIssuer | null;
   initialClientId?: string | null;
@@ -420,7 +428,10 @@ function NewInvoiceModal({
     blockedRef.current = true;
     capture("invoice_blocked", { reason });
   }
-  const noClients = clients.length === 0;
+  // Recién cuando la lista cargó: el modal puede abrirse con la query en vuelo
+  // (?nueva=1 desde la paleta o la PWA, el atajo F) y `clients` ser el []
+  // inicial de alguien que sí tiene clientes.
+  const noClients = clientsLoaded && clients.length === 0;
   useEffect(() => {
     if (noClients) captureBlocked("no_clients");
   }, [noClients]);
@@ -463,9 +474,10 @@ function NewInvoiceModal({
     if (!client || !preview || preview.length === 0) return;
     setBusy(true);
     setError(null);
-    // Los datos del emisor van a Ajustes (el perfil), no a la factura: la
-    // próxima ya los tiene. Solo las columnas cargadas acá: un upsert no pisa
-    // las demás.
+    // Los datos del emisor van a Ajustes (el perfil), no al invoice: el
+    // próximo ya los tiene. Solo los campos que se cargaron: un vacío no debe
+    // pisar con null lo que ya hay en el perfil (el país, por ejemplo, que
+    // puede estar aunque hasIssuerData no lo mire).
     if (askIssuer && (country || businessName.trim() || taxId.trim())) {
       const {
         data: { user },
@@ -473,9 +485,9 @@ function NewInvoiceModal({
       if (user) {
         const { error: profileErr } = await supabase.from("profiles").upsert({
           user_id: user.id,
-          business_name: businessName.trim() || null,
-          tax_id: taxId.trim() || null,
-          country: country || null,
+          ...(businessName.trim() ? { business_name: businessName.trim() } : {}),
+          ...(taxId.trim() ? { tax_id: taxId.trim() } : {}),
+          ...(country ? { country } : {}),
         });
         if (profileErr) {
           setBusy(false);

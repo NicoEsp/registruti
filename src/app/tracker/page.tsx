@@ -59,6 +59,10 @@ function Tracker() {
   const [billable, setBillable] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  // `clients` arranca en [] y eso se parece a "no tiene clientes": hasta la
+  // primera carga no se ofrece crear uno (ni se deja enviar), para no mostrar
+  // el campo de nombre a quien ya tiene clientes ni crearle uno repetido.
+  const [clientsLoaded, setClientsLoaded] = useState(false);
   // Cliente pedido por URL (?cliente=<id>), pendiente hasta que carguen los clientes.
   const pendingClientRef = useRef<string | null>(null);
 
@@ -84,6 +88,7 @@ function Tracker() {
       setError(clientsRes.error?.message ?? entriesRes.error?.message ?? null);
     } else {
       setClients(clientsRes.data);
+      setClientsLoaded(true);
       setEntries(entriesRes.data);
       setError(null);
       const active = (clientsRes.data as Client[]).filter((c) => !c.archived);
@@ -121,9 +126,12 @@ function Tracker() {
 
   // La primera hora no espera a que exista un cliente: si no hay ninguno, o
   // se eligió "crear nuevo", el cliente se crea en el mismo clic que la entrada.
-  const creatingClient = activeClients.length === 0 || clientId === NEW_CLIENT_VALUE;
+  const creatingClient =
+    clientsLoaded && (activeClients.length === 0 || clientId === NEW_CLIENT_VALUE);
   const canSubmit =
-    duration != null && (creatingClient ? newClientName.trim().length > 0 : clientId !== "");
+    clientsLoaded &&
+    duration != null &&
+    (creatingClient ? newClientName.trim().length > 0 : clientId !== "");
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -322,16 +330,25 @@ function Tracker() {
         </div>
         <div className="w-full sm:w-auto">
           <label className="mb-1 block text-xs font-medium text-slate-500">
-            {activeClients.length === 0 ? "Cliente o proyecto" : "Cliente"}
+            {clientsLoaded && activeClients.length === 0 ? "Cliente o proyecto" : "Cliente"}
           </label>
-          <ClientSelect
-            compact
-            clients={activeClients}
-            value={clientId}
-            onChange={setClientId}
-            newName={newClientName}
-            onNewNameChange={setNewClientName}
-          />
+          {clientsLoaded ? (
+            <ClientSelect
+              compact
+              clients={activeClients}
+              value={clientId}
+              onChange={setClientId}
+              newName={newClientName}
+              onNewNameChange={setNewClientName}
+            />
+          ) : (
+            <select
+              disabled
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-400 sm:w-auto"
+            >
+              <option>Cargando…</option>
+            </select>
+          )}
         </div>
         <div className="flex w-full gap-3 sm:w-auto">
           <div className="flex-1 sm:flex-none">
