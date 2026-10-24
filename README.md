@@ -204,7 +204,8 @@ de todo el sitio y Google ahí premia herramientas, no guías. Estructura:
   `creator` de la SoftwareApplication y `author` de cada BlogPosting. **Ese `@id`, el
   nombre y el sitio tienen que ser los mismos en nicoproducto.work y productprepa.com**:
   es lo que le dice a Google y a las IAs que los tres sitios son de la misma persona.
-  El footer lleva el enlace visible "Un proyecto de Nico Espindola" a nicoproducto.work.
+  En el badge del footer ("Un producto por NicoProducto", con X y LinkedIn) el nombre
+  enlaza a nicoproducto.work.
 - **Indexación** — `robots.ts` + headers `X-Robots-Tag: noindex` (vercel.json) para
   las rutas privadas (`/tracker`, `/clients`, `/reports`, `/invoices`, `/settings`,
   `/auth`, `/api`, `/i`); `/login` lleva `noindex` por metadata (es una pantalla de

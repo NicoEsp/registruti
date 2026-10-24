@@ -17,12 +17,11 @@ function LinkedInIcon({ className }: { className?: string }) {
 }
 
 /**
- * Badge "Un proyecto de Nico Espindola" con el nombre enlazado a su sitio y
- * los perfiles de X y LinkedIn. Chip con borde en una sola línea (misma forma
- * en todos los productos). `sidebar` usa un tamaño más chico para el menú de
- * la app.
+ * Badge "Un producto por NicoProducto" con links a X y LinkedIn. Chip con
+ * borde en una sola línea (misma forma en todos los productos). `sidebar` usa
+ * un tamaño más chico para el menú de la app.
  *
- * El enlace al sitio del autor es un enlace común, no un botón con
+ * El nombre es un enlace común a nicoproducto.work, no un botón con
  * JavaScript: es el que conecta los tres sitios (NicoProducto, ProductPrepa y
  * Registruti) para Google y para las IAs. Va en el footer de todas las páginas
  * públicas a propósito.
@@ -39,7 +38,7 @@ export default function MadeByBadge({ variant = "card" }: { variant?: "card" | "
       }
     >
       <span className={`text-slate-500 ${compact ? "text-[11px] leading-tight" : "text-sm"}`}>
-        Un proyecto de{" "}
+        Un producto por{" "}
         <a
           href={SITE_AUTHOR.url}
           target="_blank"

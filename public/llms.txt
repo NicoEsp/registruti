@@ -30,4 +30,4 @@ Datos clave:
 
 ## Quién está detrás
 
-Registruti es un proyecto de Nico Espindola (NicoProducto), product builder y advisor de Argentina: https://nicoproducto.work. También es el creador de ProductPrepa (https://productprepa.com), una plataforma para aprender y crecer en Producto.
+Registruti es un producto por NicoProducto, la marca personal de Nico Espindola, product builder y advisor de Argentina: https://nicoproducto.work. También es el creador de ProductPrepa (https://productprepa.com), una plataforma para aprender y crecer en Producto.
