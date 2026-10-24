@@ -58,7 +58,10 @@ export const ANALYTICS_ENABLED = POSTHOG_KEY.length > 0;
  *   gente que llega al invoice antes que a las horas.
  * - `paywall_shown` — se topó un límite del plan gratis y se abrió el modal.
  * - `checkout_clicked` — clic en "Desbloquear lifetime access" (salida a LemonSqueezy).
- * - `calculator_cta_clicked` — clic en el CTA de la calculadora pública (salida a /login).
+ * - `calculator_cta_clicked` — clic en el CTA de la calculadora de tarifa (salida a /login).
+ * - `hours_calculator_cta_clicked` — clic en el CTA de la calculadora de horas
+ *   trabajadas (salida a /login). Sin propiedades, como el anterior: la página
+ *   promete que lo que se carga no sale del navegador.
  * - `client_created` — se creó un cliente: desde el wizard, desde Clientes o
  *   al vuelo desde el tracker / registro rápido.
  * - `invoice_viewed` — alguien abrió el enlace público de un invoice.
@@ -72,6 +75,7 @@ export type AnalyticsEvent =
   | "paywall_shown"
   | "checkout_clicked"
   | "calculator_cta_clicked"
+  | "hours_calculator_cta_clicked"
   | "client_created"
   | "invoice_viewed";
 

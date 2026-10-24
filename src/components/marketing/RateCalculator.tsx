@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { saveCalculatedRate } from "@/lib/calculatedRate";
 import { capture } from "@/lib/analytics";
+import { CALCULATOR_CURRENCIES, findCalculatorCurrency, formatMoney } from "@/lib/calculatorCurrencies";
 
 /**
  * Calculadora de tarifa por hora freelance.
@@ -15,36 +16,9 @@ import { capture } from "@/lib/analytics";
  * que el visitante toque nada (y el HTML se prerenderiza con ese resultado).
  */
 
-// Las 9 monedas que soporta Registruti. El locale es el del país de cada
-// moneda para que los separadores y el símbolo se vean como los espera quien
-// la usa (CLP y COP sin decimales, BRL con coma, etc.).
-const CURRENCIES = [
-  { code: "USD", label: "Dólar (USD)", locale: "en-US" },
-  { code: "ARS", label: "Peso argentino (ARS)", locale: "es-AR" },
-  { code: "MXN", label: "Peso mexicano (MXN)", locale: "es-MX" },
-  { code: "COP", label: "Peso colombiano (COP)", locale: "es-CO" },
-  { code: "CLP", label: "Peso chileno (CLP)", locale: "es-CL" },
-  { code: "UYU", label: "Peso uruguayo (UYU)", locale: "es-UY" },
-  { code: "BRL", label: "Real (BRL)", locale: "pt-BR" },
-  { code: "EUR", label: "Euro (EUR)", locale: "es-ES" },
-  { code: "GBP", label: "Libra (GBP)", locale: "en-GB" },
-] as const;
-
 const WEEKS_PER_YEAR = 52;
 /** Margen sobre la tarifa mínima: colchón para huecos entre proyectos. */
 const MARGIN = 0.2;
-
-function formatMoney(value: number, currency: string, locale: string): string {
-  if (!Number.isFinite(value) || value <= 0) return "—";
-  // Los montos grandes (ARS, COP, CLP) no necesitan centavos; los chicos sí.
-  const digits = value >= 1000 ? 0 : 2;
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency,
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  }).format(value);
-}
 
 interface FieldProps {
   label: string;
@@ -101,7 +75,7 @@ export default function RateCalculator() {
   const [billableHoursPerDay, setBillableHoursPerDay] = useState(5);
   const [weeksOff, setWeeksOff] = useState(4);
 
-  const selected = CURRENCIES.find((c) => c.code === currency) ?? CURRENCIES[0];
+  const selected = findCalculatorCurrency(currency);
 
   const result = useMemo(() => {
     const netYear = monthlyIncome * 12;
@@ -165,7 +139,7 @@ export default function RateCalculator() {
               onChange={(e) => setCurrency(e.target.value)}
               className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
             >
-              {CURRENCIES.map((c) => (
+              {CALCULATOR_CURRENCIES.map((c) => (
                 <option key={c.code} value={c.code}>
                   {c.label}
                 </option>

@@ -23,6 +23,12 @@ export interface AlternativePageProps {
   h1Highlight: string;
   subtitle: string;
   verdict: ReactNode;
+  /**
+   * H2 del veredicto, propio de cada página ("Registruti vs. X: el veredicto
+   * en 20 segundos"). Las tres landings compartían el mismo H2 genérico, y un
+   * H2 repetido entre páginas es señal de plantilla, no de contenido.
+   */
+  verdictTitle: string;
   reasonsTitle: string;
   reasonsIntro: string;
   reasons: { icon: string; title: string; body: string }[];
@@ -81,7 +87,7 @@ export default function AlternativePage(props: AlternativePageProps) {
         {/* Veredicto */}
         <div className="mx-auto mt-14 max-w-3xl rounded-2xl border border-indigo-100 bg-indigo-50/50 p-6">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-indigo-700">
-            El veredicto en 20 segundos
+            {props.verdictTitle}
           </h2>
           <p className="mt-3 text-slate-700">{props.verdict}</p>
         </div>

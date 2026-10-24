@@ -165,32 +165,68 @@ que correr antes de tocar cualquier cosa del MCP.
 ## SEO
 
 La captación orgánica apunta a búsquedas de "alternativa a Toggl Track", "time tracker
-gratis/en español" y "control de horas" (long-tail). Estructura:
+gratis/en español", "control de horas" y, desde octubre de 2026 (auditoría SEO y AEO de
+Circe), a herramientas: "calculadora de horas trabajadas" es la búsqueda con más volumen
+de todo el sitio y Google ahí premia herramientas, no guías. Estructura:
 
 - **`/alternativa-toggl-track`** — página de comparación dedicada (la "money page"):
   tabla completa, precios 2026, guía de migración y FAQ con schema propio.
+  `/alternativa-clockify` y `/alternativa-harvest` comparten layout
+  (`AlternativePage`) pero no contenido, y cada una tiene su propio H2 de veredicto.
 - **`/cuanto-cobrar-por-hora`** — calculadora de tarifa: la página con más impresiones
   orgánicas del sitio ("cuánto cobrar por hora" y sus variantes por especialidad y por
   país). Su artículo satélite es `/blog/cobrar-por-hora-o-por-proyecto`; se linkean entre
   sí, todas las páginas de marketing la enlazan (header, footer, landing, índice del blog)
   y el CTA del resultado pasa la tarifa al onboarding (`src/lib/calculatedRate.ts`).
+- **`/calculadora-de-horas-trabajadas`** — calculadora de horas: entrada, salida y
+  descanso por día, total semanal en hh:mm y decimal, redondeo opcional a 15 minutos y
+  monto según tarifa (`HoursCalculator`). Las monedas y el formato de dinero de las dos
+  calculadoras viven en `src/lib/calculatorCurrencies.ts`.
+- **`/time-tracker-gratis`** — landing para la búsqueda genérica "time tracker" (sobre
+  todo México): qué incluye el plan gratis y comparación de planes gratis.
 - **`/blog`** — artículos registrados en `src/lib/blog.ts` (metadata) con cuerpo en
   `src/components/blog/*` y mapeo por slug en `src/app/blog/[slug]/page.tsx`.
-  Feed RSS en `/blog/feed.xml`.
+  Feed RSS en `/blog/feed.xml`. Cada post declara sus `related` (los tres posts del
+  "Seguí leyendo", elegidos por tema), opcionalmente `faqs` (acordeón al pie + `FAQPage`
+  en el JSON-LD) y `metaTitle` (el `<title>` exacto, sin la plantilla "| Registruti",
+  para los que con marca pasan los 60 caracteres).
+- **Planilla de control de horas** — `public/plantillas/control-de-horas-trabajadas.xlsx`,
+  la descarga de `/blog/control-de-horas-trabajadas`. La genera
+  `scripts/plantillas/control-de-horas.py` (openpyxl): no se edita a mano, se cambia el
+  script y se vuelve a correr. El ejemplo cargado es la misma semana que cuenta el post.
 - **Structured data** — JSON-LD por página: `Organization` + `WebSite` +
   `SoftwareApplication` + `FAQPage` en la landing; `BlogPosting` + `BreadcrumbList`
-  en los posts; `Blog` en el índice; `WebPage` + `FAQPage` + `BreadcrumbList` en la
-  comparación.
+  (+ `FAQPage` si el post tiene `faqs`) en los posts; `Blog` en el índice; `WebPage` +
+  `FAQPage` + `BreadcrumbList` en las comparaciones y landings; `WebPage` +
+  `WebApplication` + `BreadcrumbList` + `FAQPage` en las calculadoras. El autor es un
+  nodo `Person` (`authorPersonJsonLd()` en `src/lib/site.ts`) con el `@id`
+  `https://nicoproducto.work/#person`, referenciado como `founder` de la Organization,
+  `creator` de la SoftwareApplication y `author` de cada BlogPosting. **Ese `@id`, el
+  nombre y el sitio tienen que ser los mismos en nicoproducto.work y productprepa.com**:
+  es lo que le dice a Google y a las IAs que los tres sitios son de la misma persona.
+  El footer lleva el enlace visible "Un proyecto de Nico Espindola" a nicoproducto.work.
 - **Indexación** — `robots.ts` + headers `X-Robots-Tag: noindex` (vercel.json) para
   las rutas privadas (`/tracker`, `/clients`, `/reports`, `/invoices`, `/settings`,
-  `/auth`, `/api`, `/i`); `sitemap.xml` generado desde `src/app/sitemap.ts`;
+  `/auth`, `/api`, `/i`); `/login` lleva `noindex` por metadata (es una pantalla de
+  auth sin contenido); `sitemap.xml` generado desde `src/app/sitemap.ts`;
   `public/llms.txt` para asistentes de IA.
+- **Dominio** — la versión canónica es `https://registruti.app`, sin `www`. La
+  redirección de `www` la decide el panel de Vercel (Settings → Domains), no el código
+  (ver la nota en `next.config.ts`): tiene que ser **308** (permanente) y en un solo
+  salto desde `http://www`, no 307. Con 307 Google sigue guardando las URLs con www y
+  reparte entre las dos versiones los clics y la autoridad de una misma página.
 - **Search Console** — para verificar la propiedad por meta tag, setear en Vercel la
   env var `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` con el token del método "HTML tag"
   (solo el `content`). Alternativa: verificación por DNS, sin tocar nada acá.
 
-Al publicar un post nuevo: entrada en `src/lib/blog.ts` + componente + mapeo del slug.
-El sitemap, el feed y el índice lo levantan solos.
+Reglas que conviene no romper (de la auditoría): title de 60 caracteres o menos con la
+keyword al principio y description de 120 a 155; un solo H1 por página y H2 propios (nada
+de repetir el mismo H2 entre landings); una keyword principal por página; la respuesta en
+las dos primeras frases; enlaces comunes (`<a>`), nunca botones que solo funcionan con
+JavaScript; cada URL que cambie lleva 301 y actualiza enlaces internos y sitemap.
+
+Al publicar un post nuevo: entrada en `src/lib/blog.ts` (con `related` y, si aplica,
+`faqs`) + componente + mapeo del slug. El sitemap, el feed y el índice lo levantan solos.
 
 ## Analítica (PostHog)
 
@@ -225,6 +261,7 @@ no está en esa unión, no compila.
 | `paywall_shown` | se abre `UpgradeModal` | `reason` (`clients` / `invoices` / `general`) |
 | `checkout_clicked` | clic en "Desbloquear lifetime access" | `reason` |
 | `calculator_cta_clicked` | CTA de `/cuanto-cobrar-por-hora` (salida a `/login`) | — (a propósito: la página promete que lo calculado no sale del navegador) |
+| `hours_calculator_cta_clicked` | CTA de `/calculadora-de-horas-trabajadas` (salida a `/login`) | — (misma razón) |
 | `client_created` | wizard de bienvenida, alta en Clientes y alta al vuelo desde el tracker o el registro rápido | `source` (`onboarding` / `clients` / `tracker` / `quick_add`), `currency`, `has_rate` |
 | `invoice_viewed` | enlace público `/i/[token]`, lo abre el cliente del usuario | `status`, `currency` |
 

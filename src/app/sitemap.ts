@@ -10,11 +10,16 @@ import { POSTS } from "@/lib/blog";
 // cambiaron. Google descarta el <lastmod> de los sitios que lo reportan mal, y
 // las URLs quedan dando vueltas en "detectada / pendiente" sin terminar de
 // indexarse. Al editar de verdad una de estas páginas, actualizá su fecha acá.
-const HOME_UPDATED = "2026-09-04";
-const TOGGL_UPDATED = "2026-07-31";
-const CLOCKIFY_UPDATED = "2026-07-31";
-const HARVEST_UPDATED = "2026-07-31";
-const RATE_CALC_UPDATED = "2026-09-04";
+// 24/10: auditoría SEO. Home: bloque de las dos calculadoras y FAQ enlazada a
+// la guía de control de horas. Landings: title y H2 del veredicto propios.
+// Calculadora de tarifa: title, description y enlaces a la de horas.
+const HOME_UPDATED = "2026-10-24";
+const TOGGL_UPDATED = "2026-10-24";
+const CLOCKIFY_UPDATED = "2026-10-24";
+const HARVEST_UPDATED = "2026-10-24";
+const RATE_CALC_UPDATED = "2026-10-24";
+const HOURS_CALC_UPDATED = "2026-10-24";
+const TIME_TRACKER_UPDATED = "2026-10-24";
 // Coincide con el "Última actualización" que muestran las páginas legales.
 const LEGAL_UPDATED = "2026-07-02";
 
@@ -38,9 +43,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
   }));
 
   // Solo URLs canónicas, indexables y con contenido propio. /login queda afuera
-  // a propósito: es una pantalla de auth sin contenido rastreable, Google la
-  // marca "rastreada: actualmente sin indexar" y ensucia el informe de
-  // indexación. Sigue siendo rastreable y linkeada desde el footer.
+  // a propósito: es una pantalla de auth sin contenido rastreable y lleva
+  // noindex (src/app/login/layout.tsx). Sigue siendo rastreable y linkeada
+  // desde el footer, que es lo que Google necesita para leer ese noindex.
   return [
     {
       url: `${SITE_URL}/`,
@@ -59,6 +64,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: new Date(RATE_CALC_UPDATED),
       changeFrequency: "monthly",
       priority: 0.9,
+    },
+    {
+      url: `${SITE_URL}/calculadora-de-horas-trabajadas`,
+      lastModified: new Date(HOURS_CALC_UPDATED),
+      changeFrequency: "monthly",
+      priority: 0.9,
+    },
+    {
+      url: `${SITE_URL}/time-tracker-gratis`,
+      lastModified: new Date(TIME_TRACKER_UPDATED),
+      changeFrequency: "monthly",
+      priority: 0.8,
     },
     {
       url: `${SITE_URL}/alternativa-clockify`,

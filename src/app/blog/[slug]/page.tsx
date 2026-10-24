@@ -2,13 +2,15 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { POSTS, formatDateES, getPost } from "@/lib/blog";
-import { SITE_AUTHOR, SITE_NAME, SITE_OG_IMAGE, SITE_URL } from "@/lib/site";
+import { POSTS, formatDateES, getPost, getRelatedPosts, type BlogFaq, type BlogPost } from "@/lib/blog";
+import { SITE_AUTHOR, SITE_NAME, SITE_OG_IMAGE, SITE_URL, authorPersonJsonLd } from "@/lib/site";
 import McpArticle from "@/components/blog/McpArticle";
 import TogglAlternativasArticle from "@/components/blog/TogglAlternativasArticle";
 import TimeTrackersArticle from "@/components/blog/TimeTrackersArticle";
 import ControlHorasArticle from "@/components/blog/ControlHorasArticle";
 import CobrarPorHoraOProyectoArticle from "@/components/blog/CobrarPorHoraOProyectoArticle";
+import FacturaCArticle from "@/components/blog/FacturaCArticle";
+import FacturaEArticle from "@/components/blog/FacturaEArticle";
 
 // Mapa slug → cuerpo del artículo. Al sumar un post: agregá su entrada en
 // src/lib/blog.ts y su componente acá.
@@ -18,6 +20,8 @@ const BODIES: Record<string, ReactNode> = {
   "mejores-time-trackers-freelancers": <TimeTrackersArticle />,
   "control-de-horas-trabajadas": <ControlHorasArticle />,
   "cobrar-por-hora-o-por-proyecto": <CobrarPorHoraOProyectoArticle />,
+  "factura-c": <FacturaCArticle />,
+  "factura-e-servicios-al-exterior": <FacturaEArticle />,
 };
 
 export function generateStaticParams() {
@@ -34,7 +38,9 @@ export async function generateMetadata({
   if (!post) return {};
   const url = `${SITE_URL}/blog/${post.slug}`;
   return {
-    title: post.title,
+    // `metaTitle` es el <title> exacto para los posts cuyo título con la
+    // plantilla "| Registruti" pasa los 60 caracteres y Google lo corta.
+    title: post.metaTitle ? { absolute: post.metaTitle } : post.title,
     description: post.description,
     keywords: post.keywords,
     alternates: {
@@ -86,13 +92,10 @@ export default async function BlogPostPage({
         keywords: post.keywords.join(", "),
         articleSection: post.tag,
         // Persona, no organización: Google evalúa quién firma (E-E-A-T) y el
-        // byline visible de abajo tiene que coincidir con esto.
-        author: {
-          "@type": "Person",
-          name: SITE_AUTHOR.name,
-          url: SITE_AUTHOR.url,
-          sameAs: SITE_AUTHOR.sameAs,
-        },
+        // byline visible de abajo tiene que coincidir con esto. El nodo Person
+        // completo va al final del grafo, con el @id compartido por los tres
+        // sitios del autor.
+        author: { "@id": SITE_AUTHOR.id },
         publisher: {
           "@type": "Organization",
           name: SITE_NAME,
@@ -116,6 +119,21 @@ export default async function BlogPostPage({
           },
         ],
       },
+      authorPersonJsonLd(),
+      // Las preguntas frecuentes del post, si las tiene: la respuesta corta a
+      // la pregunta exacta es lo que Google y las IAs citan.
+      ...(post.faqs?.length
+        ? [
+            {
+              "@type": "FAQPage",
+              mainEntity: post.faqs.map((faq) => ({
+                "@type": "Question",
+                name: faq.q,
+                acceptedAnswer: { "@type": "Answer", text: faq.a },
+              })),
+            },
+          ]
+        : []),
     ],
   };
 
@@ -168,6 +186,8 @@ export default async function BlogPostPage({
 
       <article className="article">{body}</article>
 
+      {post.faqs?.length ? <PostFaqs faqs={post.faqs} /> : null}
+
       <div className="mt-12 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-6 text-center">
         <p className="text-base font-semibold text-slate-900">
           ¿Todavía no usás Registruti?
@@ -183,14 +203,44 @@ export default async function BlogPostPage({
         </Link>
       </div>
 
-      <RelatedPosts current={post.slug} />
+      <RelatedPosts post={post} />
     </main>
   );
 }
 
-/** Otros artículos del blog, para retención y crawleo interno. */
-function RelatedPosts({ current }: { current: string }) {
-  const others = POSTS.filter((p) => p.slug !== current).slice(0, 3);
+/** Preguntas frecuentes al pie del post. Mismo acordeón que las landings. */
+function PostFaqs({ faqs }: { faqs: BlogFaq[] }) {
+  return (
+    <section className="mt-12" aria-labelledby="post-faq">
+      <h2 id="post-faq" className="text-xl font-bold tracking-tight text-slate-900">
+        Preguntas frecuentes
+      </h2>
+      <div className="mt-5 space-y-3">
+        {faqs.map((faq) => (
+          <details key={faq.q} className="group rounded-xl border border-slate-200 bg-white px-5 py-4">
+            <summary className="cursor-pointer list-none text-sm font-semibold [&::-webkit-details-marker]:hidden">
+              <span className="flex items-center justify-between gap-3">
+                {faq.q}
+                <span className="text-slate-400 transition group-open:rotate-45" aria-hidden>
+                  +
+                </span>
+              </span>
+            </summary>
+            <p className="mt-3 text-sm leading-relaxed text-slate-600">{faq.a}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Otros artículos del blog, para retención y crawleo interno. Los elige cada
+ * post (`related` en blog.ts), por tema: así ningún post se queda con un solo
+ * enlace interno por estar último en la lista.
+ */
+function RelatedPosts({ post }: { post: BlogPost }) {
+  const others = getRelatedPosts(post);
   if (others.length === 0) return null;
   return (
     <aside className="mt-12">
