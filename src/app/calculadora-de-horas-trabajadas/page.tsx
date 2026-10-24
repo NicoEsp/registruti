@@ -82,7 +82,7 @@ const FAQS = [
   },
   {
     q: "¿Cómo sumo las horas de la semana o del mes sin equivocarme?",
-    a: "Sumá los minutos aparte y pasá cada 60 minutos a una hora: 7:45 más 8:10 son 15 horas y 55 minutos, no 15:55 por suerte sino porque 45 más 10 no llega a 60; 7:45 más 8:30 son 15 horas y 75 minutos, o sea 16:15. En una planilla, usá celdas en formato de hora y el formato [h]:mm en el total, que permite pasar de 24 horas. Para el mes, multiplicar una semana típica por 4,33 da una aproximación; la cuenta exacta sale de registrar cada día.",
+    a: "Sumá los minutos aparte y pasá cada 60 minutos a una hora: 7:45 más 8:10 son 15 horas y 55 minutos, o sea 15:55, porque 45 más 10 no llega a 60. En cambio, 7:45 más 8:30 son 15 horas y 75 minutos, o sea 16:15. En una planilla, usá celdas en formato de hora y el formato [h]:mm en el total, que permite pasar de 24 horas. Para el mes, multiplicar una semana típica por 4,33 da una aproximación; la cuenta exacta sale de registrar cada día.",
   },
   {
     q: "¿Cuántas horas facturables tiene una semana de freelance?",

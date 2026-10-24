@@ -190,7 +190,10 @@ for r in range(first, last + 1):
     src = r - first + 2  # fila en Clientes
     rs.cell(row=r, column=1, value=f'=IF(Clientes!A{src}="","",Clientes!A{src})')
     rs.cell(row=r, column=2, value=f'=IF(A{r}="","",SUMIF(Horas!$B:$B,A{r},Horas!$G:$G))')
-    rs.cell(row=r, column=3, value=f'=IF(A{r}="","",SUMIFS(Horas!$G:$G,Horas!$B:$B,A{r},Horas!$I:$I,"Sí"))')
+    # Facturable vacío cuenta como "Sí", igual que en la columna Importe de la
+    # hoja Horas (que solo descuenta los "No"): si las dos columnas usaran
+    # criterios distintos, una fila sin marcar sumaría plata pero no horas.
+    rs.cell(row=r, column=3, value=f'=IF(A{r}="","",SUMIFS(Horas!$G:$G,Horas!$B:$B,A{r},Horas!$I:$I,"<>No"))')
     rs.cell(row=r, column=4, value=f'=IF(A{r}="","",SUMIF(Horas!$B:$B,A{r},Horas!$K:$K))')
     rs.cell(row=r, column=2).number_format = "[h]:mm"
     rs.cell(row=r, column=3).number_format = "[h]:mm"
@@ -227,7 +230,7 @@ rs.cell(row=rng + 4, column=1, value="Horas facturables")
 rs.cell(
     row=rng + 4,
     column=2,
-    value=f'=SUMIFS(Horas!$G:$G,Horas!$A:$A,">="&B{rng + 1},Horas!$A:$A,"<="&B{rng + 2},Horas!$I:$I,"Sí")',
+    value=f'=SUMIFS(Horas!$G:$G,Horas!$A:$A,">="&B{rng + 1},Horas!$A:$A,"<="&B{rng + 2},Horas!$I:$I,"<>No")',
 )
 rs.cell(row=rng + 4, column=2).number_format = "[h]:mm"
 rs.cell(row=rng + 5, column=1, value="Importe")
@@ -249,7 +252,7 @@ LINES = [
     ("", None),
     ("1. En la hoja Clientes, cargá cada cliente con su tarifa por hora y su moneda.", None),
     ("2. En la hoja Horas, una fila por bloque de trabajo: fecha, cliente, tarea, hora de entrada, hora de salida y descanso.", None),
-    ("   El descanso va en formato de hora (0:45 son 45 minutos). Facturable: Sí o No.", None),
+    ("   El descanso va en formato de hora (0:45 son 45 minutos). Facturable: Sí o No (vacío cuenta como Sí).", None),
     ("3. Las columnas grises se calculan solas: horas en hh:mm, horas en decimal, tarifa del cliente e importe.", None),
     ("4. La hoja Resumen suma horas, horas facturables e importe por cliente, y también entre dos fechas.", None),
     ("", None),

@@ -347,9 +347,9 @@ export default function ControlHorasArticle() {
       </div>
       <p>
         Total de la semana: <strong>23:45</strong>, de las cuales <strong>22:45</strong> son
-        facturables. Por día: 6:15, 4:30, 5:00, 3:45 y 4:15; un promedio de 4:45 facturables,
-        dentro del rango normal de un freelance a tiempo completo. La hoja Resumen de la planilla
-        lo agrupa así:
+        facturables. Por día, las horas trabajadas son 6:15, 4:30, 5:00, 3:45 y 4:15: un promedio
+        de 4:45 por día, y de 4:33 facturables, dentro del rango normal de un freelance a tiempo
+        completo. La hoja Resumen de la planilla lo agrupa así:
       </p>
       <div className="overflow-x-auto">
         <table>

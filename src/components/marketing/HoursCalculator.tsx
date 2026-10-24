@@ -76,6 +76,14 @@ export function formatDecimalHours(minutes: number, locale: string): string {
   }).format(minutes / 60);
 }
 
+/**
+ * Las horas en decimal se muestran siempre con coma ("38,75"), como el resto
+ * del texto de la página y la tabla de conversión. No son un monto: no tienen
+ * por qué cambiar de separador cuando se elige otra moneda (con USD, el
+ * locale en-US las mostraba como "38.75").
+ */
+const HOURS_LOCALE = "es-AR";
+
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm tabular-nums shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100";
 
@@ -227,7 +235,7 @@ export default function HoursCalculator() {
           </p>
           <p className="mt-2 text-4xl font-bold tabular-nums">{formatHoursMinutes(totalMinutes)}</p>
           <p className="mt-1 text-sm text-indigo-100">
-            {formatDecimalHours(totalMinutes, selected.locale)} horas en decimal
+            {formatDecimalHours(totalMinutes, HOURS_LOCALE)} horas en decimal
           </p>
 
           <dl className="mt-6 space-y-3 border-t border-white/20 pt-5 text-sm">
