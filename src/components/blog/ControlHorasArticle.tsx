@@ -36,7 +36,7 @@ const WEEK_TOTALS = [
   { client: "Estudio Galley", hours: "10:45", decimal: "10,75", rate: "USD 40", amount: "USD 430,00" },
   { client: "Baratie Labs", hours: "10:15", decimal: "10,25", rate: "USD 45", amount: "USD 461,25" },
   { client: "All Blue Ventures", hours: "1:45", decimal: "1,75", rate: "USD 60", amount: "USD 105,00" },
-  { client: "Mi negocio (no facturable)", hours: "1:00", decimal: "1,00", rate: "—", amount: "—" },
+  { client: "Mi negocio (no facturable)", hours: "1:00", decimal: "1,00", rate: "USD 0", amount: "USD 0,00" },
 ];
 
 export default function ControlHorasArticle() {
@@ -349,7 +349,8 @@ export default function ControlHorasArticle() {
         Total de la semana: <strong>23:45</strong>, de las cuales <strong>22:45</strong> son
         facturables. Por día, las horas trabajadas son 6:15, 4:30, 5:00, 3:45 y 4:15: un promedio
         de 4:45 por día, y de 4:33 facturables, dentro del rango normal de un freelance a tiempo
-        completo. La hoja Resumen de la planilla lo agrupa así:
+        completo. Agrupado por cliente, con la tarifa de cada uno, queda así (la hoja Resumen de la
+        planilla hace esa suma sola: horas, horas facturables e importe por cliente):
       </p>
       <div className="overflow-x-auto">
         <table>
