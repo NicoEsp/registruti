@@ -14,12 +14,20 @@ Datos clave:
 
 - [Inicio](https://registruti.app/): qué es Registruti, funcionalidades y preguntas frecuentes.
 - [Cuánto cobrar por hora](https://registruti.app/cuanto-cobrar-por-hora): calculadora gratuita de tarifa por hora freelance en 9 monedas, con gastos, impuestos y horas facturables; incluye rangos por especialidad (redacción, diseño, desarrollo, marketing, traducción, video, consultoría), qué cambia según el país (Argentina, México, Colombia, Chile, España, clientes del exterior) y cuándo conviene cobrar por proyecto.
+- [Calculadora de horas trabajadas](https://registruti.app/calculadora-de-horas-trabajadas): calculadora gratuita de horas trabajadas por día y por semana a partir de la hora de entrada, la de salida y los descansos; total en horas y minutos, en decimal y monto a cobrar según la tarifa, con redondeo opcional a bloques de 15 minutos y tabla de conversión de minutos a decimal.
+- [Time tracker gratis](https://registruti.app/time-tracker-gratis): qué tiene que tener un time tracker para freelancers, qué incluye el plan gratis de Registruti y comparación con los planes gratis de Toggl Track, Clockify y Harvest; pensada para México, Argentina y Latinoamérica.
 - [Alternativa a Toggl Track](https://registruti.app/alternativa-toggl-track): comparación completa con Toggl Track, precios 2026 y guía de migración.
 - [Alternativa a Clockify](https://registruti.app/alternativa-clockify): comparación con Clockify, qué incluye cada plan gratis y cuánto cuesta facturar.
 - [Alternativa a Harvest](https://registruti.app/alternativa-harvest): comparación con Harvest, su plan gratis limitado y su esquema de precios por uso.
 - [Blog](https://registruti.app/blog): guías y comparativas sobre time tracking y facturación freelance.
 - [¿Cobrar por hora o por proyecto? Cómo decidir y cotizar cada uno](https://registruti.app/blog/cobrar-por-hora-o-por-proyecto)
-- [Las 6 mejores alternativas a Toggl Track en 2026](https://registruti.app/blog/mejores-alternativas-toggl-track)
+- [Las 6 mejores alternativas a Toggl Track (comparativa 2026)](https://registruti.app/blog/mejores-alternativas-toggl-track)
 - [Los mejores time trackers para freelancers en 2026](https://registruti.app/blog/mejores-time-trackers-freelancers)
-- [Cómo llevar el control de horas trabajadas](https://registruti.app/blog/control-de-horas-trabajadas)
+- [Control de horas trabajadas: guía y planilla gratis](https://registruti.app/blog/control-de-horas-trabajadas): método, fórmulas de Excel, ejemplo completo de una semana y una planilla gratis para descargar (https://registruti.app/plantillas/control-de-horas-trabajadas.xlsx) con horas por cliente, tarifa e importe calculados.
+- [Factura C en ARCA: cómo hacerla paso a paso (monotributo)](https://registruti.app/blog/factura-c): guía para monotributistas de Argentina que facturan servicios.
+- [Factura E para exportar servicios: cómo hacerla en ARCA](https://registruti.app/blog/factura-e-servicios-al-exterior): guía para facturar servicios a clientes del exterior desde Argentina.
 - [Cómo conectar Registruti a Claude con MCP](https://registruti.app/blog/mcp)
+
+## Quién está detrás
+
+Registruti es un producto por NicoProducto, la marca personal de Nico Espindola, product builder y advisor de Argentina: https://nicoproducto.work. También es el creador de ProductPrepa (https://productprepa.com), una plataforma para aprender y crecer en Producto.

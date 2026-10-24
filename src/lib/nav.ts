@@ -27,6 +27,13 @@ export const PRIMARY_NAV: NavLink[] = [
  */
 export const NAV_CTA: NavLink = { href: "/login", label: "Empezá gratis" };
 
+/**
+ * El footer es la red de enlaces internos del sitio: cada página pública lo
+ * lleva, así que lo que está acá recibe un enlace desde todas. Por eso entran
+ * las herramientas y las guías que tienen que rankear (las dos calculadoras,
+ * la guía de control de horas, el tutorial de MCP) y no solo la navegación
+ * de producto.
+ */
 export const FOOTER_NAV: { title: string; links: NavLink[] }[] = [
   {
     title: "Producto",
@@ -34,6 +41,8 @@ export const FOOTER_NAV: { title: string; links: NavLink[] }[] = [
       { href: "/#funcionalidades", label: "Funcionalidades" },
       { href: "/#como-funciona", label: "Cómo funciona" },
       { href: "/#precios", label: "Precios" },
+      { href: "/time-tracker-gratis", label: "Time tracker gratis" },
+      { href: "/blog/mcp", label: "Conectar con Claude (MCP)" },
       { href: "/login", label: "Iniciar sesión" },
     ],
   },
@@ -41,6 +50,8 @@ export const FOOTER_NAV: { title: string; links: NavLink[] }[] = [
     title: "Recursos",
     links: [
       { href: "/cuanto-cobrar-por-hora", label: "Cuánto cobrar por hora" },
+      { href: "/calculadora-de-horas-trabajadas", label: "Calculadora de horas trabajadas" },
+      { href: "/blog/control-de-horas-trabajadas", label: "Control de horas trabajadas" },
       { href: "/blog", label: "Blog" },
       { href: "/#faq", label: "Preguntas frecuentes" },
     ],
@@ -51,6 +62,7 @@ export const FOOTER_NAV: { title: string; links: NavLink[] }[] = [
       { href: "/alternativa-toggl-track", label: "Alternativa a Toggl Track" },
       { href: "/alternativa-clockify", label: "Alternativa a Clockify" },
       { href: "/alternativa-harvest", label: "Alternativa a Harvest" },
+      { href: "/blog/mejores-time-trackers-freelancers", label: "Mejores time trackers" },
     ],
   },
 ];

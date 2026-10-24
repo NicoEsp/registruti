@@ -5,10 +5,14 @@ import { buildComparisonJsonLd } from "@/lib/comparisonJsonLd";
 
 const PAGE_URL = `${SITE_URL}/alternativa-harvest`;
 const PUBLISHED_ISO = "2026-07-31";
-const UPDATED_ISO = "2026-07-31";
+// Octubre: title y H2 del veredicto propios (antes compartidos con las otras
+// dos landings), según la auditoría SEO.
+const UPDATED_ISO = "2026-10-24";
 
+// Con la plantilla "| Registruti" el title queda en 54 caracteres: entero en
+// Google. El anterior (72 con marca) se cortaba.
 export const metadata: Metadata = {
-  title: "Alternativa a Harvest para freelancers, gratis y en español",
+  title: "Alternativa a Harvest gratis y en español",
   description:
     "El plan gratis de Harvest es 1 usuario y 2 proyectos, está solo en inglés y cobra por uso. Registruti da tarifas por cliente y facturas en PDF gratis, en español.",
   keywords: [
@@ -129,7 +133,7 @@ const FAQS = [
 
 const JSON_LD = buildComparisonJsonLd({
   pageUrl: PAGE_URL,
-  name: "Alternativa a Harvest para freelancers, gratis y en español",
+  name: "Alternativa a Harvest gratis y en español",
   description:
     "Comparación entre Registruti y Harvest para freelancers: plan gratis real, previsibilidad del precio, idioma y funcionalidades de facturación.",
   breadcrumbLabel: "Alternativa a Harvest",
@@ -176,6 +180,7 @@ export default function AlternativaHarvestPage() {
         h1Lead="La alternativa a Harvest"
         h1Highlight="para freelancers que facturan por hora"
         subtitle="Harvest es una gran herramienta para agencias: casi veinte años puliendo tiempo, gastos y facturación por proyecto. Si sos una sola persona, estás pagando en dólares —y navegando en inglés— una complejidad que no usás."
+        verdictTitle="Registruti vs. Harvest: el veredicto en 20 segundos"
         verdict={
           <>
             <strong>Elegí Registruti</strong> si sos freelancer o consultor independiente, facturás

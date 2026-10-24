@@ -5,7 +5,13 @@ import Wordmark from "@/components/Wordmark";
 import LandingAuthRedirect from "@/components/LandingAuthRedirect";
 import SiteHeader from "@/components/marketing/SiteHeader";
 import SiteFooter from "@/components/marketing/SiteFooter";
-import { SITE_AUTHOR, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
+import {
+  SITE_AUTHOR,
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_URL,
+  authorPersonJsonLd,
+} from "@/lib/site";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
@@ -134,6 +140,10 @@ const FAQS: { q: string; a: string; link?: { href: string; label: string } }[] =
   {
     q: "¿Cómo llevo el control de horas como freelancer?",
     a: "La clave es registrar las horas el mismo día, asociadas a un cliente y con una descripción corta de la tarea. En Registruti lo hacés en una vista semanal con bloques de 15 minutos a 8 horas, y los reportes te muestran automáticamente cuántas horas y cuánta plata acumulaste por cliente en la semana, el mes o el rango que elijas.",
+    link: {
+      href: "/blog/control-de-horas-trabajadas",
+      label: "Guía de control de horas trabajadas, con planilla gratis",
+    },
   },
   {
     q: "¿Cuánto debería cobrar por hora como freelance?",
@@ -168,22 +178,22 @@ const FAQS: { q: string; a: string; link?: { href: string; label: string } }[] =
   },
 ];
 
+// Quién es quién: la Organization tiene a Nico como fundador y la
+// SoftwareApplication lo tiene como creador, los dos apuntando al mismo nodo
+// Person (con el @id que comparten los tres sitios). Así Google y las IAs
+// conectan Registruti con la persona, y a la persona con sus otros productos.
 const JSON_LD = {
   "@context": "https://schema.org",
   "@graph": [
+    authorPersonJsonLd(),
     {
       "@type": "Organization",
       "@id": `${SITE_URL}/#organization`,
       name: SITE_NAME,
       url: SITE_URL,
       logo: { "@type": "ImageObject", url: `${SITE_URL}/icon-512.png` },
-      sameAs: SITE_AUTHOR.sameAs,
-      founder: {
-        "@type": "Person",
-        name: SITE_AUTHOR.name,
-        url: SITE_AUTHOR.url,
-        sameAs: SITE_AUTHOR.sameAs,
-      },
+      sameAs: [SITE_AUTHOR.x, SITE_AUTHOR.linkedin],
+      founder: { "@id": SITE_AUTHOR.id },
     },
     {
       "@type": "WebSite",
@@ -214,6 +224,7 @@ const JSON_LD = {
       ],
       audience: { "@type": "Audience", audienceType: "Freelancers y consultores independientes" },
       author: { "@id": `${SITE_URL}/#organization` },
+      creator: { "@id": SITE_AUTHOR.id },
     },
     {
       "@type": "FAQPage",
@@ -444,33 +455,43 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Calculadora de tarifa: es la página con más impresiones orgánicas del
-          sitio. Desde acá le pasamos autoridad interna y le damos al visitante
-          nuevo el paso previo a cargar su primer cliente (la tarifa calculada
-          viaja al onboarding). */}
+      {/* Las dos calculadoras: la de tarifa es la página con más impresiones
+          orgánicas del sitio, y la de horas trabajadas apunta a la búsqueda
+          con más volumen de todo el blog. Desde acá les pasamos autoridad
+          interna y le damos al visitante nuevo el paso previo a cargar su
+          primer cliente (la tarifa calculada viaja al onboarding). */}
       <section className="mx-auto max-w-6xl px-4 pt-6">
-        <div className="flex flex-col items-start gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col items-start gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-start gap-4">
             <span className="text-3xl" aria-hidden>
               🧮
             </span>
             <div>
               <h2 className="text-base font-semibold text-slate-900">
-                ¿Todavía no sabés cuánto cobrar por hora?
+                Dos calculadoras gratis: cuánto cobrar por hora y cuántas horas trabajaste
               </h2>
               <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-600">
-                Calculá tu tarifa freelance con la fórmula real: ingreso deseado, gastos,
-                impuestos y horas facturables, en 9 monedas. Gratis y sin registro. Cuando creás
-                tu cuenta, el primer cliente ya arranca con esa tarifa cargada.
+                Calculá tu tarifa freelance con la fórmula real (ingreso deseado, gastos,
+                impuestos y horas facturables, en 9 monedas) y sumá las horas de la semana con
+                entrada, salida y descansos. Sin registro. Cuando creás tu cuenta, el primer
+                cliente ya arranca con la tarifa cargada.
               </p>
             </div>
           </div>
-          <Link
-            href="/cuanto-cobrar-por-hora"
-            className="shrink-0 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-100"
-          >
-            Calcular mi tarifa →
-          </Link>
+          <div className="flex shrink-0 flex-wrap gap-3">
+            <Link
+              href="/cuanto-cobrar-por-hora"
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-100"
+            >
+              Calcular mi tarifa →
+            </Link>
+            <Link
+              href="/calculadora-de-horas-trabajadas"
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-100"
+            >
+              Calcular horas trabajadas →
+            </Link>
+          </div>
         </div>
       </section>
 

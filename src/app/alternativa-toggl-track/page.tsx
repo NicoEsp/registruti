@@ -8,14 +8,19 @@ import { SITE_NAME, SITE_OG_IMAGE, SITE_URL } from "@/lib/site";
 import { buildComparisonJsonLd } from "@/lib/comparisonJsonLd";
 
 const PAGE_URL = `${SITE_URL}/alternativa-toggl-track`;
-// La página se publicó el 22 y se editó el 31 (sección sobre el idioma).
+// La página se publicó el 22 de julio, se editó el 31 (sección sobre el
+// idioma) y en octubre cambió el title, la description y el H2 del veredicto
+// (auditoría SEO: 117 impresiones en posición 7 y un solo clic).
 const PUBLISHED_ISO = "2026-07-22";
-const UPDATED_ISO = "2026-07-31";
+const UPDATED_ISO = "2026-10-24";
 
+// Con la plantilla "| Registruti" el title queda en 58 caracteres: entero en
+// Google. La description promete lo concreto (medir, tarifas, PDF, sin pagar
+// USD 9 por mes) en vez de preguntar.
 export const metadata: Metadata = {
-  title: "Alternativa a Toggl Track gratis y en español (2026)",
+  title: "Alternativa a Toggl Track gratis y en español",
   description:
-    "¿Buscás una alternativa a Toggl Track? Registruti es gratis, está 100% en español e incluye lo que Toggl cobra USD 9/mes: tarifas por cliente, reportes facturables y facturas en PDF.",
+    "Medí tus horas, asigná tarifas por cliente y facturá en PDF sin pagar USD 9 por mes. Registruti es la alternativa a Toggl Track en español.",
   // Intención comercial en singular: quien busca reemplazar Toggl, no quien
   // busca una lista para comparar. El plural ("mejores alternativas a Toggl
   // Track") lo trabaja el artículo del blog, para que no compitan entre sí.
@@ -142,7 +147,7 @@ const FAQS = [
 
 const JSON_LD = buildComparisonJsonLd({
   pageUrl: PAGE_URL,
-  name: "Alternativa a Toggl Track gratis y en español (2026)",
+  name: "Alternativa a Toggl Track gratis y en español",
   description:
     "Comparación completa entre Registruti y Toggl Track para freelancers: precios 2026, funcionalidades, idioma y cómo migrar.",
   breadcrumbLabel: "Alternativa a Toggl Track",
@@ -197,7 +202,7 @@ export default function AlternativaTogglPage() {
         {/* Veredicto rápido */}
         <div className="mx-auto mt-14 max-w-3xl rounded-2xl border border-indigo-100 bg-indigo-50/50 p-6">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-indigo-700">
-            El veredicto en 20 segundos
+            Registruti vs. Toggl Track: el veredicto en 20 segundos
           </h2>
           <p className="mt-3 text-slate-700">
             <strong>Elegí Registruti</strong> si sos freelancer o consultor, facturás por hora a
@@ -524,7 +529,7 @@ export default function AlternativaTogglPage() {
                 href="/blog/control-de-horas-trabajadas"
                 className="font-medium text-indigo-600 underline-offset-2 hover:underline"
               >
-                Cómo llevar el control de horas trabajadas: guía para freelancers
+                Control de horas trabajadas: guía y planilla gratis
               </Link>
             </li>
           </ul>

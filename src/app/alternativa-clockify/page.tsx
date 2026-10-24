@@ -5,10 +5,14 @@ import { buildComparisonJsonLd } from "@/lib/comparisonJsonLd";
 
 const PAGE_URL = `${SITE_URL}/alternativa-clockify`;
 const PUBLISHED_ISO = "2026-07-31";
-const UPDATED_ISO = "2026-07-31";
+// Octubre: title y H2 del veredicto propios (antes compartidos con las otras
+// dos landings), según la auditoría SEO.
+const UPDATED_ISO = "2026-10-24";
 
+// Con la plantilla "| Registruti" el title queda en 51 caracteres: entero en
+// Google. El anterior (71 con marca) se cortaba.
 export const metadata: Metadata = {
-  title: "Alternativa a Clockify en español y con facturación (2026)",
+  title: "Alternativa a Clockify con facturación",
   description:
     "Clockify es gratis para medir tiempo, pero facturar cuesta USD 6,99/mes y el español está a medias. Registruti incluye tarifas por cliente y facturas en PDF gratis.",
   keywords: [
@@ -129,7 +133,7 @@ const FAQS = [
 
 const JSON_LD = buildComparisonJsonLd({
   pageUrl: PAGE_URL,
-  name: "Alternativa a Clockify en español y con facturación (2026)",
+  name: "Alternativa a Clockify con facturación",
   description:
     "Comparación entre Registruti y Clockify para freelancers: precios 2026, facturación, idioma y enfoque del producto.",
   breadcrumbLabel: "Alternativa a Clockify",
@@ -151,6 +155,7 @@ export default function AlternativaClockifyPage() {
         h1Lead="La alternativa a Clockify"
         h1Highlight="en español y con facturas incluidas"
         subtitle="Clockify mide tiempo gratis mejor que casi nadie. El problema aparece cuando querés cobrar: ahí empieza el plan pago. Acá las tarifas por cliente y las facturas en PDF están en el plan gratis, y todo está en español de verdad."
+        verdictTitle="Registruti vs. Clockify: el veredicto en 20 segundos"
         verdict={
           <>
             <strong>Elegí Registruti</strong> si sos freelancer, facturás por hora y querés pasar de

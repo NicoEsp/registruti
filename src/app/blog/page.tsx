@@ -50,25 +50,43 @@ export default function BlogIndexPage() {
         freelancers.
       </p>
 
-      {/* La calculadora no es un post pero es la pieza más buscada del sitio:
-          desde el índice tiene que estar a un clic. */}
-      <Link
-        href="/cuanto-cobrar-por-hora"
-        className="mt-10 block rounded-2xl border border-indigo-100 bg-indigo-50/50 p-6 transition hover:border-indigo-200 hover:shadow-md"
-      >
-        <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-indigo-700 shadow-sm">
-          Herramienta gratis
-        </span>
-        <h2 className="mt-3 text-xl font-semibold tracking-tight text-slate-900">
-          Calculadora: ¿cuánto cobrar por hora como freelance?
-        </h2>
-        <p className="mt-2 text-sm leading-relaxed text-slate-600">
-          Tu tarifa a partir del ingreso que querés llevarte, tus gastos, tus impuestos y las
-          horas que realmente podés facturar. En 9 monedas, sin registro, con rangos por
-          especialidad y por país.
-        </p>
-        <span className="mt-3 inline-block text-sm font-medium text-indigo-600">Calcular →</span>
-      </Link>
+      {/* Las calculadoras no son posts pero son las piezas más buscadas del
+          sitio: desde el índice tienen que estar a un clic. */}
+      <div className="mt-10 grid gap-4 sm:grid-cols-2">
+        <Link
+          href="/cuanto-cobrar-por-hora"
+          className="block rounded-2xl border border-indigo-100 bg-indigo-50/50 p-6 transition hover:border-indigo-200 hover:shadow-md"
+        >
+          <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-indigo-700 shadow-sm">
+            Herramienta gratis
+          </span>
+          <h2 className="mt-3 text-xl font-semibold tracking-tight text-slate-900">
+            Calculadora: ¿cuánto cobrar por hora como freelance?
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed text-slate-600">
+            Tu tarifa a partir del ingreso que querés llevarte, tus gastos, tus impuestos y las
+            horas que realmente podés facturar. En 9 monedas, sin registro, con rangos por
+            especialidad y por país.
+          </p>
+          <span className="mt-3 inline-block text-sm font-medium text-indigo-600">Calcular →</span>
+        </Link>
+        <Link
+          href="/calculadora-de-horas-trabajadas"
+          className="block rounded-2xl border border-indigo-100 bg-indigo-50/50 p-6 transition hover:border-indigo-200 hover:shadow-md"
+        >
+          <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-indigo-700 shadow-sm">
+            Herramienta gratis
+          </span>
+          <h2 className="mt-3 text-xl font-semibold tracking-tight text-slate-900">
+            Calculadora de horas trabajadas
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed text-slate-600">
+            Entrada, salida y descansos de cada día: el total de la semana en horas y minutos, en
+            decimal y en plata según tu tarifa. Con redondeo opcional a bloques de 15 minutos.
+          </p>
+          <span className="mt-3 inline-block text-sm font-medium text-indigo-600">Calcular →</span>
+        </Link>
+      </div>
 
       <div className="mt-4 space-y-4">
         {POSTS.map((post) => (

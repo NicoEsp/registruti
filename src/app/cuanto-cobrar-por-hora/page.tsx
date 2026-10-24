@@ -10,18 +10,23 @@ const PAGE_URL = `${SITE_URL}/cuanto-cobrar-por-hora`;
 // datePublished no se toca al editar la página; solo se mueve UPDATED_ISO
 // (y RATE_CALC_UPDATED en sitemap.ts, que tiene que coincidir).
 const PUBLISHED_ISO = "2026-07-31";
-const UPDATED_ISO = "2026-09-04";
+const UPDATED_ISO = "2026-10-24";
 
-// Es la página que más impresiones trae desde Google. La query principal es
+// Es la página que más impresiones trae desde Google (481 en tres meses, en
+// posición 7) y la que menos clics convierte: 4. La query principal es
 // "cuánto cobrar por hora" (+ freelance); el resto de las búsquedas que la
 // disparan son variantes por especialidad ("cuánto cobrar por hora como
-// diseñador / programador") y por país. Por eso el title arranca con la query
-// exacta, la descripción anticipa esas dos secciones, y el cuerpo las tiene
-// como H2 con su propia FAQ.
+// diseñador / programador") y por país.
+//
+// El title dice primero qué es (una calculadora) y que es gratis, y va sin la
+// plantilla "| Registruti": con la marca pasaba los 60 caracteres y Google lo
+// cortaba justo antes de "Calculadora". La description promete el resultado
+// en un minuto y nombra las variables, que son lo que la gente ya trae en la
+// cabeza cuando busca.
 export const metadata: Metadata = {
-  title: "¿Cuánto cobrar por hora como freelance? Calculadora 2026",
+  title: { absolute: "Calculadora: cuánto cobrar por hora como freelance (gratis)" },
   description:
-    "Calculadora gratis: cuánto cobrar por hora como freelance según ingreso deseado, gastos, impuestos y horas facturables. Rangos por especialidad y por país.",
+    "Calculá tu tarifa por hora en un minuto según cuánto querés ganar, tus gastos, impuestos y horas facturables. Gratis, en español y pensada para LATAM.",
   keywords: [
     "cuánto cobrar por hora",
     "cuánto cobrar por hora freelance",
@@ -145,7 +150,7 @@ const JSON_LD = {
       "@type": "WebPage",
       "@id": PAGE_URL,
       url: PAGE_URL,
-      name: "¿Cuánto cobrar por hora como freelance? Calculadora 2026",
+      name: "Calculadora: cuánto cobrar por hora como freelance (gratis)",
       description:
         "Calculadora gratuita de tarifa por hora para freelancers y consultores, con gastos, impuestos y horas facturables, en 9 monedas. Con rangos por especialidad y por país.",
       inLanguage: "es",
@@ -217,6 +222,16 @@ export default function CuantoCobrarPorHoraPage() {
         {/* Calculadora */}
         <section id="calculadora" className="mt-12 scroll-mt-20">
           <RateCalculator />
+          <p className="mt-4 text-center text-sm text-slate-500">
+            ¿Lo que necesitás es sumar las horas de la semana? Usá la{" "}
+            <Link
+              href="/calculadora-de-horas-trabajadas"
+              className="font-medium text-indigo-600 underline-offset-2 hover:underline"
+            >
+              calculadora de horas trabajadas
+            </Link>
+            .
+          </p>
         </section>
 
         {/* La fórmula */}
@@ -432,7 +447,7 @@ export default function CuantoCobrarPorHoraPage() {
               href="/blog/control-de-horas-trabajadas"
               className="rounded-xl border border-slate-300 px-6 py-3 text-base font-medium text-slate-700 hover:bg-slate-50"
             >
-              Cómo llevar el control de horas
+              Guía de control de horas trabajadas
             </Link>
           </div>
         </section>
@@ -481,7 +496,15 @@ export default function CuantoCobrarPorHoraPage() {
                 href="/blog/control-de-horas-trabajadas"
                 className="font-medium text-indigo-600 underline-offset-2 hover:underline"
               >
-                Cómo llevar el control de horas trabajadas: guía para freelancers
+                Control de horas trabajadas: guía y planilla gratis
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/calculadora-de-horas-trabajadas"
+                className="font-medium text-indigo-600 underline-offset-2 hover:underline"
+              >
+                Calculadora de horas trabajadas: total semanal y monto a cobrar
               </Link>
             </li>
             <li>
