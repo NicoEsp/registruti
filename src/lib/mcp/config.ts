@@ -30,8 +30,8 @@ export const OAUTH = {
 // Scopes del MCP. Se muestran en la pantalla de autorización y se aplican en
 // tools/list y tools/call. Un token personal (generado en Ajustes) tiene todos.
 export const SCOPES = {
-  read: "Ver tus clientes, horas y reportes",
-  write: "Cargar horas en tu nombre",
+  read: "Ver tus clientes, horas, reportes y facturas",
+  write: "Cargar y editar horas, y crear clientes en tu nombre",
 } as const;
 
 export type Scope = keyof typeof SCOPES;

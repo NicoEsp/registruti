@@ -92,7 +92,8 @@ export default function McpArticle() {
         <li>
           Tocá <strong>Conectar</strong>. Se abre Registruti: si no tenés sesión, entrás con Google
           y volvés solo a la pantalla de autorización. Ahí ves qué permisos pide Claude (ver tus
-          clientes, horas y reportes; cargar horas). Tocá <strong>Autorizar</strong>.
+          clientes, horas, reportes y facturas; cargar y editar horas y crear clientes). Tocá{" "}
+          <strong>Autorizar</strong>.
         </li>
         <li>
           Volvés a Claude con el conector activo. En un chat nuevo, abrí el menú de herramientas,
@@ -154,7 +155,7 @@ export default function McpArticle() {
       </p>
 
       <h2 id="tools">Qué le podés pedir</h2>
-      <p>El servidor expone 4 herramientas:</p>
+      <p>El servidor expone 7 herramientas:</p>
       <table>
         <thead>
           <tr>
@@ -171,11 +172,29 @@ export default function McpArticle() {
           </tr>
           <tr>
             <td>
+              <code>create_client</code>
+            </td>
+            <td>
+              Crea un cliente nuevo. Alcanza con el nombre; la tarifa, la moneda, el contacto y el
+              email son opcionales.
+            </td>
+          </tr>
+          <tr>
+            <td>
               <code>log_time</code>
             </td>
             <td>
               Registra una entrada de tiempo (cliente, fecha, duración libre como “1:30” o “90m”,
               descripción, facturable).
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <code>update_time_entry</code>
+            </td>
+            <td>
+              Corrige una entrada ya cargada: cliente, duración, fecha, descripción o facturable.
+              Las que ya están en una factura no se tocan.
             </td>
           </tr>
           <tr>
@@ -188,7 +207,16 @@ export default function McpArticle() {
             <td>
               <code>report_summary</code>
             </td>
-            <td>Resumen de horas y montos facturables por cliente y período.</td>
+            <td>
+              Resumen de horas y montos facturables por cliente y período, con lo que todavía no
+              facturaste.
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <code>list_invoices</code>
+            </td>
+            <td>Lista tus facturas con estado, total y el link público para compartir.</td>
           </tr>
         </tbody>
       </table>
@@ -200,9 +228,9 @@ export default function McpArticle() {
       <h2 id="permisos">Permisos, seguridad y cómo desconectar</h2>
       <ul>
         <li>
-          Al autorizar, la app recibe dos permisos: <strong>ver</strong> tus clientes, horas y
-          reportes, y <strong>cargar horas</strong>. Nada más: no puede borrar entradas, tocar
-          facturas ni ver otras cuentas.
+          Al autorizar, la app recibe dos permisos: <strong>ver</strong> tus clientes, horas,
+          reportes y facturas, y <strong>cargar y editar horas y crear clientes</strong>. Nada más:
+          no puede borrar entradas, crear ni modificar facturas, ni ver otras cuentas.
         </li>
         <li>
           Los accesos autorizados vencen cada hora y se renuevan solos; no tenés que hacer nada.

@@ -64,9 +64,12 @@ token personal de Ajustes.
 | Tool | Scope | Qué hace |
 | --- | --- | --- |
 | `list_clients` | `read` | Lista los clientes con tarifa, moneda y color |
+| `create_client` | `write` | Crea un cliente (nombre; tarifa, moneda, contacto y email opcionales). Rechaza nombres repetidos, y también la creación si se alcanzó el límite de clientes activos del plan gratis |
 | `log_time` | `write` | Registra una entrada de tiempo (cliente, fecha, duración libre, descripción, facturable) |
-| `list_time_entries` | `read` | Consulta entradas por rango de fechas y cliente |
-| `report_summary` | `read` | Resumen de horas y montos facturables por cliente y período |
+| `update_time_entry` | `write` | Edita una entrada por su id (cliente, duración, fecha, descripción, facturable). Las ya facturadas no se tocan |
+| `list_time_entries` | `read` | Consulta entradas por rango de fechas y cliente, con su id y si ya fueron facturadas |
+| `report_summary` | `read` | Resumen de horas y montos facturables por cliente y período, con lo que falta facturar |
+| `list_invoices` | `read` | Lista las facturas con número, cliente, período, estado (incluido vencido), total y link público |
 
 Cada token resuelve un `user_id` y un conjunto de scopes; todas las tools quedan scopeadas a
 los datos de ese usuario. "Hoy" y los rangos por defecto se calculan en la zona horaria del país

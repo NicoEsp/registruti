@@ -1,10 +1,10 @@
 import type { AnalyticsEvent } from "@/lib/analytics";
 
 /**
- * Captura de eventos desde el servidor. Hoy la usa una sola cosa: las horas
- * que entran por el servidor MCP, que antes no dejaban rastro (`posthog-js`
- * es del browser) y dejaban el embudo de activación a ciegas para quien carga
- * todo hablándole a Claude.
+ * Captura de eventos desde el servidor. La usa el servidor MCP para las horas
+ * y los clientes que se crean por ahí, que antes no dejaban rastro
+ * (`posthog-js` es del browser) y dejaban el embudo de activación a ciegas
+ * para quien carga todo hablándole a Claude.
  *
  * Sin SDK a propósito: PostHog acepta eventos por HTTP con la misma key
  * pública que usa el browser, y `posthog-node` sería una dependencia más para
