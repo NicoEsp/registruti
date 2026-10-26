@@ -15,6 +15,11 @@ export const CHECKOUT_URL =
   process.env.NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL ?? DEFAULT_CHECKOUT_URL;
 export const CHECKOUT_CONTACT_EMAIL = "hola@registruti.app";
 
+// Precio del lifetime access en USD, tal como está cargado en el producto de
+// LemonSqueezy (el checkout es la fuente de verdad; esto es solo para mostrarlo).
+// Con `null` la landing muestra "Pago único" sin monto.
+export const LIFETIME_PRICE_USD: number | null = null;
+
 export interface PlanStatus {
   pro: boolean;
   activeClients: number;
