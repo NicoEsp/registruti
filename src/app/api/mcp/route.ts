@@ -18,7 +18,7 @@ import { json, preflight, CORS_HEADERS } from "@/lib/mcp/http";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const SERVER_INFO = { name: "registruti", title: "Registruti", version: "2.0.0" };
+const SERVER_INFO = { name: "registruti", title: "Registruti", version: "2.1.0" };
 // De más nueva a más vieja. Si el cliente pide una que no conocemos (por
 // ejemplo, una futura), respondemos con la más nueva nuestra y él decide.
 const SUPPORTED_PROTOCOLS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
@@ -138,9 +138,11 @@ async function buildInstructions(access: McpAccess): Promise<string> {
     `Las fechas van en formato YYYY-MM-DD y se interpretan en la zona horaria del usuario (${ctx.timeZone}): hoy es ${ctx.today}. Si no menciona una fecha, es hoy.`,
     "Antes de cargar horas, asegurate del cliente: si el nombre no coincide con uno de list_clients o es ambiguo, preguntá en vez de adivinar.",
     "Las duraciones aceptan '1:30', '1.5', '90m' o '2h' y se redondean a múltiplos de 15 minutos (mínimo 0:15, máximo 8:00). Al confirmar una carga, repetí cliente, fecha y duración tal como quedaron.",
+    "Para corregir una entrada usá update_time_entry con el id que devuelve list_time_entries; las entradas que ya están en una factura no se editan.",
+    "Antes de crear un cliente con create_client, fijate en list_clients si ya existe: con el mismo nombre la tool lo rechaza.",
   ];
   if (!access.scopes.includes("write")) {
-    lines.push("Esta conexión es de solo lectura: podés consultar pero no cargar horas.");
+    lines.push("Esta conexión es de solo lectura: podés consultar pero no cargar ni editar horas ni crear clientes.");
   }
   return lines.join("\n");
 }

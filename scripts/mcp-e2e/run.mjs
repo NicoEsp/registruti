@@ -23,7 +23,7 @@ import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { UnauthorizedError } from "@modelcontextprotocol/sdk/client/auth.js";
-import { SERVICE_ROLE_KEY, USER_JWT, startMockSupabase } from "./mock-supabase.mjs";
+import { SERVICE_ROLE_KEY, USER, USER_JWT, startMockSupabase } from "./mock-supabase.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const APP_PORT = Number(process.env.MCP_E2E_PORT ?? 3939);
@@ -355,13 +355,16 @@ async function runTests(mock) {
     eq(mock.db().oauth_codes[0].used_at != null, true, "el code no quedó marcado como usado");
   });
 
-  await test("tools/list expone las 4 tools con annotations", async () => {
+  await test("tools/list expone las 7 tools con annotations", async () => {
     const { tools } = await client.listTools();
-    eq(tools.length, 4);
+    eq(tools.length, 7);
     const names = tools.map((t) => t.name).sort();
-    eq(names.join(","), "list_clients,list_time_entries,log_time,report_summary");
+    eq(names.join(","), "create_client,list_clients,list_invoices,list_time_entries,log_time,report_summary,update_time_entry");
     eq(tools.find((t) => t.name === "log_time").annotations.readOnlyHint, false);
     eq(tools.find((t) => t.name === "report_summary").annotations.readOnlyHint, true);
+    eq(tools.find((t) => t.name === "list_invoices").annotations.readOnlyHint, true);
+    eq(tools.find((t) => t.name === "create_client").annotations.readOnlyHint, false);
+    eq(tools.find((t) => t.name === "update_time_entry").annotations.destructiveHint, true);
   });
 
   await test("log_time carga 1h30 para Acme con la fecha de hoy en Buenos Aires", async () => {
@@ -390,12 +393,86 @@ async function runTests(mock) {
     eq(summary.period.to, todayInBuenosAires());
     assert(summary.period.from.endsWith("-01"), summary.period.from);
     const acme = summary.by_client.find((c) => c.client === "Acme");
-    eq(acme.minutes, 210);
-    eq(acme.billable_amount, 175);
+    // 120 (Kickoff) + 60 (ya facturada) + 90 (log_time de arriba)
+    eq(acme.minutes, 270);
+    eq(acme.billable_amount, 225);
+    // Sin facturar: solo lo facturable que no está en ningún invoice.
+    eq(acme.uninvoiced_minutes, 210);
+    eq(acme.uninvoiced_amount, 175);
+    eq(summary.totals.uninvoiced_minutes, 210);
+    eq(summary.totals.uninvoiced_amount_by_currency.USD, 175);
+    eq(summary.totals.billable_amount_by_currency.USD, 225);
     const entries = JSON.parse(toolText(await client.callTool({ name: "list_time_entries", arguments: { client: "Globex" } })));
     eq(entries.count, 1);
     eq(entries.entries[0].billable, false);
+    assert(typeof entries.entries[0].id === "string" && entries.entries[0].id.length > 0, "las entradas no traen id");
+    const acmeEntries = JSON.parse(toolText(await client.callTool({ name: "list_time_entries", arguments: { client: "Acme" } })));
+    eq(acmeEntries.entries.filter((e) => e.invoiced).length, 1);
   });
+
+  await test("update_time_entry edita duración, descripción, cliente y facturable", async () => {
+    const before = mock.db().time_entries.find((e) => e.description === "Reunión e2e");
+    const text = toolText(
+      await client.callTool({
+        name: "update_time_entry",
+        arguments: { id: before.id, duration: "2h", description: "Reunión e2e (editada)", client: "globex", billable: false },
+      })
+    );
+    assert(text.includes("2:00 para Globex"), text);
+    assert(text.includes("(no facturable)"), text);
+    const after = mock.db().time_entries.find((e) => e.id === before.id);
+    eq(after.duration_minutes, 120);
+    eq(after.description, "Reunión e2e (editada)");
+    eq(after.billable, false);
+    eq(after.client_id, mock.db().clients.find((c) => c.name === "Globex").id);
+    eq(after.entry_date, before.entry_date, "no debía tocar la fecha");
+    // Solo la fecha: lo demás queda igual.
+    toolText(await client.callTool({ name: "update_time_entry", arguments: { id: before.id, date: "2026-01-10" } }));
+    const moved = mock.db().time_entries.find((e) => e.id === before.id);
+    eq(moved.entry_date, "2026-01-10");
+    eq(moved.duration_minutes, 120);
+  });
+
+  await test("update_time_entry rechaza entradas facturadas, ids desconocidos y llamadas sin cambios", async () => {
+    const invoiced = mock.db().time_entries.find((e) => e.invoice_id);
+    const refused = await client.callTool({ name: "update_time_entry", arguments: { id: invoiced.id, duration: "1h" } });
+    eq(refused.isError, true);
+    assert(refused.content[0].text.includes("factura"), refused.content[0].text);
+    eq(mock.db().time_entries.find((e) => e.id === invoiced.id).duration_minutes, 60, "modificó una entrada facturada");
+    const missing = await client.callTool({ name: "update_time_entry", arguments: { id: crypto.randomUUID(), duration: "1h" } });
+    eq(missing.isError, true);
+    assert(missing.content[0].text.includes("No encontré"), missing.content[0].text);
+    const entry = mock.db().time_entries.find((e) => e.description === "Kickoff");
+    const noChange = await client.callTool({ name: "update_time_entry", arguments: { id: entry.id } });
+    eq(noChange.isError, true);
+    assert(noChange.content[0].text.includes("ningún cambio"), noChange.content[0].text);
+    const badDuration = await client.callTool({ name: "update_time_entry", arguments: { id: entry.id, duration: "mucho" } });
+    eq(badDuration.isError, true);
+  });
+
+  await test("list_invoices trae número, estado derivado y link público, y filtra por estado y cliente", async () => {
+    const all = JSON.parse(toolText(await client.callTool({ name: "list_invoices", arguments: {} })));
+    eq(all.count, 1);
+    const inv = all.invoices[0];
+    eq(inv.number, "INV-0001");
+    eq(inv.client, "Acme");
+    eq(inv.status, "sent");
+    eq(inv.overdue, true);
+    eq(inv.minutes, 60);
+    eq(inv.hours, "1:00");
+    eq(inv.amount, 50);
+    eq(inv.currency, "USD");
+    assert(inv.public_url.endsWith("/i/e2e-share-token"), inv.public_url);
+    const overdue = JSON.parse(toolText(await client.callTool({ name: "list_invoices", arguments: { status: "overdue" } })));
+    eq(overdue.count, 1);
+    const paid = JSON.parse(toolText(await client.callTool({ name: "list_invoices", arguments: { status: "paid", client: "acme" } })));
+    eq(paid.count, 0);
+    const globex = JSON.parse(toolText(await client.callTool({ name: "list_invoices", arguments: { client: "Globex" } })));
+    eq(globex.count, 0);
+    const bad = await client.callTool({ name: "list_invoices", arguments: { status: "pagada" } });
+    eq(bad.isError, true);
+  });
+
 
   await test("list_clients oculta archivados salvo include_archived", async () => {
     const visible = JSON.parse(toolText(await client.callTool({ name: "list_clients", arguments: {} })));
@@ -403,6 +480,39 @@ async function runTests(mock) {
     const all = JSON.parse(toolText(await client.callTool({ name: "list_clients", arguments: { include_archived: true } })));
     eq(all.length, 3);
     assert(mock.db().oauth_grants[0].last_used_at, "no marcó el último uso del grant");
+  });
+
+  await test("create_client usa la moneda del perfil, valida la moneda y rechaza nombres repetidos", async () => {
+    const text = toolText(await client.callTool({ name: "create_client", arguments: { name: "  Initech ", hourly_rate: 40 } }));
+    assert(text.includes("Initech") && text.includes("40 ARS/h"), text);
+    const row = mock.db().clients.find((c) => c.name === "Initech");
+    assert(row, "no insertó el cliente");
+    eq(row.user_id, USER.id);
+    eq(row.hourly_rate, 40);
+    eq(row.currency, "ARS", "el perfil e2e es de Argentina");
+    eq(row.archived, false);
+    assert(row.color?.startsWith("#"), "sin color");
+    const dup = await client.callTool({ name: "create_client", arguments: { name: "initech" } });
+    eq(dup.isError, true);
+    assert(dup.content[0].text.includes("Ya existe"), dup.content[0].text);
+    const archivedDup = await client.callTool({ name: "create_client", arguments: { name: "old corp" } });
+    eq(archivedDup.isError, true);
+    assert(archivedDup.content[0].text.includes("archivado"), archivedDup.content[0].text);
+    const badCurrency = await client.callTool({ name: "create_client", arguments: { name: "Umbrella", currency: "XXX" } });
+    eq(badCurrency.isError, true);
+    const badRate = await client.callTool({ name: "create_client", arguments: { name: "Umbrella", hourly_rate: -5 } });
+    eq(badRate.isError, true);
+    eq(mock.db().clients.filter((c) => c.name === "Umbrella").length, 0, "insertó pese al error");
+    const usd = toolText(await client.callTool({ name: "create_client", arguments: { name: "Umbrella", currency: "usd", email: "pay@umbrella.test", contact_name: "Alice" } }));
+    assert(usd.includes("sin tarifa"), usd);
+    const umbrella = mock.db().clients.find((c) => c.name === "Umbrella");
+    eq(umbrella.currency, "USD");
+    eq(umbrella.hourly_rate, 0);
+    eq(umbrella.email, "pay@umbrella.test");
+    eq(umbrella.contact_name, "Alice");
+    // El cliente nuevo ya sirve para cargar horas.
+    const logged = toolText(await client.callTool({ name: "log_time", arguments: { client: "umbrella", duration: "30m" } }));
+    assert(logged.includes("0:30 para Umbrella"), logged);
   });
 
   await test("al vencer el access token, el SDK renueva solo con el refresh token (rotativo)", async () => {
@@ -691,7 +801,8 @@ async function runTests(mock) {
     eq(tokens.status, 200, JSON.stringify(tokens.body));
     eq(tokens.body.scope, "read");
     const list = await rpc(tokens.body.access_token, "tools/list");
-    eq(list.body.result.tools.length, 3);
+    eq(list.body.result.tools.length, 4);
+    assert(list.body.result.tools.every((t) => t.annotations.readOnlyHint), "una tool de escritura se filtró en scope=read");
     const call = await rpc(tokens.body.access_token, "tools/call", { name: "log_time", arguments: { client: "Acme", duration: "1h" } });
     eq(call.body.result.isError, true);
     assert(call.body.result.content[0].text.includes("solo lectura"), call.body.result.content[0].text);
@@ -735,7 +846,7 @@ async function runTests(mock) {
     const c = new Client({ name: "registruti-e2e-token", version: "1.0.0" });
     await c.connect(transport);
     const { tools } = await c.listTools();
-    eq(tools.length, 4);
+    eq(tools.length, 7);
     const text = toolText(await c.callTool({ name: "log_time", arguments: { client: "Globex", duration: "45m", date: "2026-01-15", billable: false } }));
     assert(text.includes("0:45 para Globex el 2026-01-15 (no facturable)"), text);
     await c.close();

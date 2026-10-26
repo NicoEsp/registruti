@@ -36,6 +36,7 @@ function seed() {
   const acme = "aaaaaaaa-0000-4000-8000-000000000001";
   const globex = "aaaaaaaa-0000-4000-8000-000000000002";
   const old = "aaaaaaaa-0000-4000-8000-000000000003";
+  const invoice = "bbbbbbbb-0000-4000-8000-000000000001";
   return {
     profiles: [{ user_id: USER.id, country: "AR", business_name: "E2E", created_at: now() }],
     clients: [
@@ -46,6 +47,12 @@ function seed() {
     time_entries: [
       { id: crypto.randomUUID(), user_id: USER.id, client_id: acme, entry_date: today, duration_minutes: 120, description: "Kickoff", billable: true, invoice_id: null, created_at: now() },
       { id: crypto.randomUUID(), user_id: USER.id, client_id: globex, entry_date: today, duration_minutes: 45, description: "Soporte", billable: false, invoice_id: null, created_at: now() },
+      // Ya facturada: no cuenta como "sin facturar" y update_time_entry la rechaza.
+      { id: crypto.randomUUID(), user_id: USER.id, client_id: acme, entry_date: today, duration_minutes: 60, description: "Facturada", billable: true, invoice_id: invoice, created_at: now() },
+    ],
+    invoices: [
+      // Enviada y vencida hace años: list_invoices la tiene que marcar overdue.
+      { id: invoice, user_id: USER.id, client_id: acme, invoice_number: "INV-0001", period_start: today, period_end: today, issue_date: today, due_date: "2020-01-31", status: "sent", hourly_rate: 50, currency: "USD", total_minutes: 60, total_amount: 50, notes: null, share_token: "e2e-share-token", created_at: now() },
     ],
     mcp_tokens: [],
     oauth_clients: [],

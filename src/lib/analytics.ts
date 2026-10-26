@@ -62,8 +62,9 @@ export const ANALYTICS_ENABLED = POSTHOG_KEY.length > 0;
  * - `hours_calculator_cta_clicked` — clic en el CTA de la calculadora de horas
  *   trabajadas (salida a /login). Sin propiedades, como el anterior: la página
  *   promete que lo que se carga no sale del navegador.
- * - `client_created` — se creó un cliente: desde el wizard, desde Clientes o
- *   al vuelo desde el tracker / registro rápido.
+ * - `client_created` — se creó un cliente: desde el wizard, desde Clientes,
+ *   al vuelo desde el tracker / registro rápido, o por MCP (`source: "mcp"`,
+ *   sale del servidor como el de horas).
  * - `invoice_viewed` — alguien abrió el enlace público de un invoice.
  */
 export type AnalyticsEvent =
