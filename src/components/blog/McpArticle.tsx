@@ -92,7 +92,8 @@ export default function McpArticle() {
         <li>
           Tocá <strong>Conectar</strong>. Se abre Registruti: si no tenés sesión, entrás con Google
           y volvés solo a la pantalla de autorización. Ahí ves qué permisos pide Claude (ver tus
-          clientes, horas y reportes; cargar horas). Tocá <strong>Autorizar</strong>.
+          clientes, horas, reportes y facturas; cargar y editar horas y crear clientes). Tocá{" "}
+          <strong>Autorizar</strong>.
         </li>
         <li>
           Volvés a Claude con el conector activo. En un chat nuevo, abrí el menú de herramientas,
@@ -154,7 +155,7 @@ export default function McpArticle() {
       </p>
 
       <h2 id="tools">Qué le podés pedir</h2>
-      <p>El servidor expone 4 herramientas:</p>
+      <p>El servidor expone 7 herramientas:</p>
       <table>
         <thead>
           <tr>

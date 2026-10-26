@@ -536,8 +536,23 @@ async function updateTimeEntry(userId: string, args: Record<string, unknown>): P
     throw new Error("No indicaste ningún cambio. Podés modificar cliente, duración, fecha, descripción o facturable.");
   }
 
-  const { error } = await admin.from("time_entries").update(patch).eq("id", id).eq("user_id", userId);
+  // El chequeo de arriba se hizo sobre una lectura previa: si entre medio la
+  // entrada entró en una factura (o se borró), el UPDATE no tiene que tocarla.
+  // Por eso el filtro de invoice_id va también acá, y se pide la fila
+  // actualizada para saber si hubo alguna.
+  const { data: updatedRows, error } = await admin
+    .from("time_entries")
+    .update(patch)
+    .eq("id", id)
+    .eq("user_id", userId)
+    .is("invoice_id", null)
+    .select("id");
   if (error) throw new Error(`No pude actualizar la entrada: ${error.message}`);
+  if (!updatedRows || updatedRows.length === 0) {
+    throw new Error(
+      "La entrada cambió mientras tanto (se facturó o se borró) y no se editó. Volvé a buscarla con list_time_entries."
+    );
+  }
 
   const updated = { ...entry, ...patch };
   const clientName = clients.find((c) => c.id === updated.client_id)?.name ?? "Cliente eliminado";

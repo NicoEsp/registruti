@@ -64,7 +64,7 @@ token personal de Ajustes.
 | Tool | Scope | Qué hace |
 | --- | --- | --- |
 | `list_clients` | `read` | Lista los clientes con tarifa, moneda y color |
-| `create_client` | `write` | Crea un cliente (nombre; tarifa, moneda, contacto y email opcionales). Rechaza nombres repetidos y avisa si se topó el límite del plan gratis |
+| `create_client` | `write` | Crea un cliente (nombre; tarifa, moneda, contacto y email opcionales). Rechaza nombres repetidos, y también la creación si se alcanzó el límite de clientes activos del plan gratis |
 | `log_time` | `write` | Registra una entrada de tiempo (cliente, fecha, duración libre, descripción, facturable) |
 | `update_time_entry` | `write` | Edita una entrada por su id (cliente, duración, fecha, descripción, facturable). Las ya facturadas no se tocan |
 | `list_time_entries` | `read` | Consulta entradas por rango de fechas y cliente, con su id y si ya fueron facturadas |
