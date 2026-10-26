@@ -5,6 +5,7 @@ import Wordmark from "@/components/Wordmark";
 import LandingAuthRedirect from "@/components/LandingAuthRedirect";
 import SiteHeader from "@/components/marketing/SiteHeader";
 import SiteFooter from "@/components/marketing/SiteFooter";
+import { LIFETIME_PRICE_USD } from "@/lib/plan";
 import {
   SITE_AUTHOR,
   SITE_DESCRIPTION,
@@ -509,7 +510,7 @@ export default function LandingPage() {
             <h3 className="text-lg font-semibold">Gratis</h3>
             <p className="mt-1 text-3xl font-bold tracking-tight">USD 0</p>
             <p className="text-sm text-slate-500">para siempre, sin tarjeta</p>
-            <ul className="mt-5 space-y-2.5 text-sm text-slate-600">
+            <ul className="mt-5 flex-1 space-y-2.5 text-sm text-slate-600">
               {[
                 "Hasta 3 clientes activos y 4 invoices",
                 "Tracker semanal en bloques de 15 minutos",
@@ -538,9 +539,18 @@ export default function LandingPage() {
               Sin suscripción
             </span>
             <h3 className="text-lg font-semibold">Lifetime access</h3>
-            <p className="mt-1 text-3xl font-bold tracking-tight">Pago único</p>
-            <p className="text-sm text-slate-500">una vez, tuyo de por vida</p>
-            <ul className="mt-5 space-y-2.5 text-sm text-slate-600">
+            {LIFETIME_PRICE_USD === null ? (
+              <>
+                <p className="mt-1 text-3xl font-bold tracking-tight">Pago único</p>
+                <p className="text-sm text-slate-500">una vez, tuyo de por vida</p>
+              </>
+            ) : (
+              <>
+                <p className="mt-1 text-3xl font-bold tracking-tight">USD {LIFETIME_PRICE_USD}</p>
+                <p className="text-sm text-slate-500">pago único, tuyo de por vida</p>
+              </>
+            )}
+            <ul className="mt-5 flex-1 space-y-2.5 text-sm text-slate-600">
               {[
                 "Todo lo del plan gratis",
                 "Clientes activos ilimitados",
