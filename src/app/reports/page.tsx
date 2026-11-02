@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AppShell from "@/components/AppShell";
 import { supabase } from "@/lib/supabase";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import type { Client, TimeEntry } from "@/lib/types";
 import {
   DAY_ABBREV,
@@ -60,15 +61,19 @@ function Reports() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    let query = supabase
-      .from("time_entries")
-      .select("*")
-      .gte("entry_date", range.from)
-      .lte("entry_date", range.to);
-    if (clientFilter !== "all") query = query.eq("client_id", clientFilter);
+    // El rango personalizado no tiene tope y PostgREST corta cada respuesta en
+    // "Max rows": se pagina para que totales y CSV incluyan todas las entradas.
     const [clientsRes, entriesRes] = await Promise.all([
       supabase.from("clients").select("*").order("name"),
-      query,
+      fetchAllRows<TimeEntry>((first, last) => {
+        let query = supabase
+          .from("time_entries")
+          .select("*", { count: "exact" })
+          .gte("entry_date", range.from)
+          .lte("entry_date", range.to);
+        if (clientFilter !== "all") query = query.eq("client_id", clientFilter);
+        return query.order("id").range(first, last);
+      }),
     ]);
     if (clientsRes.error || entriesRes.error) {
       setError(clientsRes.error?.message ?? entriesRes.error?.message ?? null);
