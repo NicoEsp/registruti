@@ -582,6 +582,11 @@ async function runTests(mock) {
     eq(ids.length, total, "entradas recorridas");
     eq(new Set(ids).size, total, "entradas repetidas entre páginas");
     assert(inYear.every((e) => ids.includes(e.id)), "faltan entradas al recorrer las páginas");
+    const cmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+    const ordered = [...inYear].sort(
+      (a, b) => cmp(a.entry_date, b.entry_date) || cmp(a.created_at, b.created_at) || cmp(a.id, b.id)
+    );
+    eq(ids.join(","), ordered.map((e) => e.id).join(","), "orden de las entradas (fecha, alta, id)");
 
     const onlyGlobex = await call({ ...year, client: "globex", limit: 1 });
     eq(onlyGlobex.total, inYear.filter((e) => e.client_id === globex.id).length, "total filtrado por cliente");
