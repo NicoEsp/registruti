@@ -18,7 +18,7 @@ import { json, preflight, CORS_HEADERS } from "@/lib/mcp/http";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const SERVER_INFO = { name: "registruti", title: "Registruti", version: "2.1.0" };
+const SERVER_INFO = { name: "registruti", title: "Registruti", version: "2.2.0" };
 // De más nueva a más vieja. Si el cliente pide una que no conocemos (por
 // ejemplo, una futura), respondemos con la más nueva nuestra y él decide.
 const SUPPORTED_PROTOCOLS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];

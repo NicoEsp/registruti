@@ -18,6 +18,13 @@ import { CLIENT_COLORS, CURRENCIES, type Client, type Invoice, type TimeEntry } 
 const INVOICE_STATUS_FILTERS = ["draft", "sent", "paid", "overdue"] as const;
 type InvoiceStatusFilter = (typeof INVOICE_STATUS_FILTERS)[number];
 
+// Tamaño de página de las tools que listan. Sin tope, un año de entradas son
+// miles de filas: la respuesta se come el contexto del asistente y puede pasar
+// el límite de tokens que el cliente acepta por resultado. Con descripción,
+// una entrada en JSON compacto ronda los 60 tokens: 200 son ~12k.
+const ENTRIES_PAGE = { default: 100, max: 200 } as const;
+const INVOICES_PAGE = { default: 50, max: 100 } as const;
+
 export const TOOLS = [
   {
     name: "list_clients",
@@ -113,13 +120,24 @@ export const TOOLS = [
     name: "list_time_entries",
     title: "Ver entradas de tiempo",
     description:
-      "Lista las entradas de tiempo en un rango de fechas, opcionalmente filtradas por cliente. Por defecto los últimos 30 días. Cada entrada trae su id (para update_time_entry) y si ya fue facturada.",
+      `Lista las entradas de tiempo en un rango de fechas, de la más vieja a la más nueva, opcionalmente filtradas por cliente. Por defecto los últimos 30 días. Cada entrada trae su id (para update_time_entry) y si ya fue facturada. Devuelve hasta ${ENTRIES_PAGE.default} entradas por llamada (máximo ${ENTRIES_PAGE.max} con limit); si has_more es true, pedí la página siguiente con offset igual a next_offset. Para totales usá report_summary.`,
     inputSchema: {
       type: "object",
       properties: {
         from: { type: "string", description: "Fecha desde (YYYY-MM-DD). Por defecto hace 30 días." },
         to: { type: "string", description: "Fecha hasta (YYYY-MM-DD). Por defecto hoy." },
         client: { type: "string", description: "Nombre o id del cliente para filtrar (opcional)." },
+        limit: {
+          type: "integer",
+          minimum: 1,
+          maximum: ENTRIES_PAGE.max,
+          description: `Cuántas entradas devolver (1 a ${ENTRIES_PAGE.max}). Por defecto ${ENTRIES_PAGE.default}.`,
+        },
+        offset: {
+          type: "integer",
+          minimum: 0,
+          description: "Cuántas entradas saltear, para paginar: usá el next_offset de la respuesta anterior. Por defecto 0.",
+        },
       },
     },
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
@@ -143,7 +161,7 @@ export const TOOLS = [
     name: "list_invoices",
     title: "Ver facturas",
     description:
-      "Lista las facturas (invoices) del usuario, de la más reciente a la más vieja: número, cliente, período, estado, total y link público para compartir. Se puede filtrar por cliente o por estado; 'overdue' son las enviadas cuyo vencimiento ya pasó.",
+      `Lista las facturas (invoices) del usuario, de la más reciente a la más vieja: número, cliente, período, estado, total y link público para compartir. Se puede filtrar por cliente o por estado; 'overdue' son las enviadas cuyo vencimiento ya pasó. Devuelve hasta ${INVOICES_PAGE.default} facturas por llamada (máximo ${INVOICES_PAGE.max} con limit); si has_more es true, pedí la página siguiente con offset igual a next_offset.`,
     inputSchema: {
       type: "object",
       properties: {
@@ -152,6 +170,17 @@ export const TOOLS = [
           type: "string",
           enum: [...INVOICE_STATUS_FILTERS],
           description: "Filtrar por estado (opcional): draft, sent, paid u overdue.",
+        },
+        limit: {
+          type: "integer",
+          minimum: 1,
+          maximum: INVOICES_PAGE.max,
+          description: `Cuántas facturas devolver (1 a ${INVOICES_PAGE.max}). Por defecto ${INVOICES_PAGE.default}.`,
+        },
+        offset: {
+          type: "integer",
+          minimum: 0,
+          description: "Cuántas facturas saltear, para paginar: usá el next_offset de la respuesta anterior. Por defecto 0.",
         },
       },
     },
@@ -283,6 +312,39 @@ function parseDurationArg(raw: string): number {
   return clampDuration(parsed);
 }
 
+/** Un argumento entero opcional dentro de [min, max]; si no vino, `fallback`. */
+function intArg(value: unknown, label: string, fallback: number, min: number, max?: number): number {
+  if (value == null || value === "") return fallback;
+  const n = typeof value === "number" ? value : Number(String(value).trim());
+  if (!Number.isInteger(n) || n < min || (max != null && n > max)) {
+    const range = max != null ? `entre ${min} y ${max}` : `mayor o igual a ${min}`;
+    throw new Error(`${label} tiene que ser un número entero ${range} (recibí "${String(value)}").`);
+  }
+  return n;
+}
+
+function pageArgs(args: Record<string, unknown>, page: { default: number; max: number }) {
+  return {
+    limit: intArg(args.limit, "limit", page.default, 1, page.max),
+    offset: intArg(args.offset, "offset", 0, 0),
+  };
+}
+
+/**
+ * Corta la página. La query pide `limit + 1` filas (`.range(offset, offset +
+ * limit)`): si vuelve la de más, hay otra página. Así no hace falta un
+ * `count: "exact"`, que cuesta un COUNT(*) por llamada y, con un offset más
+ * allá del final, hace que PostgREST responda 416 en vez de una lista vacía.
+ */
+function paginate<T>(rows: T[], offset: number, limit: number) {
+  const hasMore = rows.length > limit;
+  const page = hasMore ? rows.slice(0, limit) : rows;
+  return {
+    page,
+    meta: { offset, count: page.length, has_more: hasMore, ...(hasMore ? { next_offset: offset + limit } : {}) },
+  };
+}
+
 async function fetchClients(userId: string): Promise<Client[]> {
   const admin = getAdminClient();
   const { data, error } = await admin
@@ -391,7 +453,7 @@ async function listClients(userId: string, args: Record<string, unknown>): Promi
     color: c.color,
     archived: c.archived,
   }));
-  return JSON.stringify(rows, null, 2);
+  return JSON.stringify(rows);
 }
 
 async function createClient(userId: string, args: Record<string, unknown>): Promise<string> {
@@ -564,6 +626,7 @@ async function listTimeEntries(userId: string, args: Record<string, unknown>): P
   const from = args.from ? validDate(String(args.from), "desde") : daysAgoISO(30, ctx!.timeZone);
   const to = args.to ? validDate(String(args.to), "hasta") : ctx!.today;
   assertRange(from, to);
+  const { limit, offset } = pageArgs(args, ENTRIES_PAGE);
 
   const clients = await fetchClients(userId);
   const clientById = new Map(clients.map((c) => [c.id, c]));
@@ -574,18 +637,23 @@ async function listTimeEntries(userId: string, args: Record<string, unknown>): P
     .select("*")
     .eq("user_id", userId)
     .gte("entry_date", from)
-    .lte("entry_date", to)
-    .order("entry_date", { ascending: true });
+    .lte("entry_date", to);
 
   if (args.client) {
     const client = resolveClient(clients, String(args.client));
     query = query.eq("client_id", client.id);
   }
 
-  const { data, error } = await query;
+  // Orden total (fecha, alta, id) para que las páginas no se pisen ni salteen
+  // entradas del mismo día.
+  const { data, error } = await query
+    .order("entry_date", { ascending: true })
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true })
+    .range(offset, offset + limit);
   if (error) throw new Error(`No pude leer las entradas: ${error.message}`);
 
-  const entries = (data ?? []) as TimeEntry[];
+  const { page: entries, meta } = paginate((data ?? []) as TimeEntry[], offset, limit);
   const rows = entries.map((e) => ({
     id: e.id,
     date: e.entry_date,
@@ -597,7 +665,7 @@ async function listTimeEntries(userId: string, args: Record<string, unknown>): P
     invoiced: e.invoice_id != null,
   }));
 
-  return JSON.stringify({ from, to, count: rows.length, entries: rows }, null, 2);
+  return JSON.stringify({ from, to, ...meta, entries: rows });
 }
 
 async function reportSummary(userId: string, args: Record<string, unknown>): Promise<string> {
@@ -690,10 +758,7 @@ async function reportSummary(userId: string, args: Record<string, unknown>): Pro
         uninvoiced_minutes: totalUninvoicedMinutes,
         uninvoiced_amount_by_currency: sumByCurrency((r) => r.uninvoiced_amount),
       },
-    },
-    null,
-    2
-  );
+    });
 }
 
 async function listInvoices(userId: string, args: Record<string, unknown>): Promise<string> {
@@ -702,32 +767,33 @@ async function listInvoices(userId: string, args: Record<string, unknown>): Prom
     throw new Error(`El estado "${args.status}" no existe. Opciones: ${INVOICE_STATUS_FILTERS.join(", ")}.`);
   }
   const status = statusRaw as InvoiceStatusFilter | null;
+  const { limit, offset } = pageArgs(args, INVOICES_PAGE);
 
   const [ctx, clients] = await Promise.all([userContext(userId), fetchClients(userId)]);
   const clientById = new Map(clients.map((c) => [c.id, c]));
 
   const admin = getAdminClient();
-  let query = admin
-    .from("invoices")
-    .select("*")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+  let query = admin.from("invoices").select("*").eq("user_id", userId);
 
   if (args.client) {
     const client = resolveClient(clients, String(args.client));
     query = query.eq("client_id", client.id);
   }
   // "Vencido" no se persiste: es un invoice enviado cuyo vencimiento ya pasó
-  // (mismo criterio que src/lib/invoiceStatus.ts, pero con el "hoy" del usuario).
-  if (status === "overdue") query = query.eq("status", "sent");
+  // (mismo criterio que src/lib/invoiceStatus.ts, pero con el "hoy" del
+  // usuario). Se filtra en la query y no después, para que la paginación
+  // cuente solo las vencidas. `lt` ya deja afuera las que no tienen vencimiento.
+  if (status === "overdue") query = query.eq("status", "sent").lt("due_date", ctx.today);
   else if (status) query = query.eq("status", status);
 
-  const { data, error } = await query;
+  const { data, error } = await query
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .range(offset, offset + limit);
   if (error) throw new Error(`No pude leer las facturas: ${error.message}`);
 
   const isOverdue = (inv: Invoice) => inv.status === "sent" && !!inv.due_date && inv.due_date < ctx.today;
-  let invoices = (data ?? []) as Invoice[];
-  if (status === "overdue") invoices = invoices.filter(isOverdue);
+  const { page: invoices, meta } = paginate((data ?? []) as Invoice[], offset, limit);
 
   const rows = invoices.map((inv) => ({
     id: inv.id,
@@ -745,5 +811,5 @@ async function listInvoices(userId: string, args: Record<string, unknown>): Prom
     public_url: `${SITE_URL}/i/${inv.share_token}`,
   }));
 
-  return JSON.stringify({ count: rows.length, invoices: rows }, null, 2);
+  return JSON.stringify({ ...meta, invoices: rows });
 }
