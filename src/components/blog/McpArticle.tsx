@@ -1,3 +1,4 @@
+import Link from "next/link";
 import CodeBlock from "@/components/blog/CodeBlock";
 import { MCP_ENDPOINT } from "@/lib/mcp/config";
 
@@ -239,6 +240,10 @@ export default function McpArticle() {
           Para cortar el acceso, andá a <strong>Ajustes → Conexión con Claude → Apps
           conectadas</strong> y tocá <strong>Desconectar</strong>. También podés quitar el conector
           desde el propio cliente. Los tokens personales se revocan desde la misma pantalla.
+        </li>
+        <li>
+          Qué datos recibe y guarda Registruti de cada conexión, y por cuánto tiempo, está en la{" "}
+          <Link href="/privacy#mcp">política de privacidad</Link>.
         </li>
       </ul>
 

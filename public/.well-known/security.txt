@@ -1,0 +1,4 @@
+Contact: mailto:hola@registruti.app
+Expires: 2027-10-31T23:59:00-03:00
+Preferred-Languages: es, en
+Canonical: https://registruti.app/.well-known/security.txt

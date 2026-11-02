@@ -410,6 +410,45 @@ async function runTests(mock) {
     eq(acmeEntries.entries.filter((e) => e.invoiced).length, 1);
   });
 
+  await test("list_time_entries y list_invoices paginan con limit y offset", async () => {
+    const call = async (name, args) => JSON.parse(toolText(await client.callTool({ name, arguments: args })));
+    const all = await call("list_time_entries", { client: "Acme" });
+    eq(all.has_more, false);
+    assert(all.count >= 2, `se esperaban al menos 2 entradas de Acme, hay ${all.count}`);
+
+    const first = await call("list_time_entries", { client: "Acme", limit: 1 });
+    eq(first.count, 1);
+    eq(first.has_more, true);
+    eq(first.next_offset, 1);
+    eq(first.entries[0].id, all.entries[0].id);
+
+    // Recorrer página por página da las mismas entradas, en el mismo orden.
+    const ids = [];
+    let offset = 0;
+    for (let i = 0; i < 20; i++) {
+      const page = await call("list_time_entries", { client: "Acme", limit: 1, offset });
+      ids.push(...page.entries.map((e) => e.id));
+      if (!page.has_more) break;
+      offset = page.next_offset;
+    }
+    eq(ids.join(","), all.entries.map((e) => e.id).join(","));
+
+    const past = await call("list_time_entries", { offset: 999 });
+    eq(past.count, 0);
+    eq(past.has_more, false);
+
+    const tooMany = await client.callTool({ name: "list_time_entries", arguments: { limit: 500 } });
+    eq(tooMany.isError, true);
+    assert(tooMany.content[0].text.includes("limit"), tooMany.content[0].text);
+    const negative = await client.callTool({ name: "list_invoices", arguments: { offset: -1 } });
+    eq(negative.isError, true);
+
+    const invoices = await call("list_invoices", { limit: 1 });
+    eq(invoices.count, 1);
+    eq(invoices.has_more, false);
+    assert(!("next_offset" in invoices), "next_offset sin más páginas");
+  });
+
   await test("report_summary suma todas las entradas aunque superen el Max rows de PostgREST", async () => {
     const db = mock.db();
     const acme = db.clients.find((c) => c.name === "Acme");
@@ -477,8 +516,11 @@ async function runTests(mock) {
 
     // Con un Max rows menor que la página que pide el servidor, cada página
     // llega recortada: igual tiene que juntar todas las filas.
-    await fetch(`${mock.url}/__test/max-rows`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ max_rows: 300 }) });
+    const configured = await fetch(`${mock.url}/__test/max-rows`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ max_rows: 300 }) });
     try {
+      eq(configured.status, 200, "no se configuró Max rows");
+      const capped = await fetch(plain.url, { headers: { apikey: SERVICE_ROLE_KEY } });
+      eq((await capped.json()).length, 300, "el mock no aplicó Max rows 300");
       check(await report(year), "Max rows 300");
     } finally {
       await fetch(`${mock.url}/__test/max-rows`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ max_rows: DEFAULT_MAX_ROWS }) });
