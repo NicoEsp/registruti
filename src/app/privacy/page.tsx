@@ -55,7 +55,8 @@ export default function PrivacyPage() {
             haber iniciado sesión, esos datos son anónimos y no se asocian a ninguna persona; una
             vez que entrás a tu cuenta, quedan vinculados al identificador de tu cuenta. No
             registramos el contenido que cargás: ni los nombres de tus clientes, ni las
-            descripciones de tus tareas, ni los montos que facturás.
+            descripciones de tus tareas, ni los montos que facturás. De cada carga de horas
+            registramos solo su duración y si es facturable.
           </li>
           <li>
             <strong>De las apps que conectás:</strong> si conectás un asistente de IA a tu cuenta
@@ -116,7 +117,8 @@ export default function PrivacyPage() {
             ejemplo el cliente, la fecha, la duración y la descripción de una carga de horas. Los
             tratamos igual que si los cargaras desde la aplicación. No recibimos tus
             conversaciones con el asistente ni otros datos de esa app. Los eventos de uso indican
-            que una acción vino de un asistente, sin su contenido.
+            que una acción vino de un asistente y llevan lo mismo que desde la aplicación: de una
+            carga de horas, su duración y si es facturable, nunca la descripción ni el cliente.
           </li>
           <li>
             <strong>Qué guardamos de la conexión:</strong> el nombre de la app y las direcciones
