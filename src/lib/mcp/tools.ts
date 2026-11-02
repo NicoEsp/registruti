@@ -3,6 +3,7 @@ import { getAdminClient } from "@/lib/supabaseAdmin";
 import { captureServer } from "@/lib/analyticsServer";
 import { clampDuration, formatDuration, parseDuration } from "@/lib/format";
 import { countryFor, timeZoneFor } from "@/lib/countries";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { SITE_URL } from "@/lib/site";
 import type { Scope } from "@/lib/mcp/config";
 import { CLIENT_COLORS, CURRENCIES, type Client, type Invoice, type TimeEntry } from "@/lib/types";
@@ -608,24 +609,23 @@ async function reportSummary(userId: string, args: Record<string, unknown>): Pro
 
   const clients = await fetchClients(userId);
   const clientById = new Map(clients.map((c) => [c.id, c]));
+  const clientId = args.client ? resolveClient(clients, String(args.client)).id : null;
 
+  // Un año puede tener miles de entradas y PostgREST corta cada respuesta en
+  // "Max rows": sin paginar, los totales saldrían bajos sin ningún aviso.
+  type Row = Pick<TimeEntry, "client_id" | "duration_minutes" | "billable" | "invoice_id">;
   const admin = getAdminClient();
-  let query = admin
-    .from("time_entries")
-    .select("*")
-    .eq("user_id", userId)
-    .gte("entry_date", from)
-    .lte("entry_date", to);
-
-  if (args.client) {
-    const client = resolveClient(clients, String(args.client));
-    query = query.eq("client_id", client.id);
-  }
-
-  const { data, error } = await query;
+  const { data: entries, error } = await fetchAllRows<Row>((first, last) => {
+    let query = admin
+      .from("time_entries")
+      .select("client_id, duration_minutes, billable, invoice_id", { count: "exact" })
+      .eq("user_id", userId)
+      .gte("entry_date", from)
+      .lte("entry_date", to);
+    if (clientId) query = query.eq("client_id", clientId);
+    return query.order("id").range(first, last);
+  });
   if (error) throw new Error(`No pude leer las entradas: ${error.message}`);
-
-  const entries = (data ?? []) as TimeEntry[];
 
   // "Sin facturar" = facturable y todavía fuera de cualquier invoice: es lo
   // que se puede facturar hoy, que es la pregunta previa a crear una factura.

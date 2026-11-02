@@ -23,7 +23,7 @@ import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { UnauthorizedError } from "@modelcontextprotocol/sdk/client/auth.js";
-import { SERVICE_ROLE_KEY, USER, USER_JWT, startMockSupabase } from "./mock-supabase.mjs";
+import { DEFAULT_MAX_ROWS, SERVICE_ROLE_KEY, USER, USER_JWT, startMockSupabase } from "./mock-supabase.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const APP_PORT = Number(process.env.MCP_E2E_PORT ?? 3939);
@@ -408,6 +408,81 @@ async function runTests(mock) {
     assert(typeof entries.entries[0].id === "string" && entries.entries[0].id.length > 0, "las entradas no traen id");
     const acmeEntries = JSON.parse(toolText(await client.callTool({ name: "list_time_entries", arguments: { client: "Acme" } })));
     eq(acmeEntries.entries.filter((e) => e.invoiced).length, 1);
+  });
+
+  await test("report_summary suma todas las entradas aunque superen el Max rows de PostgREST", async () => {
+    const db = mock.db();
+    const acme = db.clients.find((c) => c.name === "Acme");
+    const globex = db.clients.find((c) => c.name === "Globex");
+    const invoiceId = db.invoices[0].id;
+    // 7 entradas por día durante todo 2025: más del doble del tope de 1000.
+    const bulk = [];
+    for (let i = 0; i < 7 * 365; i++) {
+      bulk.push({
+        client_id: i % 3 === 0 ? globex.id : acme.id,
+        entry_date: new Date(Date.UTC(2025, 0, 1 + (i % 365))).toISOString().slice(0, 10),
+        duration_minutes: 15 * (1 + (i % 4)),
+        billable: i % 5 !== 0,
+        invoice_id: i % 7 === 0 ? invoiceId : null,
+        description: `bulk ${i}`,
+      });
+    }
+    const seeded = await fetch(`${mock.url}/__test/seed-entries`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ entries: bulk }),
+    });
+    eq(seeded.status, 200);
+
+    // El mock corta como PostgREST: un select sin paginar trae 1000 y nada más.
+    const plain = await fetch(
+      `${mock.url}/rest/v1/time_entries?select=id&user_id=eq.${USER.id}&entry_date=gte.2025-01-01&entry_date=lte.2025-12-31`,
+      { headers: { apikey: SERVICE_ROLE_KEY } }
+    );
+    eq((await plain.json()).length, DEFAULT_MAX_ROWS, "el mock no emula Max rows");
+
+    const sums = (rows) => ({
+      minutes: rows.reduce((s, e) => s + e.duration_minutes, 0),
+      billable: rows.reduce((s, e) => s + (e.billable ? e.duration_minutes : 0), 0),
+      uninvoiced: rows.reduce((s, e) => s + (e.billable && e.invoice_id == null ? e.duration_minutes : 0), 0),
+    });
+    const money = (minutes, rate) => Math.round((minutes / 60) * rate * 100) / 100;
+    const expected = {
+      Acme: sums(bulk.filter((e) => e.client_id === acme.id)),
+      Globex: sums(bulk.filter((e) => e.client_id === globex.id)),
+    };
+    const all = sums(bulk);
+
+    const check = (summary, label) => {
+      for (const [name, rate] of [["Acme", acme.hourly_rate], ["Globex", globex.hourly_rate]]) {
+        const row = summary.by_client.find((c) => c.client === name);
+        eq(row.minutes, expected[name].minutes, `${label}: minutos de ${name}`);
+        eq(row.billable_minutes, expected[name].billable, `${label}: facturables de ${name}`);
+        eq(row.uninvoiced_minutes, expected[name].uninvoiced, `${label}: sin facturar de ${name}`);
+        eq(row.billable_amount, money(expected[name].billable, rate), `${label}: monto de ${name}`);
+      }
+      eq(summary.totals.minutes, all.minutes, `${label}: total`);
+      eq(summary.totals.billable_minutes, all.billable, `${label}: total facturable`);
+      eq(summary.totals.uninvoiced_minutes, all.uninvoiced, `${label}: total sin facturar`);
+      eq(summary.totals.billable_amount_by_currency.USD, money(expected.Acme.billable, acme.hourly_rate), `${label}: USD`);
+      eq(summary.totals.billable_amount_by_currency.ARS, money(expected.Globex.billable, globex.hourly_rate), `${label}: ARS`);
+    };
+    const year = { from: "2025-01-01", to: "2025-12-31" };
+    const report = async (args) => JSON.parse(toolText(await client.callTool({ name: "report_summary", arguments: args })));
+
+    check(await report(year), "Max rows 1000");
+    const onlyAcme = await report({ ...year, client: "acme" });
+    eq(onlyAcme.by_client.length, 1);
+    eq(onlyAcme.totals.minutes, expected.Acme.minutes, "filtrado por cliente");
+
+    // Con un Max rows menor que la página que pide el servidor, cada página
+    // llega recortada: igual tiene que juntar todas las filas.
+    await fetch(`${mock.url}/__test/max-rows`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ max_rows: 300 }) });
+    try {
+      check(await report(year), "Max rows 300");
+    } finally {
+      await fetch(`${mock.url}/__test/max-rows`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ max_rows: DEFAULT_MAX_ROWS }) });
+    }
   });
 
   await test("update_time_entry edita duración, descripción, cliente y facturable", async () => {

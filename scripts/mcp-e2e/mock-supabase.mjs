@@ -1,9 +1,11 @@
 // Supabase de mentira para la prueba end-to-end del MCP (scripts/mcp-e2e/run.mjs).
 //
 // Implementa lo justo de PostgREST (GET/POST/PATCH/DELETE con filtros eq/is/
-// lt/gte/lte/in, select, order, Prefer: return=representation, Accept de
-// objeto único) y del endpoint GET /auth/v1/user de GoTrue, sobre tablas en
-// memoria con la misma forma que las de producción. Sin dependencias.
+// lt/gte/lte/in, select, order, limit/offset, Prefer: return=representation y
+// count=exact, Accept de objeto único) y del endpoint GET /auth/v1/user de
+// GoTrue, sobre tablas en memoria con la misma forma que las de producción.
+// Como PostgREST, corta cada GET en "Max rows" (1000, igual que el default de
+// Supabase; se cambia con /__test/max-rows). Sin dependencias.
 //
 // También sirve un Client ID Metadata Document (/cimd/claude.json) y unos
 // endpoints /__test/* para manipular el estado desde la prueba.
@@ -129,8 +131,11 @@ function readBody(req) {
   });
 }
 
+export const DEFAULT_MAX_ROWS = 1000;
+
 export async function startMockSupabase({ verbose = false } = {}) {
   let db = seed();
+  let maxRows = DEFAULT_MAX_ROWS;
   const log = (...args) => verbose && console.log("[mock-supabase]", ...args);
 
   const server = http.createServer(async (req, res) => {
@@ -173,7 +178,16 @@ export async function startMockSupabase({ verbose = false } = {}) {
           return send(200, db);
         case "/__test/reset":
           db = seed();
+          maxRows = DEFAULT_MAX_ROWS;
           return send(200, { ok: true });
+        case "/__test/max-rows":
+          maxRows = body.max_rows ?? DEFAULT_MAX_ROWS;
+          return send(200, { ok: true, max_rows: maxRows });
+        case "/__test/seed-entries":
+          for (const e of body.entries) {
+            db.time_entries.push({ id: crypto.randomUUID(), user_id: USER.id, description: null, billable: true, invoice_id: null, created_at: now(), ...e });
+          }
+          return send(200, { ok: true, count: body.entries.length });
         case "/__test/expire-access-tokens": {
           const past = new Date(Date.now() - 60_000).toISOString();
           for (const t of db.mcp_tokens) if (t.grant_id) t.expires_at = past;
@@ -261,11 +275,15 @@ export async function startMockSupabase({ verbose = false } = {}) {
             rows = [...rows].sort((a, b) => (dir === "desc" ? -1 : 1) * compare(a[col], b[col]));
           }
           const total = rows.length;
+          // Como PostgREST: el limit pedido nunca supera "Max rows", y si no
+          // se pide ninguno igual se corta ahí, sin error ni aviso.
+          const offset = Number(url.searchParams.get("offset") ?? 0);
           const limit = url.searchParams.get("limit");
-          if (limit) rows = rows.slice(0, Number(limit));
-          // Prefer: count=exact → Content-Range: 0-N/total (postgrest-js lee el total).
+          const take = Math.min(limit == null ? Infinity : Number(limit), maxRows);
+          rows = rows.slice(offset, offset + take);
+          // Prefer: count=exact → Content-Range: desde-hasta/total (postgrest-js lee el total).
           const headers = prefer.includes("count=")
-            ? { "content-range": `${total ? `0-${total - 1}` : "*"}/${total}` }
+            ? { "content-range": `${rows.length ? `${offset}-${offset + rows.length - 1}` : "*"}/${total}` }
             : {};
           if (req.method === "HEAD") {
             res.writeHead(200, { "content-type": "application/json", ...headers });
