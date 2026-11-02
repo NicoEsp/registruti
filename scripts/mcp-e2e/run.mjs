@@ -516,8 +516,11 @@ async function runTests(mock) {
 
     // Con un Max rows menor que la página que pide el servidor, cada página
     // llega recortada: igual tiene que juntar todas las filas.
-    await fetch(`${mock.url}/__test/max-rows`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ max_rows: 300 }) });
+    const configured = await fetch(`${mock.url}/__test/max-rows`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ max_rows: 300 }) });
     try {
+      eq(configured.status, 200, "no se configuró Max rows");
+      const capped = await fetch(plain.url, { headers: { apikey: SERVICE_ROLE_KEY } });
+      eq((await capped.json()).length, 300, "el mock no aplicó Max rows 300");
       check(await report(year), "Max rows 300");
     } finally {
       await fetch(`${mock.url}/__test/max-rows`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ max_rows: DEFAULT_MAX_ROWS }) });
