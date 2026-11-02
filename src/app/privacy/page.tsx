@@ -156,9 +156,10 @@ export default function PrivacyPage() {
           renovación a los 60 días sin uso; los vencidos se borran automáticamente. La
           autorización de una app dura hasta que la desconectás o eliminás tu cuenta. El registro
           de una app (su nombre, sus direcciones de retorno y el hash de la IP desde la que se
-          registró) no está asociado a tu cuenta: si nadie llegó a aprobarla, se borra a los 7
-          días; si alguien la aprobó, se conserva para que pueda volver a conectarse, aunque
-          después la desconectes. Los tokens personales no vencen: duran hasta que los revocás.
+          registró) no guarda un identificador de tu cuenta, pero mientras tengas una
+          autorización activa para esa app queda vinculado a vos a través de ella. Si nadie llegó
+          a aprobarla, se borra a los 7 días; si alguien la aprobó, se conserva para que pueda
+          volver a conectarse, aunque después la desconectes. Los tokens personales no vencen: duran hasta que los revocás.
         </p>
 
         <h2>8. Cambios</h2>
