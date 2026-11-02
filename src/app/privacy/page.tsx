@@ -9,7 +9,16 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-const UPDATED = "7 de septiembre de 2026";
+const UPDATED = "2 de noviembre de 2026";
+const CONTACT_EMAIL = "hola@registruti.app";
+
+function ContactLink() {
+  return (
+    <a href={`mailto:${CONTACT_EMAIL}`} className="underline">
+      {CONTACT_EMAIL}
+    </a>
+  );
+}
 
 export default function PrivacyPage() {
   return (
@@ -48,6 +57,10 @@ export default function PrivacyPage() {
             registramos el contenido que cargás: ni los nombres de tus clientes, ni las
             descripciones de tus tareas, ni los montos que facturás.
           </li>
+          <li>
+            <strong>De las apps que conectás:</strong> si conectás un asistente de IA a tu cuenta
+            (ver punto 5), los datos de esa conexión.
+          </li>
         </ul>
 
         <h2>2. Para qué los usamos</h2>
@@ -70,11 +83,13 @@ export default function PrivacyPage() {
           Estados Unidos. Recibe el identificador de tu cuenta, tu email, la fecha en que la
           creaste, el país que hayas cargado en tu perfil y los eventos descritos en el punto 1. No
           tenemos activada la grabación de sesiones: nadie mira lo que hacés en pantalla. Si
-          preferís que dejemos de registrar tu actividad, escribinos a{" "}
-          <a href="mailto:hola@registruti.app" className="underline">
-            hola@registruti.app
-          </a>{" "}
-          y lo damos de baja para tu cuenta.
+          preferís que dejemos de registrar tu actividad, escribinos a <ContactLink /> y lo damos
+          de baja para tu cuenta.
+        </p>
+
+        <p>
+          La aplicación está alojada en <strong>Vercel</strong>, que procesa las visitas para
+          servir el sitio y mide el tráfico de forma agregada, sin cookies.
         </p>
 
         <h2>4. Enlaces públicos de facturas</h2>
@@ -84,33 +99,74 @@ export default function PrivacyPage() {
           quien corresponda.
         </p>
 
-        <h2>5. Tus derechos</h2>
+        <h2 id="mcp">5. Conexión con asistentes de IA (MCP)</h2>
+        <p>
+          Desde Ajustes podés conectar tu cuenta a Claude, Cursor u otros asistentes compatibles
+          con el protocolo MCP. Es opcional y solo ocurre si vos lo autorizás.
+        </p>
+        <ul>
+          <li>
+            <strong>A qué accede la app conectada:</strong> con el permiso de lectura, a tus
+            clientes, horas, reportes y facturas, incluido el enlace público de cada factura. Con
+            el permiso de escritura, además puede cargar y editar horas y crear clientes. Solo
+            accede a los datos de tu cuenta.
+          </li>
+          <li>
+            <strong>Qué recibimos:</strong> los datos de cada pedido que hace el asistente, por
+            ejemplo el cliente, la fecha, la duración y la descripción de una carga de horas. Los
+            tratamos igual que si los cargaras desde la aplicación. No recibimos tus
+            conversaciones con el asistente ni otros datos de esa app. Los eventos de uso indican
+            que una acción vino de un asistente, sin su contenido.
+          </li>
+          <li>
+            <strong>Qué guardamos de la conexión:</strong> el nombre de la app y las direcciones
+            de retorno que declara, los permisos que le diste y la fecha de último uso. Los tokens
+            de acceso se guardan solo como hash, nunca en texto plano. Para limitar abusos en el
+            registro de apps guardamos un hash con clave de la IP desde la que se registró, no la
+            IP.
+          </li>
+          <li>
+            <strong>Qué recibe la app conectada:</strong> los datos que devuelven las
+            herramientas se envían al asistente que conectaste (por ejemplo, a Anthropic en el
+            caso de Claude), que los trata según su propia política de privacidad.
+          </li>
+          <li>
+            <strong>Cómo desconectar:</strong> en Ajustes, sección &quot;Conexión con Claude y
+            otros asistentes&quot;, podés desconectar cualquier app y revocar tus tokens
+            personales. Al desconectar borramos la autorización y sus tokens, y la app pierde el
+            acceso en el momento.
+          </li>
+        </ul>
+
+        <h2>6. Tus derechos</h2>
         <p>
           Podés acceder, rectificar y solicitar la eliminación de tus datos. Para eliminar tu
-          cuenta y toda la información asociada, contactanos por los canales del Servicio.
+          cuenta y toda la información asociada, escribinos a <ContactLink />.
         </p>
 
-        <h2>6. Conservación</h2>
+        <h2>7. Conservación</h2>
         <p>
           Conservamos tus datos mientras tu cuenta esté activa. Si solicitás la baja, los
           eliminamos salvo obligación legal de conservarlos.
         </p>
+        <p>
+          En las conexiones con asistentes, los tokens de acceso vencen a la hora y los de
+          renovación a los 60 días sin uso; los vencidos se borran automáticamente. La
+          autorización de una app dura hasta que la desconectás o eliminás tu cuenta. Las apps
+          que se registraron pero nunca completaron una autorización se borran a los 7 días. Los
+          tokens personales no vencen: duran hasta que los revocás.
+        </p>
 
-        <h2>7. Cambios</h2>
+        <h2>8. Cambios</h2>
         <p>
           Podemos actualizar esta política. Publicaremos la versión vigente en esta página con su
           fecha de actualización.
         </p>
 
-        <h2>8. Contacto</h2>
+        <h2>9. Contacto</h2>
         <p>
-          Ante consultas sobre tus datos, escribinos a través de los canales de contacto del
-          Servicio.
-        </p>
-
-        <p className="mt-8 rounded-lg bg-slate-50 p-4 text-xs text-slate-500">
-          Este documento es una plantilla inicial y no constituye asesoramiento legal. Antes de
-          operar comercialmente, hacelo revisar por un profesional del derecho de tu jurisdicción.
+          Ante consultas sobre tus datos, o para reportar un problema de seguridad, escribinos a{" "}
+          <ContactLink />.
         </p>
       </div>
     </main>
