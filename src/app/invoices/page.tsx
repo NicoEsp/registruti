@@ -546,14 +546,15 @@ function NewInvoiceModal({
     // Se marcan exactamente las entradas del preview, que son las que suman el
     // total, y solo si siguen cumpliendo los filtros. Va por tandas de ids: con
     // miles, un solo .in("id", [...]) arma una URL más larga de lo que aceptan
-    // los proxies. El count de cada tanda dice cuántas tomó.
+    // los proxies. Cada tanda devuelve las filas que tomó, con su duración
+    // actual: si una se editó después del preview, los minutos no cierran.
     let updErr: { message: string } | null = null;
     let marked = 0;
-    let countKnown = true;
+    let markedMinutes = 0;
     for (let i = 0; i < preview.length; i += MARK_BATCH) {
-      const { error: batchErr, count } = await supabase
+      const { data: rows, error: batchErr } = await supabase
         .from("time_entries")
-        .update({ invoice_id: invoice.id }, { count: "exact" })
+        .update({ invoice_id: invoice.id })
         .in(
           "id",
           preview.slice(i, i + MARK_BATCH).map((e) => e.id)
@@ -562,16 +563,18 @@ function NewInvoiceModal({
         .eq("billable", true)
         .is("invoice_id", null)
         .gte("entry_date", from)
-        .lte("entry_date", to);
+        .lte("entry_date", to)
+        .select("id, duration_minutes");
       if (batchErr) {
         updErr = batchErr;
         break;
       }
-      // count null: la respuesta no trajo el total y no hay con qué comparar.
-      if (count == null) countKnown = false;
-      else marked += count;
+      for (const r of rows ?? []) {
+        marked += 1;
+        markedMinutes += r.duration_minutes;
+      }
     }
-    const mismatch = !updErr && countKnown && marked !== preview.length;
+    const mismatch = !updErr && (marked !== preview.length || markedMinutes !== totalMinutes);
     if (updErr || mismatch) {
       // Un invoice con un total que no coincide con sus entradas es peor que
       // ninguno: se sueltan las que se hayan marcado y se borra. Pasa si una
