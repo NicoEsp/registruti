@@ -53,9 +53,10 @@ export default function PrivacyPage() {
             <strong>De uso:</strong> páginas visitadas y acciones dentro de la aplicación (por
             ejemplo, que se registró tiempo o se generó una factura). Mientras navegás el sitio sin
             haber iniciado sesión, esos datos son anónimos y no se asocian a ninguna persona; una
-            vez que entrás a tu cuenta, quedan vinculados al identificador de tu cuenta. No
-            registramos el contenido que cargás: ni los nombres de tus clientes, ni las
-            descripciones de tus tareas, ni los montos que facturás.
+            vez que entrás a tu cuenta, quedan vinculados al identificador de tu cuenta. Algunos
+            eventos llevan datos sueltos de la acción, como la duración de una carga de horas, si
+            es facturable o la moneda de un cliente nuevo. No registramos los nombres de tus
+            clientes, las descripciones de tus tareas ni los montos que facturás.
           </li>
           <li>
             <strong>De las apps que conectás:</strong> si conectás un asistente de IA a tu cuenta
@@ -115,8 +116,9 @@ export default function PrivacyPage() {
             <strong>Qué recibimos:</strong> los datos de cada pedido que hace el asistente, por
             ejemplo el cliente, la fecha, la duración y la descripción de una carga de horas. Los
             tratamos igual que si los cargaras desde la aplicación. No recibimos tus
-            conversaciones con el asistente ni otros datos de esa app. Los eventos de uso indican
-            que una acción vino de un asistente, sin su contenido.
+            conversaciones con el asistente ni otros datos de esa app. Los eventos de uso de estas
+            acciones indican que vinieron de un asistente y llevan los mismos datos que los de la
+            aplicación (punto 1).
           </li>
           <li>
             <strong>Qué guardamos de la conexión:</strong> el nombre de la app y las direcciones
@@ -152,9 +154,11 @@ export default function PrivacyPage() {
         <p>
           En las conexiones con asistentes, los tokens de acceso vencen a la hora y los de
           renovación a los 60 días sin uso; los vencidos se borran automáticamente. La
-          autorización de una app dura hasta que la desconectás o eliminás tu cuenta. Las apps
-          que se registraron pero nunca completaron una autorización se borran a los 7 días. Los
-          tokens personales no vencen: duran hasta que los revocás.
+          autorización de una app dura hasta que la desconectás o eliminás tu cuenta. El registro
+          de una app (su nombre, sus direcciones de retorno y el hash de la IP desde la que se
+          registró) no está asociado a tu cuenta: si nadie llegó a aprobarla, se borra a los 7
+          días; si alguien la aprobó, se conserva para que pueda volver a conectarse, aunque
+          después la desconectes. Los tokens personales no vencen: duran hasta que los revocás.
         </p>
 
         <h2>8. Cambios</h2>
