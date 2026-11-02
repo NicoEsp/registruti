@@ -32,7 +32,15 @@ const UNIQUE = {
 };
 
 function seed() {
-  const today = new Date().toISOString().slice(0, 10);
+  // "Hoy" en la zona del usuario de prueba (perfil AR), igual que el server: con
+  // la fecha UTC, entre las 21 y las 24 de Buenos Aires las entradas sembradas
+  // caerían en "mañana" y quedarían fuera de los rangos por defecto.
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
   const acme = "aaaaaaaa-0000-4000-8000-000000000001";
   const globex = "aaaaaaaa-0000-4000-8000-000000000002";
   const old = "aaaaaaaa-0000-4000-8000-000000000003";
@@ -255,14 +263,25 @@ export async function startMockSupabase({ verbose = false } = {}) {
       switch (req.method) {
         case "GET":
         case "HEAD": {
+          // order=col.dir[,col.dir...]: varias columnas, en orden de prioridad.
           const order = url.searchParams.get("order");
           if (order) {
-            const [col, dir] = order.split(".");
-            rows = [...rows].sort((a, b) => (dir === "desc" ? -1 : 1) * compare(a[col], b[col]));
+            const keys = order.split(",").map((part) => {
+              const [col, dir] = part.split(".");
+              return { col, sign: dir === "desc" ? -1 : 1 };
+            });
+            rows = [...rows].sort((a, b) => {
+              for (const { col, sign } of keys) {
+                const c = compare(a[col], b[col]);
+                if (c !== 0) return sign * c;
+              }
+              return 0;
+            });
           }
           const total = rows.length;
+          const offset = Number(url.searchParams.get("offset") ?? 0);
           const limit = url.searchParams.get("limit");
-          if (limit) rows = rows.slice(0, Number(limit));
+          rows = rows.slice(offset, limit ? offset + Number(limit) : undefined);
           // Prefer: count=exact → Content-Range: 0-N/total (postgrest-js lee el total).
           const headers = prefer.includes("count=")
             ? { "content-range": `${total ? `0-${total - 1}` : "*"}/${total}` }
