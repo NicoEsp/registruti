@@ -121,7 +121,7 @@ export const TOOLS = [
     name: "list_time_entries",
     title: "Ver entradas de tiempo",
     description:
-      `Lista las entradas de tiempo en un rango de fechas, de la más vieja a la más nueva, opcionalmente filtradas por cliente. Por defecto los últimos 30 días. Cada entrada trae su id (para update_time_entry) y si ya fue facturada. Devuelve hasta ${ENTRIES_PAGE.default} entradas por llamada (máximo ${ENTRIES_PAGE.max} con limit); si has_more es true, pedí la página siguiente con offset igual a next_offset. Para totales usá report_summary.`,
+      `Lista las entradas de tiempo en un rango de fechas, de la más vieja a la más nueva, opcionalmente filtradas por cliente. Por defecto los últimos 30 días. Cada entrada trae su id (para update_time_entry) y si ya fue facturada. Devuelve hasta ${ENTRIES_PAGE.default} entradas por llamada (máximo ${ENTRIES_PAGE.max} con limit); total es la cantidad de entradas que cumplen el filtro y, si has_more es true, pedí la página siguiente con offset igual a next_offset. Para totales de horas y montos usá report_summary.`,
     inputSchema: {
       type: "object",
       properties: {
@@ -632,29 +632,42 @@ async function listTimeEntries(userId: string, args: Record<string, unknown>): P
   const clients = await fetchClients(userId);
   const clientById = new Map(clients.map((c) => [c.id, c]));
 
+  const clientId = args.client ? resolveClient(clients, String(args.client)).id : null;
+
   const admin = getAdminClient();
-  let query = admin
-    .from("time_entries")
-    .select("*")
-    .eq("user_id", userId)
-    .gte("entry_date", from)
-    .lte("entry_date", to);
+  const filtered = (columns: string, options?: { count: "exact"; head: true }) => {
+    const query = admin
+      .from("time_entries")
+      .select(columns, options)
+      .eq("user_id", userId)
+      .gte("entry_date", from)
+      .lte("entry_date", to);
+    return clientId ? query.eq("client_id", clientId) : query;
+  };
 
-  if (args.client) {
-    const client = resolveClient(clients, String(args.client));
-    query = query.eq("client_id", client.id);
-  }
-
-  // Orden total (fecha, alta, id) para que las páginas no se pisen ni salteen
-  // entradas del mismo día.
-  const { data, error } = await query
-    .order("entry_date", { ascending: true })
-    .order("created_at", { ascending: true })
-    .order("id", { ascending: true })
-    .range(offset, offset + limit);
+  // El total sale de un HEAD aparte: con count en la misma query, un offset
+  // más allá del final hace que PostgREST responda 416 en vez de una lista
+  // vacía. Orden total (fecha, alta, id) para que las páginas no se pisen ni
+  // salteen entradas del mismo día.
+  const [countRes, pageRes] = await Promise.all([
+    filtered("id", { count: "exact", head: true }),
+    filtered("*")
+      .order("entry_date", { ascending: true })
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(offset, offset + limit - 1),
+  ]);
+  const error = countRes.error ?? pageRes.error;
   if (error) throw new Error(`No pude leer las entradas: ${error.message}`);
 
-  const { page: entries, meta } = paginate((data ?? []) as TimeEntry[], offset, limit);
+  const entries = (pageRes.data ?? []) as unknown as TimeEntry[];
+  const total = countRes.count ?? offset + entries.length;
+  // has_more sale del total y no de si la página vino llena: si el "Max rows"
+  // de PostgREST fuera menor que limit, la página llega recortada sin aviso.
+  // Por lo mismo, next_offset avanza por lo que llegó y no por limit.
+  const nextOffset = offset + entries.length;
+  const hasMore = entries.length > 0 && nextOffset < total;
+  const meta = { offset, count: entries.length, total, has_more: hasMore, ...(hasMore ? { next_offset: nextOffset } : {}) };
   const rows = entries.map((e) => ({
     id: e.id,
     date: e.entry_date,

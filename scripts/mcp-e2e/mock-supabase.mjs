@@ -298,6 +298,20 @@ export async function startMockSupabase({ verbose = false } = {}) {
           const offset = Number(url.searchParams.get("offset") ?? 0);
           const limit = url.searchParams.get("limit");
           const take = Math.min(limit == null ? Infinity : Number(limit), maxRows);
+          // Con count=exact y un offset pasado el final, PostgREST no devuelve
+          // una lista vacía: responde 416 (PGRST103).
+          if (prefer.includes("count=") && offset > total) {
+            return send(
+              416,
+              {
+                code: "PGRST103",
+                details: `An offset of ${offset} was requested, but there are only ${total} rows.`,
+                hint: null,
+                message: "Requested range not satisfiable",
+              },
+              { "content-range": `*/${total}` }
+            );
+          }
           rows = rows.slice(offset, offset + take);
           // Prefer: count=exact → Content-Range: desde-hasta/total (postgrest-js lee el total).
           const headers = prefer.includes("count=")
