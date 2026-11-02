@@ -10,6 +10,7 @@ import InvoiceActions from "@/components/InvoiceActions";
 import { supabase } from "@/lib/supabase";
 import { showToast } from "@/lib/appEvents";
 import { fetchIssuer } from "@/lib/profile";
+import { fetchInvoiceEntries } from "@/lib/invoiceEntries";
 import type { InvoiceIssuer } from "@/lib/invoicePdf";
 import type { Client, Invoice, InvoiceStatus, TimeEntry } from "@/lib/types";
 import { invoiceStatusLabel, invoiceStatusStyle } from "@/lib/invoiceStatus";
@@ -50,14 +51,19 @@ function InvoiceDetail() {
     }
     const [clientRes, entriesRes, issuerData] = await Promise.all([
       supabase.from("clients").select("*").eq("id", inv.client_id).single(),
-      supabase.from("time_entries").select("*").eq("invoice_id", inv.id).order("entry_date"),
+      fetchInvoiceEntries(inv.id),
       fetchIssuer(),
     ]);
     setInvoice(inv);
     setClient(clientRes.data);
     setEntries(entriesRes.data ?? []);
     setIssuer(issuerData);
-    setError(null);
+    // Sin las entradas, el detalle y el PDF quedarían incompletos: mejor el error.
+    setError(
+      entriesRes.error
+        ? `No se pudieron cargar las entradas del invoice: ${entriesRes.error.message}`
+        : null
+    );
     setLoading(false);
   }, [id]);
 

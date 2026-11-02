@@ -20,8 +20,9 @@ export type FetchAllResult<T> = { data: T[]; error: null } | { data: null; error
  *
  * `page(from, to)` arma la query de una página y tiene que:
  * - pedir el total con `.select(cols, { count: "exact" })`, y
- * - ordenar por una columna única (`.order("id")`): sin orden estable, Postgres
- *   no garantiza que dos páginas no repitan o salteen filas.
+ * - ordenar por una columna única (`.order("id")`), o terminar el orden en una
+ *   (`.order("entry_date").order("id")`): sin orden total, Postgres no
+ *   garantiza que dos páginas no repitan o salteen filas.
  *
  * Avanza por la cantidad de filas que llegaron, no por el tamaño pedido: si el
  * "Max rows" del proyecto fuera menor que PAGE_SIZE, cada página llega
