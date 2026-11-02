@@ -3,12 +3,15 @@ import crypto from "node:crypto";
 import { getAdminClient } from "@/lib/supabaseAdmin";
 
 // Webhook de LemonSqueezy para el lifetime access de Registruti.
-// Al confirmarse un pago (order_created), marca profiles.pro = true del usuario.
+// Al confirmarse un pago (order_created), marca profiles.pro = true del usuario
+// y registra la venta en `lifetime_grants` (la lista de Ventas del back office).
+// Ante un reembolso (order_refunded), marca la venta como reembolsada y le
+// quita el acceso.
 //
 // Config en LemonSqueezy → Settings → Webhooks:
 //   - Callback URL: https://registruti.app/api/webhooks/lemonsqueezy
 //   - Signing secret: el mismo valor que LEMONSQUEEZY_WEBHOOK_SECRET (env en Vercel)
-//   - Eventos: order_created (y opcionalmente order_refunded)
+//   - Eventos: order_created y order_refunded
 //
 // La firma se verifica con HMAC-SHA256 del body crudo. Reusa la service role de
 // Supabase (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY) para poder escribir `pro`.
@@ -24,15 +27,29 @@ const EXPECTED_VARIANT_ID = Number(process.env.LEMONSQUEEZY_VARIANT_ID ?? 193475
 interface LemonWebhook {
   meta?: {
     event_name?: string;
+    test_mode?: boolean;
     custom_data?: Record<string, unknown>;
   };
   data?: {
+    id?: string | number;
     attributes?: {
+      order_number?: number;
+      user_name?: string;
       user_email?: string;
       status?: string;
+      currency?: string;
+      /** Total en centavos de `currency`. */
+      total?: number;
+      /** Total en centavos de USD. */
+      total_usd?: number;
       first_order_item?: { variant_id?: number };
     };
   };
+}
+
+/** Entero o null: los montos llegan como number, pero no confiamos a ciegas. */
+function intOrNull(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? Math.round(value) : null;
 }
 
 /** Comparación en tiempo constante de dos hex de igual longitud esperada. */
@@ -66,21 +83,35 @@ export async function POST(req: NextRequest) {
   }
 
   const event = body.meta?.event_name;
-  // Solo activamos ante un pago concretado. Otros eventos se aceptan (200) para
-  // que LemonSqueezy no los reintente, pero no hacen nada.
-  if (event !== "order_created") {
+  // Solo actuamos ante un pago concretado o un reembolso. Otros eventos se
+  // aceptan (200) para que LemonSqueezy no los reintente, pero no hacen nada.
+  if (event !== "order_created" && event !== "order_refunded") {
     return new Response("ok", { status: 200 });
   }
 
-  const status = body.data?.attributes?.status;
-  if (status && status !== "paid") {
-    return new Response("ok", { status: 200 });
-  }
-
-  // Solo el producto del lifetime access activa el pro. Si el evento trae otro
+  // Solo el producto del lifetime access cuenta. Si el evento trae otro
   // variant, lo aceptamos (200) pero no hacemos nada.
-  const variantId = body.data?.attributes?.first_order_item?.variant_id;
+  const attributes = body.data?.attributes ?? {};
+  const variantId = attributes.first_order_item?.variant_id;
   if (EXPECTED_VARIANT_ID && variantId && variantId !== EXPECTED_VARIANT_ID) {
+    return new Response("ok", { status: 200 });
+  }
+
+  const orderId = body.data?.id != null ? String(body.data.id) : null;
+  const admin = getAdminClient();
+
+  if (event === "order_refunded") {
+    if (!orderId) return new Response("Sin id de orden.", { status: 422 });
+    // Marca la venta como reembolsada y quita el acceso si no le queda otro.
+    // Idempotente: un reintento no encuentra la venta activa y no hace nada.
+    const { error } = await admin.rpc("refund_lifetime_sale", { p_order_id: orderId });
+    if (error) {
+      return new Response(`No se pudo registrar el reembolso: ${error.message}`, { status: 500 });
+    }
+    return new Response("ok", { status: 200 });
+  }
+
+  if (attributes.status && attributes.status !== "paid") {
     return new Response("ok", { status: 200 });
   }
 
@@ -88,13 +119,12 @@ export async function POST(req: NextRequest) {
   // caemos al email con el que se pagó.
   const rawUserId = body.meta?.custom_data?.user_id;
   const userId = typeof rawUserId === "string" && rawUserId.trim() ? rawUserId.trim() : null;
-  const email = body.data?.attributes?.user_email ?? null;
+  const email = attributes.user_email?.trim().toLowerCase() || null;
 
   if (!userId && !email) {
     return new Response("Sin user_id ni email en el evento.", { status: 422 });
   }
 
-  const admin = getAdminClient();
   const { data: granted, error } = await admin.rpc("grant_pro", {
     p_user_id: userId,
     p_email: email,
@@ -106,10 +136,35 @@ export async function POST(req: NextRequest) {
     return new Response(`No se pudo activar el acceso: ${error.message}`, { status: 500 });
   }
 
+  // La venta, para el back office. Si no encontramos al usuario (pagó con otro
+  // email y sin user_id), queda pendiente con su email: el acceso se activa
+  // solo cuando cree la cuenta con ese email, o a mano desde /admin.
+  // Idempotente por ls_order_id, así que un reintento no la duplica.
+  if (orderId) {
+    const { error: saleError } = await admin.from("lifetime_grants").upsert(
+      {
+        user_id: (granted as string | null) ?? null,
+        email,
+        source: "lemonsqueezy",
+        ls_order_id: orderId,
+        ls_order_number: intOrNull(attributes.order_number),
+        customer_name: attributes.user_name?.trim() || null,
+        amount_cents: intOrNull(attributes.total),
+        currency: attributes.currency?.toUpperCase() ?? null,
+        amount_usd_cents: intOrNull(attributes.total_usd),
+        test_mode: body.meta?.test_mode === true,
+      },
+      { onConflict: "ls_order_id", ignoreDuplicates: true }
+    );
+    if (saleError) {
+      // El acceso ya quedó activado; 500 para que el reintento registre la venta.
+      return new Response(`No se pudo registrar la venta: ${saleError.message}`, { status: 500 });
+    }
+  }
+
   if (!granted) {
-    // Pago válido pero no encontramos al usuario (mail distinto y sin user_id).
-    // 200 para no reintentar en loop; queda para resolver a mano.
-    return new Response("Usuario no encontrado para este pago.", { status: 200 });
+    // 200 para no reintentar en loop: queda como venta pendiente en /admin.
+    return new Response("Usuario no encontrado: venta pendiente de cuenta.", { status: 200 });
   }
 
   return new Response("ok", { status: 200 });
