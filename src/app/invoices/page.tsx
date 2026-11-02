@@ -33,6 +33,9 @@ import {
 } from "@/lib/format";
 import { invoiceStatusLabel, invoiceStatusStyle } from "@/lib/invoiceStatus";
 
+// Ids por UPDATE al marcar las entradas de un invoice: ~4 KB de URL por tanda.
+const MARK_BATCH = 100;
+
 const INPUT_CLASS =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none";
 
@@ -540,25 +543,40 @@ function NewInvoiceModal({
       else setError(invErr?.message ?? "No se pudo crear el invoice");
       return;
     }
-    // Se marcan con los mismos filtros del preview y no por id: con miles de
-    // entradas, un .in("id", [...]) arma una URL más larga de lo que aceptan
-    // los proxies. Es un solo UPDATE (atómico), y el count confirma que tomó
-    // exactamente las entradas que suman el total del invoice.
-    const { error: updErr, count: marked } = await supabase
-      .from("time_entries")
-      .update({ invoice_id: invoice.id }, { count: "exact" })
-      .eq("client_id", client.id)
-      .eq("billable", true)
-      .is("invoice_id", null)
-      .gte("entry_date", from)
-      .lte("entry_date", to);
-    // count null: la respuesta no trajo el total y no hay con qué comparar.
-    const mismatch = !updErr && marked != null && marked !== preview.length;
+    // Se marcan exactamente las entradas del preview, que son las que suman el
+    // total, y solo si siguen cumpliendo los filtros. Va por tandas de ids: con
+    // miles, un solo .in("id", [...]) arma una URL más larga de lo que aceptan
+    // los proxies. El count de cada tanda dice cuántas tomó.
+    let updErr: { message: string } | null = null;
+    let marked = 0;
+    let countKnown = true;
+    for (let i = 0; i < preview.length; i += MARK_BATCH) {
+      const { error: batchErr, count } = await supabase
+        .from("time_entries")
+        .update({ invoice_id: invoice.id }, { count: "exact" })
+        .in(
+          "id",
+          preview.slice(i, i + MARK_BATCH).map((e) => e.id)
+        )
+        .eq("client_id", client.id)
+        .eq("billable", true)
+        .is("invoice_id", null)
+        .gte("entry_date", from)
+        .lte("entry_date", to);
+      if (batchErr) {
+        updErr = batchErr;
+        break;
+      }
+      // count null: la respuesta no trajo el total y no hay con qué comparar.
+      if (count == null) countKnown = false;
+      else marked += count;
+    }
+    const mismatch = !updErr && countKnown && marked !== preview.length;
     if (updErr || mismatch) {
       // Un invoice con un total que no coincide con sus entradas es peor que
-      // ninguno: se sueltan las que se hayan marcado y se borra. Pasa si entre
-      // el preview y el click se cargó, borró o facturó una entrada del
-      // período (otra pestaña, el MCP).
+      // ninguno: se sueltan las que se hayan marcado y se borra. Pasa si una
+      // tanda falla o si entre el preview y el click una entrada del preview
+      // se borró, se editó o se facturó (otra pestaña, el MCP).
       const { error: undoErr } = await supabase
         .from("time_entries")
         .update({ invoice_id: null })
