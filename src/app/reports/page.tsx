@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AppShell from "@/components/AppShell";
 import { supabase } from "@/lib/supabase";
 import { fetchAllRows } from "@/lib/fetchAllRows";
@@ -59,35 +59,40 @@ function Reports() {
     if (p !== "custom") setRange(presetRange(p));
   }
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    // El rango personalizado no tiene tope y PostgREST corta cada respuesta en
-    // "Max rows": se pagina para que totales y CSV incluyan todas las entradas.
-    const [clientsRes, entriesRes] = await Promise.all([
-      supabase.from("clients").select("*").order("name"),
-      fetchAllRows<TimeEntry>((first, last) => {
-        let query = supabase
-          .from("time_entries")
-          .select("*", { count: "exact" })
-          .gte("entry_date", range.from)
-          .lte("entry_date", range.to);
-        if (clientFilter !== "all") query = query.eq("client_id", clientFilter);
-        return query.order("id").range(first, last);
-      }),
-    ]);
-    if (clientsRes.error || entriesRes.error) {
-      setError(clientsRes.error?.message ?? entriesRes.error?.message ?? null);
-    } else {
-      setClients(clientsRes.data);
-      setEntries(entriesRes.data);
-      setError(null);
-    }
-    setLoading(false);
-  }, [range, clientFilter]);
-
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    // Si el rango o el cliente cambian mientras carga, la respuesta vieja se
+    // descarta: paginada puede llegar después de la nueva y pisarla.
+    let cancelled = false;
+    setLoading(true);
+    (async () => {
+      // El rango personalizado no tiene tope y PostgREST corta cada respuesta en
+      // "Max rows": se pagina para que totales y CSV incluyan todas las entradas.
+      const [clientsRes, entriesRes] = await Promise.all([
+        supabase.from("clients").select("*").order("name"),
+        fetchAllRows<TimeEntry>((first, last) => {
+          let query = supabase
+            .from("time_entries")
+            .select("*", { count: "exact" })
+            .gte("entry_date", range.from)
+            .lte("entry_date", range.to);
+          if (clientFilter !== "all") query = query.eq("client_id", clientFilter);
+          return query.order("id").range(first, last);
+        }),
+      ]);
+      if (cancelled) return;
+      if (clientsRes.error || entriesRes.error) {
+        setError(clientsRes.error?.message ?? entriesRes.error?.message ?? null);
+      } else {
+        setClients(clientsRes.data);
+        setEntries(entriesRes.data);
+        setError(null);
+      }
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [range, clientFilter]);
 
   const clientById = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
 

@@ -344,8 +344,10 @@ export async function startMockSupabase({ verbose = false } = {}) {
         case "PATCH": {
           const patch = JSON.parse(rawBody);
           for (const row of rows) Object.assign(row, patch);
-          if (!wantsRepresentation) return send(204, undefined);
-          return finish(200, rows);
+          // Prefer: count=exact → Content-Range: */filas afectadas, como PostgREST.
+          const headers = prefer.includes("count=") ? { "content-range": `*/${rows.length}` } : {};
+          if (!wantsRepresentation) return send(204, undefined, headers);
+          return finish(200, rows, headers);
         }
         case "DELETE": {
           const ids = new Set(rows.map((r) => r.id));

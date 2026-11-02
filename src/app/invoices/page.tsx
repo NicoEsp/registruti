@@ -8,6 +8,7 @@ import SampleInvoicePreview from "@/components/SampleInvoicePreview";
 import UpgradeModal from "@/components/UpgradeModal";
 import { supabase } from "@/lib/supabase";
 import { fetchAllRows } from "@/lib/fetchAllRows";
+import { fetchInvoiceEntries } from "@/lib/invoiceEntries";
 import { hasIssuerData } from "@/lib/invoiceIssuer";
 import { COUNTRIES, countryFor, localeFor } from "@/lib/countries";
 import { setUserProperties } from "@/lib/analytics";
@@ -31,6 +32,9 @@ import {
   toISODate,
 } from "@/lib/format";
 import { invoiceStatusLabel, invoiceStatusStyle } from "@/lib/invoiceStatus";
+
+// Ids por UPDATE al marcar las entradas de un invoice: ~4 KB de URL por tanda.
+const MARK_BATCH = 100;
 
 const INPUT_CLASS =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none";
@@ -148,11 +152,7 @@ function Invoices() {
     }
     setPdfBusyId(inv.id);
     try {
-      const { data: entries, error: err } = await supabase
-        .from("time_entries")
-        .select("*")
-        .eq("invoice_id", inv.id)
-        .order("entry_date");
+      const { data: entries, error: err } = await fetchInvoiceEntries(inv.id);
       if (err) {
         setError(err.message);
         return;
@@ -415,6 +415,9 @@ function NewInvoiceModal({
   const [to, setTo] = useState(toISODate(new Date(now.getFullYear(), now.getMonth() + 1, 0)));
   const [dueDate, setDueDate] = useState("");
   const [preview, setPreview] = useState<TimeEntry[] | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  // Se incrementa para volver a pedir el preview con los mismos filtros.
+  const [previewNonce, setPreviewNonce] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -445,33 +448,37 @@ function NewInvoiceModal({
   const client = clients.find((c) => c.id === clientId);
 
   useEffect(() => {
-    if (!clientId) {
-      setPreview(null);
-      return;
-    }
+    // Mientras carga no queda el preview de otros filtros: "Crear" usaría un
+    // total que no corresponde al período elegido.
+    setPreview(null);
+    setPreviewError(null);
+    if (!clientId) return;
     let cancelled = false;
-    supabase
-      .from("time_entries")
-      .select("*")
-      .eq("client_id", clientId)
-      .eq("billable", true)
-      .is("invoice_id", null)
-      .gte("entry_date", from)
-      .lte("entry_date", to)
-      .order("entry_date")
-      .then(({ data, error: err }) => {
-        if (cancelled) return;
-        if (err) setError(err.message);
-        else {
-          setPreview(data);
-          setError(null);
-          if (data.length === 0) captureBlocked("no_billable_hours");
-        }
-      });
+    // Paginado: un período largo pasa el "Max rows" de PostgREST y el total
+    // del invoice tiene que incluir todas las entradas.
+    fetchAllRows<TimeEntry>((first, last) =>
+      supabase
+        .from("time_entries")
+        .select("*", { count: "exact" })
+        .eq("client_id", clientId)
+        .eq("billable", true)
+        .is("invoice_id", null)
+        .gte("entry_date", from)
+        .lte("entry_date", to)
+        .order("id")
+        .range(first, last)
+    ).then(({ data, error: err }) => {
+      if (cancelled) return;
+      if (err) setPreviewError(err.message);
+      else {
+        setPreview(data);
+        if (data.length === 0) captureBlocked("no_billable_hours");
+      }
+    });
     return () => {
       cancelled = true;
     };
-  }, [clientId, from, to]);
+  }, [clientId, from, to, previewNonce]);
 
   const totalMinutes = preview?.reduce((s, e) => s + e.duration_minutes, 0) ?? 0;
   const totalAmount = client ? (totalMinutes / 60) * client.hourly_rate : 0;
@@ -536,21 +543,65 @@ function NewInvoiceModal({
       else setError(invErr?.message ?? "No se pudo crear el invoice");
       return;
     }
-    const { error: updErr } = await supabase
-      .from("time_entries")
-      .update({ invoice_id: invoice.id })
-      .in(
-        "id",
-        preview.map((e) => e.id)
+    // Se marcan exactamente las entradas del preview, que son las que suman el
+    // total, y solo si siguen cumpliendo los filtros. Va por tandas de ids: con
+    // miles, un solo .in("id", [...]) arma una URL más larga de lo que aceptan
+    // los proxies. Cada tanda devuelve las filas que tomó, con su duración
+    // actual: si una se editó después del preview, los minutos no cierran.
+    let updErr: { message: string } | null = null;
+    let marked = 0;
+    let markedMinutes = 0;
+    for (let i = 0; i < preview.length; i += MARK_BATCH) {
+      const { data: rows, error: batchErr } = await supabase
+        .from("time_entries")
+        .update({ invoice_id: invoice.id })
+        .in(
+          "id",
+          preview.slice(i, i + MARK_BATCH).map((e) => e.id)
+        )
+        .eq("client_id", client.id)
+        .eq("billable", true)
+        .is("invoice_id", null)
+        .gte("entry_date", from)
+        .lte("entry_date", to)
+        .select("id, duration_minutes");
+      if (batchErr) {
+        updErr = batchErr;
+        break;
+      }
+      for (const r of rows ?? []) {
+        marked += 1;
+        markedMinutes += r.duration_minutes;
+      }
+    }
+    const mismatch = !updErr && (marked !== preview.length || markedMinutes !== totalMinutes);
+    if (updErr || mismatch) {
+      // Un invoice con un total que no coincide con sus entradas es peor que
+      // ninguno: se sueltan las que se hayan marcado y se borra. Pasa si una
+      // tanda falla o si entre el preview y el click una entrada del preview
+      // se borró, se editó o se facturó (otra pestaña, el MCP).
+      const { error: undoErr } = await supabase
+        .from("time_entries")
+        .update({ invoice_id: null })
+        .eq("invoice_id", invoice.id);
+      const { error: delErr } = undoErr
+        ? { error: undoErr }
+        : await supabase.from("invoices").delete().eq("id", invoice.id);
+      setBusy(false);
+      const reason = updErr
+        ? updErr.message
+        : "Las horas del período cambiaron mientras armabas el invoice. Revisá el resumen y volvé a intentar.";
+      setError(
+        delErr
+          ? `${reason} Además no se pudo deshacer el invoice ${invoice.invoice_number}: borralo desde la lista.`
+          : reason
       );
-    setBusy(false);
-    if (updErr) {
-      setError(updErr.message);
+      if (mismatch) setPreviewNonce((n) => n + 1);
       return;
     }
-    // Recién acá: si el update de las entradas falla, la pantalla muestra un
-    // error y la factura no queda usable, así que contarla sería inflar el
-    // número que más importa.
+    setBusy(false);
+    // Recién acá: si el marcado de las entradas falla, el invoice se deshace,
+    // así que contarlo antes sería inflar el número que más importa.
     //
     // Sin montos: cuánto factura cada usuario a sus clientes es dato de ellos,
     // no de la analítica. Con las horas y la moneda alcanza para dimensionar.
@@ -702,6 +753,11 @@ function NewInvoiceModal({
           </div>
         )}
 
+        {client && !preview && !previewError && (
+          <p className="text-sm text-slate-400">Buscando horas sin facturar…</p>
+        )}
+
+        {previewError && <p className="text-sm text-red-600">{previewError}</p>}
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         <div className="flex justify-end gap-2 pt-2">
