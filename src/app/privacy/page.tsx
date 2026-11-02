@@ -153,8 +153,11 @@ export default function PrivacyPage() {
         </p>
         <p>
           En las conexiones con asistentes, los tokens de acceso vencen a la hora y los de
-          renovación a los 60 días sin uso; los vencidos se borran automáticamente. La
-          autorización de una app dura hasta que la desconectás o eliminás tu cuenta. El registro
+          renovación a los 60 días sin uso; los vencidos se borran automáticamente. Los códigos
+          de autorización de un solo uso vencen a los 10 minutos y se borran en una limpieza
+          automática posterior; hasta entonces conservan tu identificador y el de la app, aunque
+          la hayas desconectado. La autorización de una app dura hasta que la desconectás o
+          eliminás tu cuenta. El registro
           de una app (su nombre, sus direcciones de retorno y el hash de la IP desde la que se
           registró) no guarda un identificador de tu cuenta, pero mientras tengas una
           autorización activa para esa app queda vinculado a vos a través de ella. Si nadie llegó
