@@ -524,6 +524,86 @@ async function runTests(mock) {
     }
   });
 
+  await test("list_time_entries informa el total real y pagina más allá del Max rows de PostgREST", async () => {
+    const db = mock.db();
+    const acme = db.clients.find((c) => c.name === "Acme");
+    const globex = db.clients.find((c) => c.name === "Globex");
+    // 2024 queda aparte de las entradas que cargó la prueba de report_summary
+    // (2025). Varias por día, para que el orden dentro del mismo día cuente.
+    const bulk = [];
+    for (let i = 0; i < 1234; i++) {
+      bulk.push({
+        client_id: i % 3 === 0 ? globex.id : acme.id,
+        entry_date: new Date(Date.UTC(2024, 0, 1 + (i % 366))).toISOString().slice(0, 10),
+        duration_minutes: 15,
+        description: `list ${i}`,
+      });
+    }
+    const seeded = await fetch(`${mock.url}/__test/seed-entries`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ entries: bulk }),
+    });
+    eq(seeded.status, 200);
+    const inYear = mock
+      .db()
+      .time_entries.filter((e) => e.user_id === USER.id && e.entry_date >= "2024-01-01" && e.entry_date <= "2024-12-31");
+    const total = inYear.length;
+    assert(total > DEFAULT_MAX_ROWS, `se esperaban más de ${DEFAULT_MAX_ROWS} entradas en 2024, hay ${total}`);
+
+    const year = { from: "2024-01-01", to: "2024-12-31" };
+    const call = async (args) => JSON.parse(toolText(await client.callTool({ name: "list_time_entries", arguments: args })));
+    const walk = async (args) => {
+      const ids = [];
+      let offset = 0;
+      for (let i = 0; i < 100; i++) {
+        const page = await call({ ...args, offset });
+        eq(page.total, total, `total en offset ${offset}`);
+        ids.push(...page.entries.map((e) => e.id));
+        if (!page.has_more) return ids;
+        eq(page.next_offset, offset + page.count, `next_offset en offset ${offset}`);
+        offset = page.next_offset;
+      }
+      throw new Error("la paginación no terminó");
+    };
+
+    // Primera página con el tamaño por defecto: el count es de la página, el
+    // total es el del rango entero.
+    const first = await call(year);
+    eq(first.count, 100);
+    eq(first.total, total);
+    eq(first.has_more, true);
+    eq(first.next_offset, 100);
+
+    const ids = await walk({ ...year, limit: 200 });
+    eq(ids.length, total, "entradas recorridas");
+    eq(new Set(ids).size, total, "entradas repetidas entre páginas");
+    assert(inYear.every((e) => ids.includes(e.id)), "faltan entradas al recorrer las páginas");
+
+    const onlyGlobex = await call({ ...year, client: "globex", limit: 1 });
+    eq(onlyGlobex.total, inYear.filter((e) => e.client_id === globex.id).length, "total filtrado por cliente");
+
+    // Con un Max rows menor que limit, PostgREST recorta la página sin aviso:
+    // has_more y next_offset tienen que seguir el total, no el limit.
+    await fetch(`${mock.url}/__test/max-rows`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ max_rows: 150 }) });
+    try {
+      const cut = await call({ ...year, limit: 200 });
+      eq(cut.count, 150);
+      eq(cut.total, total);
+      eq(cut.has_more, true);
+      eq(cut.next_offset, 150);
+      eq((await walk({ ...year, limit: 200 })).join(","), ids.join(","), "mismas entradas con Max rows 150");
+    } finally {
+      await fetch(`${mock.url}/__test/max-rows`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ max_rows: DEFAULT_MAX_ROWS }) });
+    }
+
+    const past = await call({ ...year, offset: total + 10 });
+    eq(past.count, 0);
+    eq(past.total, total);
+    eq(past.has_more, false);
+    assert(!("next_offset" in past), "next_offset sin más páginas");
+  });
+
   await test("update_time_entry edita duración, descripción, cliente y facturable", async () => {
     const before = mock.db().time_entries.find((e) => e.description === "Reunión e2e");
     const text = toolText(

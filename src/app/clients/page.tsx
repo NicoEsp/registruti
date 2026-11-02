@@ -8,6 +8,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import Modal from "@/components/Modal";
 import UpgradeModal from "@/components/UpgradeModal";
 import { supabase } from "@/lib/supabase";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import {
   NEW_CLIENT_EVENT,
   NEW_CLIENT_PARAM,
@@ -18,7 +19,7 @@ import {
 import { countryFor } from "@/lib/countries";
 import { fetchProfile } from "@/lib/profile";
 import { FREE_CLIENT_LIMIT, fetchIsPro, isClientLimitError } from "@/lib/plan";
-import { CLIENT_COLORS, CURRENCIES, type Client } from "@/lib/types";
+import { CLIENT_COLORS, CURRENCIES, type Client, type TimeEntry } from "@/lib/types";
 import { formatDuration, formatMoney } from "@/lib/format";
 import { capture } from "@/lib/analytics";
 
@@ -55,9 +56,17 @@ function Clients() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    // Los totales son de toda la historia y PostgREST corta cada respuesta en
+    // "Max rows": se pagina para no perder entradas pasadas las primeras 1000.
     const [clientsRes, entriesRes] = await Promise.all([
       supabase.from("clients").select("*").order("name"),
-      supabase.from("time_entries").select("client_id, duration_minutes"),
+      fetchAllRows<Pick<TimeEntry, "client_id" | "duration_minutes">>((first, last) =>
+        supabase
+          .from("time_entries")
+          .select("client_id, duration_minutes", { count: "exact" })
+          .order("id")
+          .range(first, last)
+      ),
     ]);
     if (clientsRes.error || entriesRes.error) {
       setError(clientsRes.error?.message ?? entriesRes.error?.message ?? null);

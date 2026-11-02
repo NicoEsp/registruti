@@ -7,6 +7,7 @@ import Modal from "@/components/Modal";
 import SampleInvoicePreview from "@/components/SampleInvoicePreview";
 import UpgradeModal from "@/components/UpgradeModal";
 import { supabase } from "@/lib/supabase";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { hasIssuerData } from "@/lib/invoiceIssuer";
 import { COUNTRIES, countryFor, localeFor } from "@/lib/countries";
 import { setUserProperties } from "@/lib/analytics";
@@ -68,11 +69,16 @@ function Invoices() {
       supabase.from("invoices").select("*").order("created_at", { ascending: false }),
       supabase.from("clients").select("*").order("name"),
       fetchIssuer(),
-      supabase
-        .from("time_entries")
-        .select("client_id, duration_minutes, entry_date")
-        .is("invoice_id", null)
-        .eq("billable", true),
+      // Sin rango de fechas: lo pendiente puede pasar el "Max rows" de PostgREST.
+      fetchAllRows<Pick<TimeEntry, "client_id" | "duration_minutes" | "entry_date">>((first, last) =>
+        supabase
+          .from("time_entries")
+          .select("client_id, duration_minutes, entry_date", { count: "exact" })
+          .is("invoice_id", null)
+          .eq("billable", true)
+          .order("id")
+          .range(first, last)
+      ),
     ]);
     if (invoicesRes.error || clientsRes.error) {
       setError(invoicesRes.error?.message ?? clientsRes.error?.message ?? null);
