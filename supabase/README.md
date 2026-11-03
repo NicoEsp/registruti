@@ -91,7 +91,10 @@ supabase db push
     acceso y registra la venta en una sola transacción; no hace nada si la
     orden ya se procesó) y `refund_lifetime_sale(order_id, email)`, que si el
     reembolso llega antes que la venta deja la orden registrada como
-    reembolsada. Las dos solo para la service role y serializadas por orden.
+    reembolsada (también si el admin ya lo había revocado). Las dos solo para
+    la service role, serializadas por orden y por usuario
+    (`lock_lifetime_user`), para que reembolsos o compras simultáneas del mismo
+    usuario no dejen mal su `pro`.
     **Requerida** por el webhook de LemonSqueezy.
 
 ### Activar el lifetime access de un usuario

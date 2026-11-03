@@ -9,9 +9,23 @@
 --     reembolsada o revocada).
 --   - refund_lifetime_sale, si el reembolso llega antes que la venta, deja la
 --     orden registrada como reembolsada para que la venta no dé acceso después.
--- Las dos se serializan por orden con un advisory lock.
+-- Las dos se serializan por orden con un advisory lock, y además por usuario
+-- (lock_lifetime_user) antes de tocar su `pro`: sin eso, dos reembolsos de
+-- órdenes distintas del mismo usuario, o un reembolso y una compra nueva, se
+-- ven activos entre sí bajo READ COMMITTED y el `pro` queda mal. Orden de
+-- locks: orden → usuario → filas.
 --
 -- Requerida por: el webhook de LemonSqueezy (src/app/api/webhooks/lemonsqueezy).
+
+create or replace function public.lock_lifetime_user(p_user_id uuid)
+returns void
+language sql
+set search_path = pg_catalog
+as $$
+  select pg_advisory_xact_lock(hashtextextended('lifetime_user:' || p_user_id::text, 0));
+$$;
+
+revoke all on function public.lock_lifetime_user(uuid) from public, anon, authenticated;
 
 create or replace function public.record_lifetime_sale(
   p_order_id text,
@@ -54,7 +68,17 @@ begin
     return jsonb_build_object('user_id', existing.user_id, 'status', existing.status, 'duplicate', true);
   end if;
 
-  target := public.grant_pro(p_user_id, p_email);
+  -- Mismo criterio que grant_pro: user_id del checkout si existe, si no el email.
+  if p_user_id is not null and exists (select 1 from auth.users where id = p_user_id) then
+    target := p_user_id;
+  elsif nullif(trim(p_email), '') is not null then
+    select id into target from auth.users where lower(email) = lower(trim(p_email)) limit 1;
+  end if;
+
+  if target is not null then
+    perform public.lock_lifetime_user(target);
+    perform public.grant_pro(target, null);
+  end if;
 
   insert into public.lifetime_grants (
     user_id, email, source, ls_order_id, ls_order_number, customer_name,
@@ -88,9 +112,11 @@ declare
 begin
   perform pg_advisory_xact_lock(hashtextextended('lifetime_sale:' || p_order_id, 0));
 
+  -- También desde 'revoked': si el admin ya había quitado el acceso, la venta
+  -- igual tiene que quedar como reembolsada.
   update public.lifetime_grants
      set status = 'refunded', ended_at = now()
-   where ls_order_id = p_order_id and status = 'active'
+   where ls_order_id = p_order_id and status in ('active', 'revoked')
   returning user_id into v_user;
 
   if not found then
@@ -102,12 +128,15 @@ begin
     return null;
   end if;
 
-  if v_user is not null
-     and not exists (
-       select 1 from public.lifetime_grants where user_id = v_user and status = 'active'
-     )
-  then
-    update public.profiles set pro = false, pro_since = null where user_id = v_user;
+  if v_user is not null then
+    -- Espera a otra venta o reembolso del mismo usuario: el chequeo de abajo
+    -- ve lo que ya commitearon.
+    perform public.lock_lifetime_user(v_user);
+    if not exists (
+      select 1 from public.lifetime_grants where user_id = v_user and status = 'active'
+    ) then
+      update public.profiles set pro = false, pro_since = null where user_id = v_user;
+    end if;
   end if;
 
   return v_user;
