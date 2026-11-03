@@ -361,8 +361,11 @@ Además registra cada venta en `lifetime_grants` (monto, moneda, total en USD,
 número de orden, si fue en modo prueba), que es lo que lista el back office. Si
 el pago no matchea ninguna cuenta, la venta queda **pendiente** con su email y
 el acceso se activa solo cuando esa persona crea la cuenta (con el email
-confirmado). Ante `order_refunded`, la venta queda reembolsada y el usuario
-pierde el acceso, salvo que tenga otro vigente.
+confirmado). Ante `order_refunded` con reembolso total, la venta queda
+reembolsada y el usuario pierde el acceso, salvo que tenga otro vigente; un
+reembolso parcial no cambia nada. Acceso y venta se registran en una sola
+transacción (`record_lifetime_sale`), y una orden ya procesada no vuelve a dar
+acceso aunque LemonSqueezy la reenvíe.
 
 **Config del webhook** (LemonSqueezy → Settings → Webhooks):
 

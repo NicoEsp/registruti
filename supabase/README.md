@@ -86,8 +86,13 @@ supabase db push
     una cuenta confirma ese email. Redefine `protect_pro_columns` para que el
     admin pueda escribir `pro`. Pasa los pro existentes (salvo el owner) a
     `lifetime_grants` como accesos manuales. **Requerida** por `/admin` y por
-    el webhook de LemonSqueezy (sin ella el webhook activa el acceso pero
-    responde 500 al registrar la venta).
+    el webhook de LemonSqueezy.
+12. `20261103000012_lifetime_sale_atomic.sql` — `record_lifetime_sale()` (da el
+    acceso y registra la venta en una sola transacción; no hace nada si la
+    orden ya se procesó) y `refund_lifetime_sale(order_id, email)`, que si el
+    reembolso llega antes que la venta deja la orden registrada como
+    reembolsada. Las dos solo para la service role y serializadas por orden.
+    **Requerida** por el webhook de LemonSqueezy.
 
 ### Activar el lifetime access de un usuario
 

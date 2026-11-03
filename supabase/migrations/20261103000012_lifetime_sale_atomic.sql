@@ -1,0 +1,105 @@
+-- Ventas de LemonSqueezy atómicas e idempotentes por orden.
+--
+-- Antes el webhook hacía dos llamadas (grant_pro y el insert de la venta). Si
+-- la segunda fallaba, el acceso quedaba dado sin venta registrada; y un
+-- reenvío de order_created volvía a dar el acceso aunque la venta ya estuviera
+-- reembolsada. Ahora:
+--   - record_lifetime_sale da el acceso y registra la venta en una sola
+--     transacción, y no hace nada si la orden ya se procesó (activa,
+--     reembolsada o revocada).
+--   - refund_lifetime_sale, si el reembolso llega antes que la venta, deja la
+--     orden registrada como reembolsada para que la venta no dé acceso después.
+-- Las dos se serializan por orden con un advisory lock.
+--
+-- Requerida por: el webhook de LemonSqueezy (src/app/api/webhooks/lemonsqueezy).
+
+create or replace function public.record_lifetime_sale(
+  p_order_id text,
+  p_user_id uuid,
+  p_email text,
+  p_order_number bigint,
+  p_customer_name text,
+  p_amount_cents integer,
+  p_currency text,
+  p_amount_usd_cents integer,
+  p_test_mode boolean
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  existing public.lifetime_grants%rowtype;
+  target uuid;
+begin
+  perform pg_advisory_xact_lock(hashtextextended('lifetime_sale:' || p_order_id, 0));
+
+  select * into existing from public.lifetime_grants where ls_order_id = p_order_id;
+  if found then
+    -- Reintento o reenvío de una orden ya procesada: no se vuelve a dar acceso.
+    return jsonb_build_object('user_id', existing.user_id, 'status', existing.status, 'duplicate', true);
+  end if;
+
+  target := public.grant_pro(p_user_id, p_email);
+
+  insert into public.lifetime_grants (
+    user_id, email, source, ls_order_id, ls_order_number, customer_name,
+    amount_cents, currency, amount_usd_cents, test_mode
+  ) values (
+    target, lower(nullif(trim(p_email), '')), 'lemonsqueezy', p_order_id, p_order_number,
+    nullif(trim(p_customer_name), ''), p_amount_cents, upper(p_currency), p_amount_usd_cents,
+    coalesce(p_test_mode, false)
+  );
+
+  return jsonb_build_object('user_id', target, 'status', 'active', 'duplicate', false);
+end;
+$$;
+
+revoke all on function public.record_lifetime_sale(text, uuid, text, bigint, text, integer, text, integer, boolean)
+  from public, anon, authenticated;
+grant execute on function public.record_lifetime_sale(text, uuid, text, bigint, text, integer, text, integer, boolean)
+  to service_role;
+
+-- Reemplaza la versión de 20261102000011 (cambia la firma: suma el email).
+drop function if exists public.refund_lifetime_sale(text);
+
+create or replace function public.refund_lifetime_sale(p_order_id text, p_email text default null)
+returns uuid
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  v_user uuid;
+begin
+  perform pg_advisory_xact_lock(hashtextextended('lifetime_sale:' || p_order_id, 0));
+
+  update public.lifetime_grants
+     set status = 'refunded', ended_at = now()
+   where ls_order_id = p_order_id and status = 'active'
+  returning user_id into v_user;
+
+  if not found then
+    -- El reembolso llegó antes que la venta: queda registrado como
+    -- reembolsado para que un order_created posterior no dé el acceso.
+    insert into public.lifetime_grants (email, source, status, ls_order_id, ended_at)
+      values (lower(nullif(trim(p_email), '')), 'lemonsqueezy', 'refunded', p_order_id, now())
+      on conflict (ls_order_id) do nothing;
+    return null;
+  end if;
+
+  if v_user is not null
+     and not exists (
+       select 1 from public.lifetime_grants where user_id = v_user and status = 'active'
+     )
+  then
+    update public.profiles set pro = false, pro_since = null where user_id = v_user;
+  end if;
+
+  return v_user;
+end;
+$$;
+
+revoke all on function public.refund_lifetime_sale(text, text) from public, anon, authenticated;
+grant execute on function public.refund_lifetime_sale(text, text) to service_role;

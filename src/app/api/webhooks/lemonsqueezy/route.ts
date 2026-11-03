@@ -98,13 +98,26 @@ export async function POST(req: NextRequest) {
   }
 
   const orderId = body.data?.id != null ? String(body.data.id) : null;
+  if (!orderId) {
+    return new Response("Sin id de orden.", { status: 422 });
+  }
+  const email = attributes.user_email?.trim().toLowerCase() || null;
   const admin = getAdminClient();
 
   if (event === "order_refunded") {
-    if (!orderId) return new Response("Sin id de orden.", { status: 422 });
+    // LemonSqueezy manda este evento también en reembolsos parciales
+    // (status "partial_refund"): ahí la persona pagó una parte y conserva el
+    // acceso. Solo un reembolso total lo quita.
+    if (attributes.status && attributes.status !== "refunded") {
+      return new Response("ok", { status: 200 });
+    }
     // Marca la venta como reembolsada y quita el acceso si no le queda otro.
-    // Idempotente: un reintento no encuentra la venta activa y no hace nada.
-    const { error } = await admin.rpc("refund_lifetime_sale", { p_order_id: orderId });
+    // Si el reembolso llega antes que la venta, queda registrado para que la
+    // venta no dé acceso después. Idempotente.
+    const { error } = await admin.rpc("refund_lifetime_sale", {
+      p_order_id: orderId,
+      p_email: email,
+    });
     if (error) {
       return new Response(`No se pudo registrar el reembolso: ${error.message}`, { status: 500 });
     }
@@ -119,50 +132,39 @@ export async function POST(req: NextRequest) {
   // caemos al email con el que se pagó.
   const rawUserId = body.meta?.custom_data?.user_id;
   const userId = typeof rawUserId === "string" && rawUserId.trim() ? rawUserId.trim() : null;
-  const email = attributes.user_email?.trim().toLowerCase() || null;
 
   if (!userId && !email) {
     return new Response("Sin user_id ni email en el evento.", { status: 422 });
   }
 
-  const { data: granted, error } = await admin.rpc("grant_pro", {
+  // Activa el acceso y registra la venta en una sola transacción. Si la orden
+  // ya se procesó (reintento, reenvío o reembolso previo) no hace nada, así
+  // que reintentar es seguro y un reenvío no devuelve el acceso reembolsado.
+  // Si no encontramos al usuario (pagó con otro email y sin user_id), la venta
+  // queda pendiente con su email: el acceso se activa cuando cree la cuenta
+  // con ese email, o a mano desde /admin.
+  const { data, error } = await admin.rpc("record_lifetime_sale", {
+    p_order_id: orderId,
     p_user_id: userId,
     p_email: email,
+    p_order_number: intOrNull(attributes.order_number),
+    p_customer_name: attributes.user_name ?? null,
+    p_amount_cents: intOrNull(attributes.total),
+    p_currency: attributes.currency ?? null,
+    p_amount_usd_cents: intOrNull(attributes.total_usd),
+    p_test_mode: body.meta?.test_mode === true,
   });
 
   if (error) {
-    // 500 → LemonSqueezy reintenta. El upsert es idempotente, así que reintentar
-    // es seguro.
+    // 500 → LemonSqueezy reintenta.
     return new Response(`No se pudo activar el acceso: ${error.message}`, { status: 500 });
   }
 
-  // La venta, para el back office. Si no encontramos al usuario (pagó con otro
-  // email y sin user_id), queda pendiente con su email: el acceso se activa
-  // solo cuando cree la cuenta con ese email, o a mano desde /admin.
-  // Idempotente por ls_order_id, así que un reintento no la duplica.
-  if (orderId) {
-    const { error: saleError } = await admin.from("lifetime_grants").upsert(
-      {
-        user_id: (granted as string | null) ?? null,
-        email,
-        source: "lemonsqueezy",
-        ls_order_id: orderId,
-        ls_order_number: intOrNull(attributes.order_number),
-        customer_name: attributes.user_name?.trim() || null,
-        amount_cents: intOrNull(attributes.total),
-        currency: attributes.currency?.toUpperCase() ?? null,
-        amount_usd_cents: intOrNull(attributes.total_usd),
-        test_mode: body.meta?.test_mode === true,
-      },
-      { onConflict: "ls_order_id", ignoreDuplicates: true }
-    );
-    if (saleError) {
-      // El acceso ya quedó activado; 500 para que el reintento registre la venta.
-      return new Response(`No se pudo registrar la venta: ${saleError.message}`, { status: 500 });
-    }
+  const sale = data as { user_id: string | null; status: string; duplicate: boolean } | null;
+  if (sale?.duplicate) {
+    return new Response("Orden ya procesada.", { status: 200 });
   }
-
-  if (!granted) {
+  if (!sale?.user_id) {
     // 200 para no reintentar en loop: queda como venta pendiente en /admin.
     return new Response("Usuario no encontrado: venta pendiente de cuenta.", { status: 200 });
   }
