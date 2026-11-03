@@ -37,6 +37,19 @@ begin
 
   select * into existing from public.lifetime_grants where ls_order_id = p_order_id;
   if found then
+    -- Fila creada por un reembolso que llegó antes que la venta: completa los
+    -- datos de la orden (monto, cliente, prueba) sin dar acceso.
+    if existing.status = 'refunded' and existing.amount_cents is null then
+      update public.lifetime_grants
+         set ls_order_number = p_order_number,
+             customer_name = nullif(trim(p_customer_name), ''),
+             amount_cents = p_amount_cents,
+             currency = upper(p_currency),
+             amount_usd_cents = p_amount_usd_cents,
+             test_mode = coalesce(p_test_mode, false),
+             email = coalesce(email, lower(nullif(trim(p_email), '')))
+       where id = existing.id;
+    end if;
     -- Reintento o reenvío de una orden ya procesada: no se vuelve a dar acceso.
     return jsonb_build_object('user_id', existing.user_id, 'status', existing.status, 'duplicate', true);
   end if;
