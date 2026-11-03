@@ -75,12 +75,37 @@ supabase db push
     para que el link público y su PDF salgan con "De:" y datos de pago.
     **Requerida** por el campo "Datos de pago" de Ajustes (sin ella, Ajustes
     guarda el resto y avisa); el link público tolera que falte.
+11. `20261102000011_back_office.sql` — back office (`/admin`): `admin_emails()`
+    e `is_admin()` (email confirmado del usuario logueado), tabla
+    `lifetime_grants` (ventas de LemonSqueezy y accesos dados a mano, con
+    policy de lectura solo para el admin), RPCs `admin_list_users`,
+    `admin_grant_lifetime`, `admin_revoke_lifetime` y
+    `admin_cancel_pending_grant` (security definer, verifican `is_admin()`),
+    `refund_lifetime_sale` (solo service role, para `order_refunded`) y el
+    trigger `on_auth_user_lifetime` que activa los accesos pendientes cuando
+    una cuenta confirma ese email (serializado por email con
+    `lock_lifetime_email`, igual que el alta manual y la venta, para que una
+    cuenta que se crea en el mismo momento no deje el acceso pendiente). Redefine `protect_pro_columns` para que el
+    admin pueda escribir `pro`. Pasa los pro existentes (salvo el owner) a
+    `lifetime_grants` como accesos manuales. **Requerida** por `/admin` y por
+    el webhook de LemonSqueezy.
+12. `20261103000012_lifetime_sale_atomic.sql` — `record_lifetime_sale()` (da el
+    acceso y registra la venta en una sola transacción; no hace nada si la
+    orden ya se procesó) y `refund_lifetime_sale(order_id, email)`, que si el
+    reembolso llega antes que la venta deja la orden registrada como
+    reembolsada (también si el admin ya lo había revocado). Las dos solo para
+    la service role, serializadas por orden y por usuario
+    (`lock_lifetime_user`), para que reembolsos o compras simultáneas del mismo
+    usuario no dejen mal su `pro`.
+    **Requerida** por el webhook de LemonSqueezy.
 
 ### Activar el lifetime access de un usuario
 
-El flag `pro` solo se puede setear desde la **service role** (webhook de pago) o
-el **SQL Editor** — el usuario no puede escribirlo. Lo normal es que lo haga el
-webhook de LemonSqueezy; a mano, desde el SQL Editor:
+El flag `pro` solo se puede setear desde la **service role** (webhook de pago),
+el **back office** (`/admin`, solo el admin) o el **SQL Editor** — el usuario no
+puede escribirlo. Lo normal es que lo haga el webhook de LemonSqueezy; a mano,
+desde `/admin` → *Dar lifetime access* (queda registrado con nota). Desde el SQL
+Editor también funciona, pero no aparece en Ventas y accesos:
 
 ```sql
 select public.grant_pro(null, 'cliente@mail.com');
@@ -136,7 +161,7 @@ order by t.tablename;
 ```
 
 Toda tabla con datos de usuario (`clients`, `time_entries`, `invoices`,
-`profiles`, `invoice_counters`, `mcp_tokens`, `oauth_grants`) debe mostrar `rls_activo = true` y
+`profiles`, `invoice_counters`, `mcp_tokens`, `oauth_grants`, `lifetime_grants`) debe mostrar `rls_activo = true` y
 al menos una policy. Las tablas `oauth_clients`, `oauth_codes` y `oauth_refresh_tokens`
 tienen RLS activo y **cero** policies a propósito: solo las opera la service role.
 

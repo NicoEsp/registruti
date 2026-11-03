@@ -10,11 +10,11 @@
       ]
     },
     {
-      "source": "/(tracker|clients|reports|invoices|settings)",
+      "source": "/(tracker|clients|reports|invoices|settings|admin)",
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     },
     {
-      "source": "/(tracker|clients|reports|invoices|settings)/(.*)",
+      "source": "/(tracker|clients|reports|invoices|settings|admin)/(.*)",
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     },
     {

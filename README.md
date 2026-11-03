@@ -210,7 +210,7 @@ de todo el sitio y Google ahí premia herramientas, no guías. Estructura:
   En el badge del footer ("Un producto por NicoProducto", con X y LinkedIn) el nombre
   enlaza a nicoproducto.work.
 - **Indexación** — `robots.ts` + headers `X-Robots-Tag: noindex` (vercel.json) para
-  las rutas privadas (`/tracker`, `/clients`, `/reports`, `/invoices`, `/settings`,
+  las rutas privadas (`/tracker`, `/clients`, `/reports`, `/invoices`, `/settings`, `/admin`,
   `/auth`, `/api`, `/i`); `/login` lleva `noindex` por metadata (es una pantalla de
   auth sin contenido); `sitemap.xml` generado desde `src/app/sitemap.ts`;
   `public/llms.txt` para asistentes de IA.
@@ -357,12 +357,21 @@ El flujo de pago usa [LemonSqueezy](https://www.lemonsqueezy.com/):
 
 El webhook solo activa el `pro` si la orden es del **variant del lifetime
 access** (`1934751`), como defensa por si un evento ajeno llegara al endpoint.
+Además registra cada venta en `lifetime_grants` (monto, moneda, total en USD,
+número de orden, si fue en modo prueba), que es lo que lista el back office. Si
+el pago no matchea ninguna cuenta, la venta queda **pendiente** con su email y
+el acceso se activa solo cuando esa persona crea la cuenta (con el email
+confirmado). Ante `order_refunded` con reembolso total, la venta queda
+reembolsada y el usuario pierde el acceso, salvo que tenga otro vigente; un
+reembolso parcial no cambia nada. Acceso y venta se registran en una sola
+transacción (`record_lifetime_sale`), y una orden ya procesada no vuelve a dar
+acceso aunque LemonSqueezy la reenvíe.
 
 **Config del webhook** (LemonSqueezy → Settings → Webhooks):
 
 - **Callback URL:** `https://registruti.app/api/webhooks/lemonsqueezy`
 - **Signing secret:** un valor que elegís vos; el mismo va en la env var de Vercel.
-- **Eventos:** `order_created`.
+- **Eventos:** `order_created` y `order_refunded`.
 
 **Env vars en Vercel:**
 
@@ -379,3 +388,24 @@ así que solo hace falta setear `LEMONSQUEEZY_WEBHOOK_SECRET`. El webhook reusa
 `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` (las mismas del MCP) para activar el
 acceso. Ver [`supabase/README.md`](supabase/README.md) para la activación manual
 y el detalle de la migración.
+
+### Back office (`/admin`)
+
+Panel solo para el admin (`nicolassespindola@gmail.com`), en `/admin` (link en
+el sidebar de la app, visible solo para ese email):
+
+- **Resumen:** usuarios (y altas de los últimos 30 días), usuarios activos
+  (cargaron horas en 30 días), lifetime pagos y dados a mano, y total vendido
+  en USD (sin ventas de prueba ni reembolsadas).
+- **Usuarios:** email, alta, último ingreso, uso (clientes, horas, invoices) y
+  plan, con búsqueda y filtro. Desde cada fila se da o se quita el lifetime.
+- **Ventas y accesos:** ventas de LemonSqueezy y accesos dados a mano, con
+  monto, estado (activo, pendiente de cuenta, reembolsada, revocado) y nota.
+- **Dar lifetime access** por email, con nota interna opcional. Si el email
+  todavía no tiene cuenta, queda pendiente y se activa al registrarse.
+
+La seguridad está en la base, no en el frontend: `is_admin()` exige que el
+usuario logueado tenga el email confirmado y esté en `admin_emails()`, y cada
+RPC `admin_*` lo verifica antes de hacer nada. `lifetime_grants` solo tiene
+policy de lectura para el admin. Para sumar a alguien, editar `admin_emails()`
+en una migración nueva (y `src/lib/admin.ts`, que solo decide si se ve el link).

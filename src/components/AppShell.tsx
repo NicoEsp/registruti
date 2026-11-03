@@ -13,6 +13,7 @@ import MadeByBadge from "@/components/MadeByBadge";
 import Onboarding from "@/components/Onboarding";
 import CommandPalette from "@/components/CommandPalette";
 import QuickAddEntry from "@/components/QuickAddEntry";
+import { isAdminEmail } from "@/lib/admin";
 
 const NAV_ITEMS = [
   { href: "/tracker", label: "Tracker", icon: "clock" },
@@ -222,6 +223,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="border-t border-slate-200 p-4">
           <MadeByBadge variant="sidebar" />
           <p className="mb-2 mt-3 truncate text-xs text-slate-500">{session.user.email}</p>
+          {/* Solo el link: quién entra al back office lo decide la base. */}
+          {isAdminEmail(session.user.email) && (
+            <Link
+              href="/admin"
+              className="mb-2 block text-sm font-medium text-slate-600 hover:text-indigo-700"
+            >
+              Back office
+            </Link>
+          )}
           <button
             onClick={() => supabase.auth.signOut()}
             className="text-sm font-medium text-slate-600 hover:text-red-600"
