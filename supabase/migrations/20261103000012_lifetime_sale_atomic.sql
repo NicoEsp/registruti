@@ -10,24 +10,14 @@
 --   - refund_lifetime_sale, si el reembolso llega antes que la venta, deja la
 --     orden registrada como reembolsada para que la venta no dé acceso después.
 -- Las dos se serializan por orden con un advisory lock, y además por usuario
--- (lock_lifetime_user) antes de tocar su `pro`: sin eso, dos reembolsos de
--- órdenes distintas del mismo usuario, o un reembolso y una compra nueva, se
--- ven activos entre sí bajo READ COMMITTED y el `pro` queda mal. La venta
--- también toma el lock por email (lock_lifetime_email, de 20261102000011) para
--- no cruzarse con una cuenta que se está creando. Orden de locks: orden →
--- email → usuario → filas.
+-- antes de tocar su `pro` (lock_lifetime_user, de 20261102000011): sin eso,
+-- dos reembolsos de órdenes distintas del mismo usuario, o un reembolso y una
+-- compra nueva, se ven activos entre sí bajo READ COMMITTED y el `pro` queda
+-- mal. La venta también toma el lock por email (lock_lifetime_email, de
+-- 20261102000011) para no cruzarse con una cuenta que se está creando. Orden
+-- de locks: orden → email → usuario → filas.
 --
 -- Requerida por: el webhook de LemonSqueezy (src/app/api/webhooks/lemonsqueezy).
-
-create or replace function public.lock_lifetime_user(p_user_id uuid)
-returns void
-language sql
-set search_path = pg_catalog
-as $$
-  select pg_advisory_xact_lock(hashtextextended('lifetime_user:' || p_user_id::text, 0));
-$$;
-
-revoke all on function public.lock_lifetime_user(uuid) from public, anon, authenticated;
 
 create or replace function public.record_lifetime_sale(
   p_order_id text,

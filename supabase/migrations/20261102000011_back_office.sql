@@ -88,6 +88,19 @@ $$;
 
 revoke all on function public.lock_lifetime_email(text) from public, anon, authenticated;
 
+-- Lock por usuario para todo lo que cambia su `pro` según sus accesos: el alta
+-- manual, la venta y el reembolso. Sin él, dos de esas operaciones a la vez se
+-- ven activas entre sí bajo READ COMMITTED y el `pro` queda mal.
+create or replace function public.lock_lifetime_user(p_user_id uuid)
+returns void
+language sql
+set search_path = pg_catalog
+as $$
+  select pg_advisory_xact_lock(hashtextextended('lifetime_user:' || p_user_id::text, 0));
+$$;
+
+revoke all on function public.lock_lifetime_user(uuid) from public, anon, authenticated;
+
 -- 3) Blindaje de `pro`: igual que en 20260721000006_pricing_limits.sql, más
 --    una excepción para el admin. Sin ella, las RPC admin_* (que corren con el
 --    JWT del admin, rol authenticated) no podrían activar ni quitar el acceso.
@@ -212,6 +225,9 @@ begin
   select id into target from auth.users where lower(email) = v_email limit 1;
 
   if target is not null then
+    -- Mismo lock que record_lifetime_sale y refund_lifetime_sale: un reembolso
+    -- simultáneo de otra venta de este usuario no le quita el acceso recién dado.
+    perform public.lock_lifetime_user(target);
     if public.user_is_pro(target) then
       raise exception 'admin_already_pro' using errcode = 'P0001';
     end if;
