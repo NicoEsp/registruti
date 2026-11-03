@@ -73,6 +73,21 @@ create policy "lifetime_grants_admin_select" on public.lifetime_grants
 
 revoke all on public.lifetime_grants from anon;
 
+-- Lock por email (normalizado) para todo lo que matchea un acceso pendiente
+-- con una cuenta: el alta manual, la venta del webhook y el trigger de altas.
+-- Sin él, una cuenta que se confirma justo mientras se registra el acceso
+-- puede no verlo (y el acceso no lo ve a ella), y queda pendiente para
+-- siempre.
+create or replace function public.lock_lifetime_email(p_email text)
+returns void
+language sql
+set search_path = pg_catalog
+as $$
+  select pg_advisory_xact_lock(hashtextextended('lifetime_email:' || lower(trim(p_email)), 0));
+$$;
+
+revoke all on function public.lock_lifetime_email(text) from public, anon, authenticated;
+
 -- 3) Blindaje de `pro`: igual que en 20260721000006_pricing_limits.sql, más
 --    una excepción para el admin. Sin ella, las RPC admin_* (que corren con el
 --    JWT del admin, rol authenticated) no podrían activar ni quitar el acceso.
@@ -193,6 +208,7 @@ begin
     raise exception 'admin_invalid_email' using errcode = 'P0001';
   end if;
 
+  perform public.lock_lifetime_email(v_email);
   select id into target from auth.users where lower(email) = v_email limit 1;
 
   if target is not null then
@@ -323,6 +339,7 @@ begin
     return new;
   end if;
   begin
+    perform public.lock_lifetime_email(new.email);
     update public.lifetime_grants
        set user_id = new.id
      where user_id is null and status = 'active' and lower(email) = lower(new.email);

@@ -83,7 +83,9 @@ supabase db push
     `admin_cancel_pending_grant` (security definer, verifican `is_admin()`),
     `refund_lifetime_sale` (solo service role, para `order_refunded`) y el
     trigger `on_auth_user_lifetime` que activa los accesos pendientes cuando
-    una cuenta confirma ese email. Redefine `protect_pro_columns` para que el
+    una cuenta confirma ese email (serializado por email con
+    `lock_lifetime_email`, igual que el alta manual y la venta, para que una
+    cuenta que se crea en el mismo momento no deje el acceso pendiente). Redefine `protect_pro_columns` para que el
     admin pueda escribir `pro`. Pasa los pro existentes (salvo el owner) a
     `lifetime_grants` como accesos manuales. **Requerida** por `/admin` y por
     el webhook de LemonSqueezy.

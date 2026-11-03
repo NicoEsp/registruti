@@ -12,8 +12,10 @@
 -- Las dos se serializan por orden con un advisory lock, y además por usuario
 -- (lock_lifetime_user) antes de tocar su `pro`: sin eso, dos reembolsos de
 -- órdenes distintas del mismo usuario, o un reembolso y una compra nueva, se
--- ven activos entre sí bajo READ COMMITTED y el `pro` queda mal. Orden de
--- locks: orden → usuario → filas.
+-- ven activos entre sí bajo READ COMMITTED y el `pro` queda mal. La venta
+-- también toma el lock por email (lock_lifetime_email, de 20261102000011) para
+-- no cruzarse con una cuenta que se está creando. Orden de locks: orden →
+-- email → usuario → filas.
 --
 -- Requerida por: el webhook de LemonSqueezy (src/app/api/webhooks/lemonsqueezy).
 
@@ -66,6 +68,12 @@ begin
     end if;
     -- Reintento o reenvío de una orden ya procesada: no se vuelve a dar acceso.
     return jsonb_build_object('user_id', existing.user_id, 'status', existing.status, 'duplicate', true);
+  end if;
+
+  -- Serializa con el trigger de altas y con admin_grant_lifetime: o esta venta
+  -- ve la cuenta ya creada, o el trigger ve la venta pendiente.
+  if nullif(trim(p_email), '') is not null then
+    perform public.lock_lifetime_email(p_email);
   end if;
 
   -- Mismo criterio que grant_pro: user_id del checkout si existe, si no el email.
