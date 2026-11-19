@@ -14,8 +14,12 @@ import { COUNTRIES, countryFor, localeFor } from "@/lib/countries";
 import { setUserProperties } from "@/lib/analytics";
 import {
   ENTRY_ADDED_EVENT,
+  NEW_INVOICE_CLIENT_PARAM,
   NEW_INVOICE_EVENT,
+  NEW_INVOICE_FROM_PARAM,
   NEW_INVOICE_PARAM,
+  NEW_INVOICE_TO_PARAM,
+  consumeParam,
   useAppEvent,
   useOpenParam,
 } from "@/lib/appEvents";
@@ -61,6 +65,7 @@ function Invoices() {
   const [pro, setPro] = useState(false);
   const [newClientId, setNewClientId] = useState<string | null>(null);
   const [newFrom, setNewFrom] = useState<string | null>(null);
+  const [newTo, setNewTo] = useState<string | null>(null);
   const [pdfBusyId, setPdfBusyId] = useState<string | null>(null);
   const [issuer, setIssuer] = useState<InvoiceIssuer | null>(null);
   const [unbilled, setUnbilled] = useState<Map<string, { minutes: number; earliest: string }>>(
@@ -129,6 +134,18 @@ function Invoices() {
   // y refresco en vivo cuando se registra tiempo desde el atajo global.
   useAppEvent(NEW_INVOICE_EVENT, openNew);
   useAppEvent(ENTRY_ADDED_EVENT, loadData);
+  // Cliente y período pedidos por URL (la carga del mes termina acá). Va antes
+  // de useOpenParam: los efectos corren en orden y el modal toma estos valores
+  // al montarse.
+  useEffect(() => {
+    const isDate = (v: string | null) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
+    const client = consumeParam(NEW_INVOICE_CLIENT_PARAM);
+    const from = isDate(consumeParam(NEW_INVOICE_FROM_PARAM));
+    const to = isDate(consumeParam(NEW_INVOICE_TO_PARAM));
+    if (client) setNewClientId(client);
+    if (from) setNewFrom(from);
+    if (to) setNewTo(to);
+  }, []);
   useOpenParam(NEW_INVOICE_PARAM, openNew);
 
   const clientById = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
@@ -361,21 +378,25 @@ function Invoices() {
           issuer={issuer}
           initialClientId={newClientId}
           initialFrom={newFrom}
+          initialTo={newTo}
           onClose={() => {
             setShowNew(false);
             setNewClientId(null);
             setNewFrom(null);
+            setNewTo(null);
           }}
           onLimit={() => {
             setShowNew(false);
             setNewClientId(null);
             setNewFrom(null);
+            setNewTo(null);
             setShowUpgrade(true);
           }}
           onCreated={() => {
             setShowNew(false);
             setNewClientId(null);
             setNewFrom(null);
+            setNewTo(null);
             loadData();
           }}
         />
@@ -393,6 +414,7 @@ function NewInvoiceModal({
   issuer,
   initialClientId,
   initialFrom,
+  initialTo,
   onClose,
   onLimit,
   onCreated,
@@ -403,6 +425,7 @@ function NewInvoiceModal({
   issuer: InvoiceIssuer | null;
   initialClientId?: string | null;
   initialFrom?: string | null;
+  initialTo?: string | null;
   onClose: () => void;
   onLimit: () => void;
   onCreated: () => void;
@@ -412,7 +435,9 @@ function NewInvoiceModal({
   const [from, setFrom] = useState(
     initialFrom ?? toISODate(new Date(now.getFullYear(), now.getMonth(), 1))
   );
-  const [to, setTo] = useState(toISODate(new Date(now.getFullYear(), now.getMonth() + 1, 0)));
+  const [to, setTo] = useState(
+    initialTo ?? toISODate(new Date(now.getFullYear(), now.getMonth() + 1, 0))
+  );
   const [dueDate, setDueDate] = useState("");
   const [preview, setPreview] = useState<TimeEntry[] | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);

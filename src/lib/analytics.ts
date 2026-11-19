@@ -50,8 +50,9 @@ export const ANALYTICS_ENABLED = POSTHOG_KEY.length > 0;
  * - `signed_up` — primer ingreso de una cuenta nueva (vuelta del OAuth).
  * - `onboarding_completed` — el wizard de bienvenida terminó (salteado o no).
  * - `time_entry_created` — se registró tiempo (activación). `source` dice desde
- *   dónde: tracker, registro rápido, repetir, wizard o MCP (ese último sale del
- *   servidor, ver analyticsServer.ts).
+ *   dónde: tracker, registro rápido, repetir, wizard, carga de varios días
+ *   (`bulk_month`: un solo evento por carga, con `entries` y los minutos
+ *   totales) o MCP (ese último sale del servidor, ver analyticsServer.ts).
  * - `invoice_created` — se generó un invoice (el momento de valor real).
  * - `invoice_blocked` — se abrió "Nuevo invoice" y no había nada para facturar
  *   (`reason`: sin clientes, o sin horas facturables en el período). Es la

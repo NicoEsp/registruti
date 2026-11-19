@@ -7,6 +7,7 @@ import BillableCheckbox from "@/components/BillableCheckbox";
 import ClientSelect, { NEW_CLIENT_VALUE } from "@/components/ClientSelect";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import DurationInput from "@/components/DurationInput";
+import MonthBulkEntry from "@/components/MonthBulkEntry";
 import UpgradeModal from "@/components/UpgradeModal";
 import { supabase } from "@/lib/supabase";
 import { capture } from "@/lib/analytics";
@@ -59,6 +60,7 @@ function Tracker() {
   const [billable, setBillable] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [showBulk, setShowBulk] = useState(false);
   // `clients` arranca en [] y eso se parece a "no tiene clientes": hasta la
   // primera carga no se ofrece crear uno (ni se deja enviar), para no mostrar
   // el campo de nombre a quien ya tiene clientes ni crearle uno repetido.
@@ -315,7 +317,7 @@ function Tracker() {
 
       <form
         onSubmit={handleAdd}
-        className="mb-8 flex flex-wrap items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+        className="mb-3 flex flex-wrap items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
       >
         <div className="w-full sm:min-w-36 sm:flex-1">
           <label className="mb-1 block text-xs font-medium text-slate-500">
@@ -380,6 +382,18 @@ function Tracker() {
         </div>
       </form>
 
+      {/* La mayoría llega con las horas del mes ya sabidas y las carga todas
+          juntas para facturar: eso tiene su propia entrada, no N pasadas por
+          el formulario de arriba. */}
+      <button
+        type="button"
+        onClick={() => setShowBulk(true)}
+        disabled={!clientsLoaded}
+        className="mb-8 w-full rounded-xl border border-dashed border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 disabled:opacity-50"
+      >
+        ¿Ya sabés las horas del mes? Cargá varios días de una vez →
+      </button>
+
       {loading ? (
         <p className="text-sm text-slate-400">Cargando…</p>
       ) : (
@@ -431,6 +445,7 @@ function Tracker() {
                           disabled={repeatingId === entry.id}
                           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm text-slate-400 hover:bg-slate-50 hover:text-indigo-600 disabled:opacity-30"
                           title="Repetir hoy"
+                          aria-label="Repetir hoy"
                         >
                           ↻
                         </button>
@@ -439,6 +454,7 @@ function Tracker() {
                           disabled={!!entry.invoice_id}
                           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm text-slate-400 hover:bg-slate-50 hover:text-indigo-600 disabled:opacity-30"
                           title={entry.invoice_id ? "Entrada facturada" : "Editar"}
+                          aria-label="Editar"
                         >
                           ✎
                         </button>
@@ -447,6 +463,7 @@ function Tracker() {
                           disabled={!!entry.invoice_id}
                           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm text-slate-400 hover:bg-slate-50 hover:text-red-600 disabled:opacity-30"
                           title={entry.invoice_id ? "Entrada facturada" : "Eliminar"}
+                          aria-label="Eliminar"
                         >
                           🗑
                         </button>
@@ -469,10 +486,21 @@ function Tracker() {
 
       {showUpgrade && <UpgradeModal reason="clients" onClose={() => setShowUpgrade(false)} />}
 
+      {showBulk && (
+        <MonthBulkEntry
+          clients={activeClients}
+          initialClientId={activeClients.some((c) => c.id === clientId) ? clientId : undefined}
+          initialMonth={date.slice(0, 7)}
+          onClose={() => setShowBulk(false)}
+          onSaved={loadData}
+        />
+      )}
+
       {editing && (
         <EditEntryModal
           entry={editing}
           clients={activeClients}
+          entryClient={clientById.get(editing.client_id)}
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);
@@ -502,11 +530,14 @@ function Tracker() {
 function EditEntryModal({
   entry,
   clients,
+  entryClient,
   onClose,
   onSaved,
 }: {
   entry: TimeEntry;
   clients: Client[];
+  /** El cliente actual de la entrada, aunque esté archivado. */
+  entryClient?: Client;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -517,16 +548,47 @@ function EditEntryModal({
   const [billable, setBillable] = useState(entry.billable);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Clientes creados desde este modal: si el update falla, el reintento los
+  // encuentra en la lista en vez de crear otro.
+  const [created, setCreated] = useState<Client[]>([]);
+  const [newClientName, setNewClientName] = useState("");
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  // El cliente de la entrada puede estar archivado: se suma para que el select
+  // lo muestre y guardar no la mueva a otro.
+  const options = useMemo(() => {
+    const all = [...clients, ...created];
+    return all.some((c) => c.id === entry.client_id) || !entryClient
+      ? all
+      : [...all, entryClient];
+  }, [clients, created, entry.client_id, entryClient]);
+  const creatingClient = clientId === NEW_CLIENT_VALUE;
+  const canSave =
+    duration != null && (creatingClient ? newClientName.trim().length > 0 : clientId !== "");
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    if (duration == null) return;
+    if (!canSave || duration == null) return;
     setSaving(true);
+    setError(null);
+    let targetClientId = clientId;
+    if (creatingClient) {
+      const res = await createClientQuick({ name: newClientName, source: "tracker" });
+      if (!res.ok) {
+        setSaving(false);
+        if (res.limit) setShowUpgrade(true);
+        else setError(res.message);
+        return;
+      }
+      targetClientId = res.client.id;
+      setCreated((cur) => [...cur, res.client]);
+      setClientId(res.client.id);
+      setNewClientName("");
+    }
     const { error: err } = await supabase
       .from("time_entries")
       .update({
         description,
-        client_id: clientId,
+        client_id: targetClientId,
         entry_date: date,
         duration_minutes: duration,
         billable,
@@ -538,6 +600,7 @@ function EditEntryModal({
   }
 
   return (
+    <>
     <Modal title="Editar entrada" onClose={onClose}>
       <form onSubmit={handleSave} className="space-y-3">
         <div>
@@ -550,17 +613,13 @@ function EditEntryModal({
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-slate-500">Cliente</label>
-          <select
+          <ClientSelect
+            clients={options}
             value={clientId}
-            onChange={(e) => setClientId(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-          >
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+            onChange={setClientId}
+            newName={newClientName}
+            onNewNameChange={setNewClientName}
+          />
         </div>
         <div className="flex gap-3">
           <div className="flex-1">
@@ -589,7 +648,7 @@ function EditEntryModal({
           </button>
           <button
             type="submit"
-            disabled={saving || duration == null}
+            disabled={saving || !canSave}
             className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
           >
             Guardar
@@ -597,5 +656,7 @@ function EditEntryModal({
         </div>
       </form>
     </Modal>
+    {showUpgrade && <UpgradeModal reason="clients" onClose={() => setShowUpgrade(false)} />}
+    </>
   );
 }

@@ -7,6 +7,7 @@ Aplicación de seguimiento de horas de consultoría y facturación por cliente, 
 ## Funcionalidades
 
 - **Tracker semanal**: registro de horas por día con duración de escritura libre ("1:30", "1.5", "90m"), en intervalos de 15 minutos (mínimo 0:15, máximo 8:00 por entrada), con descripción, cliente, marca de facturable y repetición de entradas con un click. El cliente se puede crear desde el mismo formulario (y desde el registro rápido): la primera hora no espera a que exista.
+- **Carga de varios días**: desde el tracker, "Cargá varios días de una vez" abre una grilla con los días del mes para un cliente (un campo por día, relleno de lunes a viernes con un clic, aviso de lo que ya estaba cargado). Al guardar ofrece armar el invoice de ese cliente y ese mes (`/invoices?nueva=1&cliente=<id>&desde=…&hasta=…`). Es el flujo que más se usa: llegar con las horas sabidas, cargarlas juntas y facturar.
 - **Onboarding**: el wizard de bienvenida pide una sola cosa, la primera entrada de tiempo (crea el cliente de paso, con tarifa opcional). Los datos del emisor se piden recién al armar el primer invoice.
 - **Clientes**: alta, edición, archivado y eliminación de clientes, cada uno con tarifa por hora, moneda y color propio.
 - **Reportes**: horas y montos facturables por cliente y por día, con filtros por período (semana, mes, mes pasado o rango personalizado) y exportación a CSV.

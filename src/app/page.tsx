@@ -18,30 +18,52 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
+/**
+ * Titular del hero. El uso real (Supabase + PostHog, nov 2026) es de
+ * facturación puntual: la gente llega con las horas sabidas, las carga juntas
+ * y emite el invoice en la misma sesión. Por eso la promesa es el invoice y
+ * el registro de horas es el medio.
+ *
+ * Las dos variantes quedan acá para probarlas de a una (se cambia `HERO`).
+ * No hay split en simultáneo a propósito: con ~90 visitas por mes ningún A/B
+ * llega a un resultado, así que se compara el signup rate por período.
+ */
+const HERO_VARIANTS = {
+  horas: {
+    before: "Pasá tus horas a un invoice para tu cliente de afuera, ",
+    accent: "en 2 minutos",
+  },
+  usd: {
+    before: "Tu invoice en USD, listo para mandar. ",
+    accent: "En español",
+  },
+};
+const HERO = HERO_VARIANTS.horas;
+
 const FEATURES = [
   {
-    icon: "⏱️",
-    title: "Tu semana, en bloques de 15",
+    icon: "🧾",
+    title: "Invoices que se arman solos",
     description:
-      "Cargá entradas de 15 minutos a 8 horas por día, con descripción y cliente. Una vista semanal donde se ve todo de un vistazo.",
+      "Elegí cliente y período, y el invoice sale de tus horas: numeración automática, tus datos de cobro al pie, estados (borrador, enviado, pagado) y PDF listo para mandar.",
+  },
+  {
+    icon: "🗂️",
+    title: "Se acuerda de todo, mes a mes",
+    description:
+      "Clientes, tarifas, tus datos como emisor y cómo cobrás (Wise, PayPal, alias o CBU) quedan guardados. El mes que viene solo cargás las horas.",
+  },
+  {
+    icon: "🗓️",
+    title: "Cargá el mes entero de una vez",
+    description:
+      "¿Ya sabés cuántas horas hiciste? Completá los días del mes en una sola pantalla, o rellená de lunes a viernes con un clic. Si preferís el día a día, también está el tracker semanal.",
   },
   {
     icon: "💱",
     title: "Cada cliente, su tarifa y su moneda",
     description:
-      "Cada cliente con su tarifa por hora, su color y su moneda: ARS, USD, EUR, UYU, BRL, CLP, COP, MXN o GBP. Cobrale en pesos a uno y en dólares a otro sin hacer cuentas aparte.",
-  },
-  {
-    icon: "📊",
-    title: "Reportes que responden “¿cuánto facturo?”",
-    description:
-      "Horas y monto facturable por cliente, gráfico de barras apiladas y matriz cliente × día con subtotales semanales. Filtrá por semana, mes o el rango que quieras.",
-  },
-  {
-    icon: "🧾",
-    title: "Invoices que se arman solos",
-    description:
-      "Elegí cliente y período, y el invoice se genera desde tus horas trackeadas: numeración automática, estados (borrador, enviado, pagado) y exportación a PDF lista para imprimir o mandar.",
+      "Cada cliente con su tarifa por hora y su moneda: USD, EUR, ARS, UYU, BRL, CLP, COP, MXN o GBP. Cobrale en dólares al de afuera y en pesos al local sin hacer cuentas aparte.",
   },
   {
     icon: "🔗",
@@ -53,7 +75,7 @@ const FEATURES = [
     icon: "🇦🇷",
     title: "100% en español, cero curva de aprendizaje",
     description:
-      "Hecha para freelancers hispanohablantes, no para equipos enterprise. Sin menús traducidos a medias ni configuración de media hora: entrás y trackeás.",
+      "Hecha para freelancers hispanohablantes, no para equipos enterprise. Sin menús traducidos a medias ni configuración de media hora: entrás, cargás y facturás.",
   },
 ];
 
@@ -111,19 +133,19 @@ const COMPARISON: { criterio: string; diamble: string; toggl: string; wins: bool
 
 const STEPS = [
   {
-    title: "Cargá tu primera hora",
+    title: "Cargá las horas del mes",
     description:
-      "Escribí qué hiciste, para quién y cuánto tardaste. El cliente se crea en el mismo paso; la tarifa y la moneda las ponés cuando quieras.",
+      "Todas juntas en una pantalla o día a día, como prefieras. El cliente se crea en el mismo paso, con su tarifa y su moneda.",
   },
   {
-    title: "Mirá tu semana",
+    title: "Elegí el cliente y el período",
     description:
-      "Tus horas por día en bloques de 15 minutos, con descripción y cliente, y los reportes de cuánto llevás por cliente en la semana o el mes.",
+      "Registruti suma las horas, aplica la tarifa y arma el invoice con numeración automática, tus datos y cómo querés cobrar.",
   },
   {
-    title: "Facturá en un clic",
+    title: "Mandá el invoice",
     description:
-      "Generá el invoice del período con numeración automática, exportalo a PDF y compartile a tu cliente el link público con todo el detalle.",
+      "Bajalo en PDF o compartile a tu cliente el link público con el detalle. El mes que viene ya está todo cargado: solo cambian las horas.",
   },
 ];
 
@@ -258,103 +280,85 @@ export default function LandingPage() {
         <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 pb-20 pt-16 lg:grid-cols-2">
           <div>
             <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
-              <span aria-hidden>⏱️</span> Hecha para freelancers de Latinoamérica
+              <span aria-hidden>🧾</span> Para freelancers de Latinoamérica con clientes afuera
             </p>
             <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
-              Control de horas y facturación para freelancers,{" "}
+              {HERO.before}
               <span className="bg-gradient-to-r from-indigo-600 to-indigo-500 bg-clip-text text-transparent">
-                en español
+                {HERO.accent}
               </span>
             </h1>
             <p className="mt-5 max-w-xl text-lg text-slate-600">
-              Trackeá tu semana en bloques de 15 minutos, asignale a cada cliente su tarifa en su
-              moneda (ARS, USD, EUR y 6 más) y generá la factura en PDF en un clic. Lo que Toggl
-              Track cobra desde USD 9 por usuario al mes, acá lo empezás gratis.
+              Registruti recuerda tus clientes, tarifas y cómo cobrás. Cada mes solo cargás las
+              horas, elegís el cliente y mandás el invoice en USD (o en la moneda que factures),
+              en PDF o con un link. Gratis para empezar.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-4">
               <Link
                 href="/login"
                 className="rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-6 py-3 text-base font-semibold text-white shadow-md hover:from-indigo-700 hover:to-indigo-600"
               >
-                Empezá gratis hoy
+                Armá tu primer invoice gratis
               </Link>
-              <a
-                href="#como-funciona"
+              <Link
+                href="/invoice-de-ejemplo"
                 className="rounded-xl border border-slate-300 px-6 py-3 text-base font-medium text-slate-700 hover:bg-slate-50"
               >
-                Ver cómo funciona
-              </a>
+                Ver un invoice de ejemplo
+              </Link>
             </div>
             <p className="mt-4 text-sm text-slate-500">Sin tarjeta de crédito. Sin instalación.</p>
           </div>
 
           {/* Mock del producto */}
-          {/* El mock es decorativo (aria-hidden), pero el link al invoice
-              de ejemplo de abajo es real: el aria-hidden va por partes, para
-              no esconder un elemento enfocable. */}
+          {/* El mock (un invoice, que es la promesa) es decorativo, pero el
+              link al invoice de ejemplo de abajo es real: el aria-hidden va
+              por partes, para no esconder un elemento enfocable. */}
           <div className="relative">
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
               <div aria-hidden>
-              <div className="mb-4 flex items-center justify-between">
-                <span className="text-sm font-semibold">Tracker</span>
-                <span className="text-xs text-slate-500">
-                  Total semana: <strong className="text-slate-900">23:45</strong>
-                </span>
-              </div>
-              <div className="mb-4 grid grid-cols-7 gap-1.5">
-                {[
-                  ["Lun", "6:15", false],
-                  ["Mar", "4:30", false],
-                  ["Mié", "5:00", true],
-                  ["Jue", "3:45", false],
-                  ["Vie", "4:15", false],
-                  ["Sáb", "—", false],
-                  ["Dom", "—", false],
-                ].map(([day, total, selected]) => (
-                  <div
-                    key={day as string}
-                    className={`flex flex-col items-center rounded-lg border px-1 py-1.5 text-[10px] ${
-                      selected
-                        ? "border-indigo-600 bg-gradient-to-b from-indigo-600 to-indigo-500 text-white"
-                        : "border-slate-200 text-slate-500"
-                    }`}
-                  >
-                    <span className="font-medium uppercase">{day}</span>
-                    <span className="font-mono">{total}</span>
+                <div className="mb-4 flex items-start justify-between">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                      Invoice
+                    </p>
+                    <p className="text-sm font-semibold">INV-0007</p>
                   </div>
-                ))}
-              </div>
-              <div className="space-y-2">
-                {[
-                  ["#f59e0b", "Auditoría de producto", "Estudio Galley", "2:30"],
-                  ["#6366f1", "Discovery + roadmap Q3", "Baratie Labs", "1:45"],
-                  ["#10b981", "Sesión de mentoría", "All Blue Ventures", "0:45"],
-                ].map(([color, task, client, duration]) => (
-                  <div
-                    key={task as string}
-                    className="flex items-center gap-2.5 rounded-lg border border-slate-100 px-3 py-2"
-                  >
-                    <span
-                      className="h-2 w-2 shrink-0 rounded-full"
-                      style={{ backgroundColor: color as string }}
-                    />
-                    <div className="min-w-0 flex-1">
+                  <div className="text-right text-[10px] text-slate-500">
+                    <p className="font-medium text-slate-700">Estudio Galley</p>
+                    <p>01/10/2026 – 31/10/2026</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {[
+                    ["Auditoría de producto", "18:30"],
+                    ["Discovery + roadmap Q4", "14:00"],
+                    ["Sesiones de mentoría", "10:00"],
+                  ].map(([task, duration]) => (
+                    <div
+                      key={task}
+                      className="flex items-center justify-between gap-2.5 rounded-lg border border-slate-100 px-3 py-2"
+                    >
                       <p className="truncate text-xs font-medium">{task}</p>
-                      <p className="text-[10px] text-slate-500">{client}</p>
+                      <span className="font-mono text-xs text-slate-600">{duration}</span>
                     </div>
-                    <span className="font-mono text-xs font-semibold">{duration}</span>
+                  ))}
+                </div>
+                <div className="mt-3 flex items-end justify-between border-t border-slate-100 pt-3">
+                  <div className="text-[10px] text-slate-500">
+                    <p>42:30 h × USD 40/h</p>
+                    <p className="mt-1">Cobro: Wise · PayPal · alias/CBU</p>
                   </div>
-                ))}
+                  <p className="text-lg font-bold tracking-tight">USD 1.700,00</p>
+                </div>
               </div>
-              </div>
-              {/* El invoice es lo que diferencia a Registruti de un tracker:
-                  se puede ver entero (y bajar el PDF) antes de registrarse. */}
+              {/* Se puede ver entero (y bajar el PDF) antes de registrarse. */}
               <Link
                 href="/invoice-de-ejemplo"
                 className="mt-4 flex items-center justify-between rounded-lg bg-gradient-to-r from-indigo-50 to-violet-50 px-3 py-2.5 transition hover:from-indigo-100 hover:to-violet-100"
               >
                 <span className="text-xs font-medium text-indigo-800">
-                  Invoice INV-0007 · Estudio Galley
+                  Así lo ve tu cliente
                 </span>
                 <span className="rounded bg-white px-2 py-0.5 text-[10px] font-semibold text-indigo-700 shadow-sm">
                   Ver ejemplo →
@@ -373,14 +377,14 @@ export default function LandingPage() {
       <section className="border-y border-slate-100 bg-slate-50">
         <div className="mx-auto max-w-4xl px-4 py-16 text-center">
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            De las horas trabajadas a la factura enviada, sin pasos intermedios.
+            De las horas del mes al invoice enviado, sin planillas ni plantillas.
           </h2>
           <p className="mx-auto mt-4 max-w-3xl text-slate-600">
-            Registruti convierte tu semana de trabajo en facturas listas para enviar: trackeás
-            tus horas por cliente, cada uno con su tarifa y su moneda, y la factura se genera sola
-            con el detalle completo. Tu cliente la ve desde un link público, sin crear cuenta ni
-            pedirte explicaciones. En español, gratis, y sin las funciones enterprise que nunca vas
-            a usar.
+            Los generadores de facturas gratis empiezan de cero cada vez. Registruti guarda tus
+            clientes, sus tarifas y tus datos de cobro: cargás las horas del mes, cada cliente con
+            su moneda, y el invoice sale con el detalle completo. Tu cliente lo ve desde un link
+            público, sin crear cuenta ni pedirte explicaciones. En español y sin las funciones
+            enterprise que nunca vas a usar.
           </p>
         </div>
       </section>
@@ -391,7 +395,7 @@ export default function LandingPage() {
           Todo lo que necesitás para cobrar tus horas
         </h2>
         <p className="mx-auto mt-3 max-w-2xl text-center text-slate-600">
-          Ni más, ni menos: las funcionalidades que un freelancer usa todos los días.
+          Ni más, ni menos: lo que un freelancer usa cada vez que factura.
         </p>
         <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((feature) => (
@@ -513,7 +517,7 @@ export default function LandingPage() {
             <ul className="mt-5 flex-1 space-y-2.5 text-sm text-slate-600">
               {[
                 "Hasta 3 clientes activos y 4 invoices",
-                "Tracker semanal en bloques de 15 minutos",
+                "Carga del mes completo o tracker semanal",
                 "Tarifa y moneda por cliente (9 monedas)",
                 "Reportes de horas y montos + export CSV",
                 "Invoices en PDF con link público",
@@ -672,17 +676,17 @@ export default function LandingPage() {
       <section className="mx-auto max-w-4xl px-4 py-20 text-center">
         <Logo size={48} />
         <h2 className="mt-5 text-2xl font-bold tracking-tight sm:text-3xl">
-          Tu próxima factura empieza con la próxima hora trackeada
+          Tu próximo invoice, en 2 minutos
         </h2>
         <p className="mx-auto mt-3 max-w-xl text-slate-600">
-          Creá tu cuenta y cargá tu primera hora en menos de un minuto. El cliente se crea en el
-          mismo paso.
+          Creá tu cuenta, cargá las horas del mes y mandalo. El cliente se crea en el mismo paso
+          y queda guardado para el mes que viene.
         </p>
         <Link
           href="/login"
           className="mt-8 inline-block rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-8 py-3.5 text-base font-semibold text-white shadow-md hover:from-indigo-700 hover:to-indigo-600"
         >
-          Empezá gratis hoy
+          Armá tu primer invoice gratis
         </Link>
       </section>
 

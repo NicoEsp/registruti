@@ -13,6 +13,10 @@ export const NEW_CLIENT_EVENT = "registruti:new-client";
 export const TOAST_EVENT = "registruti:toast";
 
 export const NEW_INVOICE_PARAM = "nueva";
+/** Junto con `?nueva=1`: cliente y período con los que abre el modal de invoice. */
+export const NEW_INVOICE_CLIENT_PARAM = "cliente";
+export const NEW_INVOICE_FROM_PARAM = "desde";
+export const NEW_INVOICE_TO_PARAM = "hasta";
 export const NEW_CLIENT_PARAM = "nuevo";
 export const QUICK_ADD_PARAM = "registrar";
 /** `/tracker?cliente=<id>`: abrir el tracker con ese cliente ya elegido. */
